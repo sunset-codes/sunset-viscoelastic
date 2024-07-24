@@ -20,6 +20,13 @@ Developed by Dr Jack King, University of Manchester.
    + Periodic
 - Parallelised with OpenMP + MPI.
 
+## Documentation
+
+Documentation in docs folder is from the combustion variant (sunset-flames). I haven't yet produced a version of the documentation for this viscoelastic variant. For now, see ref 3 below, and the combustion documentation. See comments in the Makefile for compiler flag options.
+
+- make newt=1    - Newtonian simulations
+- make ceform=X  - Viscoelastic simulations (X=0 Direct integration, X=1 Cholesky, X=2 Log-Cholesky, X=3 Log-conformation)
+
 ## References
 
 - LABFM fundamentals: King, Lind & Nasar (2020) JCP 415:109549 https://doi.org/10.1016/j.jcp.2020.109549
