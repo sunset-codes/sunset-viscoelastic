@@ -1,0 +1,41 @@
+!! This is the control file for sunset code
+
+!! Characteristic length-scale (L_char)
+1.0d0
+
+!! Characteristic velocity scale (U_char)
+1.0d0
+
+!! Start and end time (in multiples of L_char/Uchar)
+0.0d0 100.0d0
+
+!! Output period (in multiples of L_char/U_char), stats output period
+1.0d0 1.0d-2
+
+!! Gravity vector (grav)
+0.0d0 0.0d0 0.0d0
+
+!! Reynolds number
+100.0d0
+
+!! Weissenberg number
+1.0d0
+
+!! Viscosity ratio (beta)
+1.0d-1
+
+!! PTT non-linearity
+0.0d0
+
+!! Schmidt number (only for direct integration of c)
+1.0d18
+
+!! Mach number
+0.001d0
+
+!! INFLOWS type (non-reflecting (0), hard (1), inout (2)) and velocity control (fixed (0), variable (1))
+0 0
+
+
+
+

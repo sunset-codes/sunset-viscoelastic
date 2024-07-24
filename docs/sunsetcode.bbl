@@ -1,0 +1,113 @@
+\begin{thebibliography}{12}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\href}[2]{#2}
+\providecommand{\path}[1]{#1}
+\providecommand{\DOIprefix}{doi:}
+\providecommand{\ArXivprefix}{arXiv:}
+\providecommand{\URLprefix}{URL: }
+\providecommand{\Pubmedprefix}{pmid:}
+\providecommand{\doi}[1]{\href{http://dx.doi.org/#1}{\path{#1}}}
+\providecommand{\Pubmed}[1]{\href{pmid:#1}{\path{#1}}}
+\providecommand{\bibinfo}[2]{#2}
+\ifx\xfnm\relax \def\xfnm[#1]{\unskip,\space#1}\fi
+%Type = Article
+\bibitem[{King et~al.(2020)King, Lind, and Nasar}]{king_2020}
+\bibinfo{author}{J.~King}, \bibinfo{author}{S.~Lind},
+  \bibinfo{author}{A.~Nasar},
+\newblock \bibinfo{title}{High order difference schemes using the local
+  anisotropic basis function method},
+\newblock \bibinfo{journal}{Journal of Computational Physics}
+  \bibinfo{volume}{415} (\bibinfo{year}{2020}) \bibinfo{pages}{109549}.
+  \DOIprefix\doi{10.1016/j.jcp.2020.109549}.
+%Type = Article
+\bibitem[{King and Lind(2022)}]{king_2022}
+\bibinfo{author}{J.~King}, \bibinfo{author}{S.~Lind},
+\newblock \bibinfo{title}{High-order simulations of isothermal flows using the
+  local anisotropic basis function method (labfm)},
+\newblock \bibinfo{journal}{Journal of Computational Physics}
+  \bibinfo{volume}{449} (\bibinfo{year}{2022}) \bibinfo{pages}{110760}.
+  \DOIprefix\doi{https://doi.org/10.1016/j.jcp.2021.110760}.
+%Type = Techreport
+\bibitem[{Kee et~al.(1986)Kee, Dixon-Lewis, Warnatz, Coltrin, and
+  Miller}]{kee_1986}
+\bibinfo{author}{R.~J. Kee}, \bibinfo{author}{G.~Dixon-Lewis},
+  \bibinfo{author}{J.~Warnatz}, \bibinfo{author}{M.~E. Coltrin},
+  \bibinfo{author}{J.~A. Miller}, \bibinfo{title}{A Fortran computer code
+  package for the evaluation of gas-phase multicomponent transport properties},
+  \bibinfo{type}{Technical Report} \bibinfo{number}{SAND86-8246}, Sandia
+  National Laboratories, \bibinfo{year}{1986}.
+%Type = Article
+\bibitem[{Giacomazzi et~al.(2008)Giacomazzi, Picchia, and
+  Arcidiacono}]{giacomazzi_2008}
+\bibinfo{author}{E.~Giacomazzi}, \bibinfo{author}{F.~R. Picchia},
+  \bibinfo{author}{N.~Arcidiacono},
+\newblock \bibinfo{title}{A review of chemical diffusion: Criticism and limits
+  of simplified methods for diffusion coefficient calculation},
+\newblock \bibinfo{journal}{Combustion Theory and Modelling}
+  \bibinfo{volume}{12} (\bibinfo{year}{2008}) \bibinfo{pages}{135--158}.
+  \DOIprefix\doi{10.1080/13647830701550370}.
+%Type = Book
+\bibitem[{Hirschfelder et~al.(1964)Hirschfelder, Curtiss, and
+  Bird}]{hirschfelder_curtiss}
+\bibinfo{author}{J.~O. Hirschfelder}, \bibinfo{author}{C.~F. Curtiss},
+  \bibinfo{author}{R.~B. Bird}, \bibinfo{title}{{Molecular theory of gases and
+  liquids}}, \bibinfo{year}{1964}.
+%Type = Book
+\bibitem[{Ern and Giovangigli(1994)}]{ern_1994}
+\bibinfo{author}{A.~Ern}, \bibinfo{author}{V.~Giovangigli},
+  \bibinfo{title}{Multicomponent transport algorithms},
+  \bibinfo{publisher}{Springer Science \& Business Media},
+  \bibinfo{year}{1994}.
+%Type = Article
+\bibitem[{Ern and Giovangigli(1995)}]{ern_1995}
+\bibinfo{author}{A.~Ern}, \bibinfo{author}{V.~Giovangigli},
+\newblock \bibinfo{title}{Fast and accurate multicomponent transport property
+  evaluation},
+\newblock \bibinfo{journal}{Journal of Computational Physics}
+  \bibinfo{volume}{120} (\bibinfo{year}{1995}) \bibinfo{pages}{105--116}.
+  \DOIprefix\doi{10.1006/jcph.1995.1151}.
+%Type = Article
+\bibitem[{Fornberg and Flyer(2015)}]{fornberg_2015a}
+\bibinfo{author}{B.~Fornberg}, \bibinfo{author}{N.~Flyer},
+\newblock \bibinfo{title}{Fast generation of {2-D} node distributions for
+  mesh-free {PDE} discretizations},
+\newblock \bibinfo{journal}{Computers \& Mathematics with Applications}
+  \bibinfo{volume}{69} (\bibinfo{year}{2015}) \bibinfo{pages}{531 -- 544}.
+  \DOIprefix\doi{10.1016/j.camwa.2015.01.009}.
+%Type = Article
+\bibitem[{Kennedy et~al.(2000)Kennedy, Carpenter, and Lewis}]{kennedy_2000}
+\bibinfo{author}{C.~A. Kennedy}, \bibinfo{author}{M.~H. Carpenter},
+  \bibinfo{author}{R.~Lewis},
+\newblock \bibinfo{title}{Low-storage, explicit {R}unge–{K}utta schemes for
+  the compressible {N}avier–{S}tokes equations},
+\newblock \bibinfo{journal}{Applied Numerical Mathematics} \bibinfo{volume}{35}
+  (\bibinfo{year}{2000}) \bibinfo{pages}{177 -- 219}.
+  \DOIprefix\doi{10.1016/S0168-9274(99)00141-5}.
+%Type = Article
+\bibitem[{Kennedy and Carpenter(1994)}]{kennedy_1994}
+\bibinfo{author}{C.~A. Kennedy}, \bibinfo{author}{M.~H. Carpenter},
+\newblock \bibinfo{title}{Several new numerical methods for compressible
+  shear-layer simulations},
+\newblock \bibinfo{journal}{Applied Numerical Mathematics} \bibinfo{volume}{14}
+  (\bibinfo{year}{1994}) \bibinfo{pages}{397 -- 433}.
+  \DOIprefix\doi{10.1016/0168-9274(94)00004-2}.
+%Type = Article
+\bibitem[{Sutherland and Kennedy(2003)}]{sutherland_2003}
+\bibinfo{author}{J.~C. Sutherland}, \bibinfo{author}{C.~A. Kennedy},
+\newblock \bibinfo{title}{Improved boundary conditions for viscous, reacting,
+  compressible flows},
+\newblock \bibinfo{journal}{Journal of Computational Physics}
+  \bibinfo{volume}{191} (\bibinfo{year}{2003}) \bibinfo{pages}{502 -- 524}.
+  \DOIprefix\doi{10.1016/S0021-9991(03)00328-0}.
+%Type = Article
+\bibitem[{Yoo and Im(2007)}]{yoo_2007}
+\bibinfo{author}{C.~S. Yoo}, \bibinfo{author}{H.~G. Im},
+\newblock \bibinfo{title}{Characteristic boundary conditions for simulations of
+  compressible reacting flows with multi-dimensional, viscous and reaction
+  effects},
+\newblock \bibinfo{journal}{Combustion Theory and Modelling}
+  \bibinfo{volume}{11} (\bibinfo{year}{2007}) \bibinfo{pages}{259--286}.
+  \DOIprefix\doi{10.1080/13647830600898995}.
+
+\end{thebibliography}

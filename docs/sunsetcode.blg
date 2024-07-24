@@ -1,0 +1,48 @@
+This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: sunsetcode.aux
+The style file: elsarticle-num-names.bst
+Database file #1: sunsetcodeNotes.bib
+Database file #2: jrckbib.bib
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+You've used 12 entries,
+            2918 wiz_defined-function locations,
+            706 strings with 7349 characters,
+and the built_in function-call counts, 7664 in all, are:
+= -- 574
+> -- 284
+< -- 8
++ -- 109
+- -- 93
+* -- 909
+:= -- 1086
+add.period$ -- 21
+call.type$ -- 12
+change.case$ -- 88
+chr.to.int$ -- 12
+cite$ -- 12
+duplicate$ -- 568
+empty$ -- 572
+format.name$ -- 143
+if$ -- 1429
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 113
+newline$ -- 69
+num.names$ -- 48
+pop$ -- 198
+preamble$ -- 1
+purify$ -- 91
+quote$ -- 0
+skip$ -- 133
+stack$ -- 0
+substring$ -- 355
+swap$ -- 413
+text.length$ -- 1
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 102
+warning$ -- 0
+while$ -- 45
+width$ -- 0
+write$ -- 173
