@@ -159,12 +159,12 @@ contains
         w(i) = zero!u(i);u(i)=zero
                                  
         !! No initial flow
-!        u(i) = zero;v(i)=zero;w(i)=zero        
+        u(i) = zero;v(i)=zero;w(i)=zero        
 !        u(i) = four*(quarter-y*y)
 !        ro(i) = rho_char;p(i) = ro(i)*csq        
         
         tmp = -(1.00d0/4.0d0)*(cos(two*x)+cos(two*y))!*(two+cos(two*z))       
-        ro(i) = rho_char + tmp*Ma*Ma
+        ro(i) = rho_char !+ tmp*Ma*Ma
         p(i) = ro(i)*csq
         
         !! Initial conformation tensor

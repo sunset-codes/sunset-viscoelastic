@@ -10,6 +10,7 @@
 # allout     If 3D, output the entire domain (1) or just a slice (0)                   (default: 1)
 # ceform     Direct integration (0), Cholesky (1), log-cholesky (2), log-conf (3)      (default: 3)
 # newt       Newtonian calculations (1) or not (0)                                     (default: 0)
+# fenep      FENE-P (1) or sPTT (0)                                                    (default: 1)
 # morder     m (order) value = 4,6,8,10                                                (default: 8)
 # -------------------------------------------------------------------------------------------------
 #
@@ -76,6 +77,11 @@ endif
 # Multiprocessor? (use mpi?)
 ifneq ($(mpi),0)
 FFLAGS += -Dmp
+endif
+
+# FENE-P?
+ifneq ($(fenep),0)
+FFLAGS += -Dfenep
 endif
 
 # Three dimensional?

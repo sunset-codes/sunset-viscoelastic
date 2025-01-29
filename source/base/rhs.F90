@@ -30,9 +30,9 @@ module rhs
 
   !! Allocatable arrays for 1st and 2nd gradients
   real(rkind),dimension(:,:),allocatable :: gradro,gradp  !! Velocity gradients defined in common, as used elsewhere too
-  real(rkind),dimension(:),allocatable :: lapu,lapv,lapw
+  real(rkind),dimension(:),allocatable :: lapu,lapv,lapw,fenepf
   real(rkind),dimension(:,:),allocatable :: gradcxx,gradcxy,gradcyy  
-  real(rkind),dimension(:,:),allocatable :: gradcxz,gradcyz,gradczz    
+  real(rkind),dimension(:,:),allocatable :: gradcxz,gradcyz,gradczz,gradfenepf    
    
   real(rkind) :: dundn,dutdn,dutdt,dpdn
   real(rkind) :: xn,yn,un,ut
@@ -116,6 +116,9 @@ contains
      deallocate(gradcxx,gradcxy,gradcyy)  
      deallocate(gradcxz,gradcyz,gradczz)
 #endif  
+#ifdef fenep
+     deallocate(fenepf)
+#endif  
   
      return
   end subroutine calc_all_rhs
@@ -172,7 +175,7 @@ contains
      real(rkind),dimension(ithree) :: tmp_vec
      real(rkind) :: tmp_scal_u,tmp_scal_v,tmp_scal_w,f_visc_u,f_visc_v,f_visc_w
      real(rkind) :: tmpro,body_force_u,body_force_v,body_force_w
-     real(rkind) :: c,coef_solvent,coef_polymeric
+     real(rkind) :: c,coef_solvent,coef_polymeric,f1,f2
                
      !! Allocate memory for spatial derivatives and stores
      allocate(lapu(npfb),lapv(npfb),lapw(npfb))
@@ -199,6 +202,14 @@ contains
 #else
      gradcxz=zero;gradcyz=zero;gradczz=zero
 #endif     
+#ifdef fenep
+     !! Calculate the FENE-P non-linearity function
+     allocate(fenepf(np),gradfenepf(npfb,ithree));
+     do i=1,np
+        fenepf(i) = one/(one - (cxx(i)+cyy(i)+czz(i)-three)/fenep_l2)
+     end do
+     call calc_gradient(fenepf,gradfenepf)
+#endif
 #endif
         
      !! Store coefficients for RHS
@@ -208,7 +219,7 @@ contains
          
      !! Build RHS for internal nodes
      !$omp parallel do private(i,tmp_vec,tmp_scal_u,tmp_scal_v,tmp_scal_w,f_visc_u,f_visc_v,f_visc_w,tmpro &
-     !$omp ,body_force_u,body_force_v,body_force_w)
+     !$omp ,body_force_u,body_force_v,body_force_w,f1,f2)
      do j=1,npfb-nb
         i=internal_list(j)
         tmp_vec(1) = u(i);tmp_vec(2) = v(i);tmp_vec(3) = w(i) !! tmp_vec holds (u,v,w) for node i
@@ -225,10 +236,25 @@ contains
         f_visc_w = coef_solvent*lapw(i)                  
         
 #ifndef newt
-        !! add polymeric viscosity
+        !! add polymeric term
+#ifdef fenep
+        !! For FENE-P it is a little more complex. Here we use the quotient rule...
+        f1 = fenepf(i)
+        f2 = f1*f1
+        f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1)*f1 - f2*cxx(i)*gradfenepf(i,1) &
+                                             +gradcxy(i,2)*f1 - f2*cxy(i)*gradfenepf(i,2) &
+                                             +gradcxz(i,3)*f1 - f2*cxz(i)*gradfenepf(i,3))
+        f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1)*f1 - f2*cxy(i)*gradfenepf(i,1) &
+                                             +gradcyy(i,2)*f1 - f2*cyy(i)*gradfenepf(i,2) &
+                                             +gradcyz(i,3)*f1 - f2*cyz(i)*gradfenepf(i,3))
+        f_visc_w = f_visc_w + coef_polymeric*(gradcxz(i,1)*f1 - f2*cxz(i)*gradfenepf(i,1) &
+                                             +gradcyz(i,2)*f1 - f2*cyz(i)*gradfenepf(i,2) &
+                                             +gradczz(i,3)*f1 - f2*czz(i)*gradfenepf(i,3))
+#else        
         f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1) + gradcxy(i,2) + gradcxz(i,3))
         f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1) + gradcyy(i,2) + gradcyz(i,3))
         f_visc_w = f_visc_w + coef_polymeric*(gradcxz(i,1) + gradcyz(i,2) + gradczz(i,3))
+#endif  
 #endif
 
         !! Body force
@@ -257,7 +283,7 @@ contains
      
      
         !$omp parallel do private(i,tmpro,c,xn,yn,un,ut,f_visc_u,f_visc_v,body_force_u,body_force_v &
-        !$omp ,dpdn,dundn,dutdn,f_visc_w,tmp_vec,tmp_scal_u,tmp_scal_v,tmp_scal_w)
+        !$omp ,dpdn,dundn,dutdn,f_visc_w,tmp_vec,tmp_scal_u,tmp_scal_v,tmp_scal_w,f1,f2)
         do j=1,nb
            i=boundary_list(j)
            tmpro = ro(i)
@@ -304,10 +330,25 @@ contains
               f_visc_w = coef_solvent*lapw(i)
               
 #ifndef newt              
-              !! add polymeric viscosity
+              !! add polymeric term
+#ifdef fenep
+              !! For FENE-P it is a little more complex. Here we use the quotient rule...
+              f1 = fenepf(i)
+              f2 = f1*f1
+              f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1)*f1 - f2*cxx(i)*gradfenepf(i,1) &
+                                                   +gradcxy(i,2)*f1 - f2*cxy(i)*gradfenepf(i,2) &
+                                                   +gradcxz(i,3)*f1 - f2*cxz(i)*gradfenepf(i,3))
+              f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1)*f1 - f2*cxy(i)*gradfenepf(i,1) &
+                                                   +gradcyy(i,2)*f1 - f2*cyy(i)*gradfenepf(i,2) &
+                                                   +gradcyz(i,3)*f1 - f2*cyz(i)*gradfenepf(i,3))
+              f_visc_w = f_visc_w + coef_polymeric*(gradcxz(i,1)*f1 - f2*cxz(i)*gradfenepf(i,1) &
+                                                   +gradcyz(i,2)*f1 - f2*cyz(i)*gradfenepf(i,2) &
+                                                   +gradczz(i,3)*f1 - f2*czz(i)*gradfenepf(i,3))
+#else        
               f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1) + gradcxy(i,2) + gradcxz(i,3))
               f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1) + gradcyy(i,2) + gradcyz(i,3))
               f_visc_w = f_visc_w + coef_polymeric*(gradcxz(i,1) + gradcyz(i,2) + gradczz(i,3))
+#endif 
 #endif            
             
               !! Body force
@@ -329,6 +370,9 @@ contains
          
      !! Deallocate any stores no longer required
      deallocate(lapu,lapv,lapw)
+#ifdef fenep
+     deallocate(gradfenepf)
+#endif     
 
      return
   end subroutine calc_rhs_rovel
@@ -389,6 +433,17 @@ contains
 #endif        
         
         !! Evaluate relaxation term
+#ifdef fenep
+        fr = -fenepf(i)
+        sxx = (fr*cxx(i) + one)/lambda
+        sxy = fr*cxy(i)/lambda
+        syy = (fr*cyy(i) + one)/lambda
+#ifdef dim3
+        sxz = fr*cxz(i)/lambda
+        syz = fr*cyz(i)/lambda
+        szz = (fr*czz(i) + one)/lambda
+#endif       
+#else        
         fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function
         sxx = fr*(cxx(i) - one)
         sxy = fr*cxy(i)
@@ -398,6 +453,7 @@ contains
         syz = fr*cyz(i)
         szz = fr*(czz(i) - one)
 #endif       
+#endif      
        
         !! Construct the RHS
         rhs_xx(i) = adxx + ucxx + sxx! + Mdiff*lapcxx(i)
@@ -464,15 +520,27 @@ contains
 #endif           
                 
            !! Evaluate relaxation term
+#ifdef fenep
+           fr = -fenepf(i)
+           sxx = (fr*cxx(i) + one)/lambda
+           sxy = fr*cxy(i)/lambda
+           syy = (fr*cyy(i) + one)/lambda
+#ifdef dim3
+           sxz = fr*cxz(i)/lambda
+           syz = fr*cyz(i)/lambda
+           szz = (fr*czz(i) + one)/lambda
+#endif       
+#else        
            fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function
            sxx = fr*(cxx(i) - one)
            sxy = fr*cxy(i)
-           syy = fr*(cyy(i) - one)           
-#ifdef dim3 
+           syy = fr*(cyy(i) - one)
+#ifdef dim3
            sxz = fr*cxz(i)
            syz = fr*cyz(i)
            szz = fr*(czz(i) - one)
-#endif      
+#endif       
+#endif   
        
            if(node_type(i).eq.0) then !! Walls
               !! Construct the RHS
@@ -562,13 +630,18 @@ contains
         ucyy = gradv_local(2) - gradu_local(2)*lxy/lxx
 #endif        
 
-        !! Relaxation function
-        fr = -(one - two*epsPTT + epsPTT*(cxx(i)+cyy(i)))/lambda
-        
-        !! Conformation tensor source terms
-        sxx = fr*(cxx(i)-one)
+        !! Source terms
+#ifdef fenep
+        fr = -fenepf(i)
+        sxx = (fr*cxx(i) + one)/lambda
+        sxy = fr*cxy(i)/lambda
+        syy = (fr*cyy(i) + one)/lambda
+#else        
+        fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)))/lambda !! scalar function
+        sxx = fr*(cxx(i) - one)
         sxy = fr*cxy(i)
-        syy = fr*(cyy(i)-one)
+        syy = fr*(cyy(i) - one)
+#endif        
         
         !! Cholesky source terms
 #ifdef ch        
@@ -641,13 +714,17 @@ contains
            ucyy = gradv_local(2) - gradu_local(2)*lxy/lxx
 #endif                   
             
-           !! Relaxation function
-           fr = -(one - two*epsPTT + epsPTT*(cxx(i)+cyy(i)))/lambda
-        
-           !! Conformation tensor source terms
-           sxx = fr*(cxx(i)-one)
+#ifdef fenep
+           fr = -fenepf(i)
+           sxx = (fr*cxx(i) + one)/lambda
+           sxy = fr*cxy(i)/lambda
+           syy = (fr*cyy(i) + one)/lambda
+#else        
+           fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)))/lambda !! scalar function
+           sxx = fr*(cxx(i) - one)
            sxy = fr*cxy(i)
-           syy = fr*(cyy(i)-one)
+           syy = fr*(cyy(i) - one)
+#endif   
         
            !! Cholesky source terms
 #ifdef ch           

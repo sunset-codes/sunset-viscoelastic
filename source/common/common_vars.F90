@@ -21,7 +21,7 @@ module common_vars
   real(rkind), dimension(ithree) :: grav !! Gravity    
   real(rkind) :: rho_char
   real(rkind) :: dt_out,dt_out_stats !! Time interval between outputs  
-  real(rkind) :: Re,Wi,Ma,beta,Sc,epsPTT
+  real(rkind) :: Re,Wi,Ma,beta,Sc,epsPTT,fenep_l2
   real(rkind) :: csq
   
   !! Evolved fluid quantities

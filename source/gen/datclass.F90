@@ -78,8 +78,8 @@ program datgen
 case(4) !! Poiseuille flow
 
      yl=1.0d0
-     xl=yl/4.0d0
-     dx0=yl/100.0d0
+     xl=yl/1.0d0
+     dx0=yl/50.0d0
      xbcond_L=1;xbcond_U=1;ybcond_L=0;ybcond_U=0
      
      nb_patches = 4

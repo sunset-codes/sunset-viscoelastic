@@ -107,6 +107,11 @@ contains
      read(12,*)
      read(12,*) epsPTT
      read(12,*)
+
+     !! FENE-P max extensibility
+     read(12,*)
+     read(12,*) fenep_l2
+     read(12,*)
      
      !! Schmidt number
      read(12,*)

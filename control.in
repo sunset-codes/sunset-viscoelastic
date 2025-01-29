@@ -13,10 +13,10 @@
 1.0d0 1.0d-2
 
 !! Gravity vector (grav)
-0.0d0 0.0d0 0.0d0
+8.0d0 0.0d0 0.0d0
 
 !! Reynolds number
-100.0d0
+1.0d0
 
 !! Weissenberg number
 1.0d0
@@ -24,14 +24,17 @@
 !! Viscosity ratio (beta)
 1.0d-1
 
-!! PTT non-linearity
+!! sPTT non-linearity
 0.0d0
+
+!! FENE-P maximum extensibility
+1.0d3
 
 !! Schmidt number (only for direct integration of c)
 1.0d18
 
 !! Mach number
-0.001d0
+0.1d0
 
 !! INFLOWS type (non-reflecting (0), hard (1), inout (2)) and velocity control (fixed (0), variable (1))
 0 0
