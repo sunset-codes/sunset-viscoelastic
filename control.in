@@ -24,11 +24,11 @@
 !! Viscosity ratio (beta)
 1.0d-1
 
-!! sPTT non-linearity
+!! sPTT non-linearity (epsilon)
 0.0d0
 
-!! FENE-P maximum extensibility
-1.0d3
+!! FENE-P maximum extensibility (L^2)
+1.0d100
 
 !! Schmidt number (only for direct integration of c)
 1.0d18

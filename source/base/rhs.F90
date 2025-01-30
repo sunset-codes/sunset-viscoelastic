@@ -897,14 +897,26 @@ contains
                      
         !! Relaxation term = (-1/lambda)*c^-1 * (c-I)* PTT-term
         !! Alternative formulation               
-        fR = (one - two*epsPTT + epsPTT*tr_c)/lambda 
         Cmatinv = zero
-        Cmatinv(1,1) = one/Lvec(1) - one
-        Cmatinv(2,2) = one/Lvec(2) - one             
+#ifdef fenep
+        !! FENE-P model
+        fR = fenepf(i)
+        Cmatinv(1,1) = fR/Lvec(1) - one
+        Cmatinv(2,2) = fR/Lvec(2) - one            
 #ifdef dim3
-        Cmatinv(3,3) = one/Lvec(3) - one
+        Cmatinv(3,3) = fR/Lvec(3) - one
 #endif          
-        Relax_terms = fR*matmul(Rmat,matmul(Cmatinv,RTmat))
+        Cmatinv = Cmatinv/lambda
+#else
+        !! sPTT model
+        fR = (one - two*epsPTT + epsPTT*tr_c)/lambda 
+        Cmatinv(1,1) = fR/Lvec(1) - fR
+        Cmatinv(2,2) = fR/Lvec(2) - fR             
+#ifdef dim3
+        Cmatinv(3,3) = fR/Lvec(3) - fR
+#endif          
+#endif
+        Relax_terms = matmul(Rmat,matmul(Cmatinv,RTmat))
                                                                                
         !! RHS 
         rhs_xx(i) = adxx + UCterms(1,1) + Relax_terms(1,1)

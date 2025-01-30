@@ -85,7 +85,7 @@ contains
         call mass_and_energy_check
      
         !! Error evaluation for Taylor Green vortices?
-        call error_TG
+!        call error_TG
 
         !! Calculate the lift and drag on all solid obstacles
 !        call liftdrag
@@ -94,7 +94,7 @@ contains
 !        call check_load_balance
 
         !! Evaluate L2 error norms for Poiseuille flow
-!        call poiseuille_l2norm
+        call poiseuille_l2norm
         
         !! Evaluate L2 error norms for Kolmogorov flow
 !        call kolmogorov_l2norm
