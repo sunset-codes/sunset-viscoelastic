@@ -181,8 +181,7 @@ contains
      integer(ikind),intent(in) :: n_out
      integer(ikind) :: i,j,k,np_out_local,dimsout,nprocsout,iflag,ispec
      character(70) :: fname
-     real(rkind),dimension(:),allocatable :: vort,testout
-     real(rkind),dimension(:,:),allocatable :: testoutv
+     real(rkind),dimension(:),allocatable :: vort,Qcrit
      real(rkind) :: tmpT,xn,yn,tmpro,tmpVort
 
      !! Only output from the first sheet
@@ -196,7 +195,7 @@ contains
 
         !! Calculate the vorticity 
         allocate(gradu(npfb,ithree),gradv(npfb,ithree),gradw(npfb,ithree));gradw=zero
-        allocate(vort(npfb))
+        allocate(vort(npfb),Qcrit(npfb))
 
         call calc_gradient(u,gradu)
         call calc_gradient(v,gradv)
@@ -212,6 +211,7 @@ contains
            vort(i) = sqrt(vort(i))
 #else     
            vort(i) = gradv(i,1) - gradu(i,2)
+           Qcrit(i) = -half*gradu(i,1)**two - half*gradv(i,2)**two - gradu(i,2)*gradv(i,1)
 #endif        
         end do
         !$omp end parallel do
@@ -228,6 +228,9 @@ contains
                  vort(i) = sqrt(vort(i))                      
 #else
                  vort(i) = xn*(gradv(i,1)-gradu(i,2)) - yn*(gradu(i,1) + gradv(i,2))
+                 Qcrit(i) = -half*(xn*gradu(i,1)-yn*gradu(i,2))**two &
+                            -half*(yn*gradv(i,1)+xn*gradv(i,2))**two &
+                            -(yn*gradu(i,1)+xn*gradu(i,2))*(xn*gradv(i,1)-yn*gradv(i,2))
 #endif
               end if
            end do
@@ -277,7 +280,7 @@ contains
 #ifdef dim3
            alpha_out(i) = cxx(i)+cyy(i)+czz(i)
 #else
-           alpha_out(i) = cxx(i)+cyy(i)
+           alpha_out(i) = Qcrit(i)
 #endif           
 
 #ifdef dim3
@@ -293,7 +296,7 @@ contains
 
         flush(20)
         close(20)
-        if(allocated(vort)) deallocate(vort)    
+        if(allocated(vort)) deallocate(vort,Qcrit)    
                
         !! Also output the nodes/discretisation if it is output #1
         if(n_out.eq.1) call output_nodes(np_out_local)                       

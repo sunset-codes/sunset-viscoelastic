@@ -32,9 +32,6 @@ module common_parameter
   real(rkind), parameter :: quitesmall = 1.0d-12
   real(rkind), parameter :: doublesmall = 1.0d-16
   
-  !! Physical constants ---------------------------------------------------------------------------
-  real(rkind), parameter :: Rgas_universal = 8.3142d3         !! Universal gas constant  
-
   !! (NODE-SET) Discretisation related parameters
 #ifdef dim3  
   integer(ikind), parameter :: dims = 3
@@ -54,9 +51,6 @@ module common_parameter
   
   !! Boundary condition constants -----------------------------------------------------------------
   real(rkind), parameter :: nscbc_coeff = 2.87d-1
-
-  !! Maximum allowable number of species
-  integer(ikind), parameter :: nspec_max = 20     
   
   !! Runge Kutta coefficients ---------------------------------------------------------------------
   !! RK3(2)4[2R+]C Kennedy (2000) Appl. Num. Math. 35:177-219
@@ -82,7 +76,7 @@ module common_parameter
   real(rkind),dimension(4),parameter :: rk3_4s_2r_c=(/rk3_4s_2r_c1,rk3_4s_2r_c2,rk3_4s_2r_c3,rk3_4s_2r_c4/)      
 
   !! Parameters for PID error estimators 
-  real(rkind), parameter :: pid_tol = 1.0d-4        !! Error tolerance
+  real(rkind), parameter :: pid_tol = 1.0d-3        !! Error tolerance
   real(rkind), parameter :: pid_a=0.49d0/two  !! P-coefficient   ! 0.7
   real(rkind), parameter :: pid_b=0.34d0/two  !! I-coefficient   ! 0.4
   real(rkind), parameter :: pid_c=0.1d0/two  !! D-coefficient   ! 0.1

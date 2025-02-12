@@ -95,7 +95,7 @@ contains
      call iteratively_shift(10)
      call iteratively_shift(10)
      call iteratively_shift(10)
-     call iteratively_shift(10)                   
+     call iteratively_shift(10)                                       
      write(6,*) "After iterative shifting:",nb,npfb,np
      
      !! Write new file to ../gen/IPART

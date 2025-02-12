@@ -115,7 +115,7 @@ contains
      
      !! Schmidt number
      read(12,*)
-     read(12,*) Sc
+     read(12,*) Mdiff
      read(12,*)
 
      !! Store total, solvent and polymeric viscosities
@@ -123,11 +123,7 @@ contains
      visc_total = rho_char*U_char*L_char/Re          
      visc_solvent = beta*visc_total
      visc_polymeric = (one-beta)*visc_total
-     
-     !! Evaluate molecular diffusivity from Schmidt number
-     Mdiff = visc_total/(rho_char*Sc)
-     Mdiff = zero
-     
+          
      !! Store relaxation time
      lambda = Wi*L_char/U_char
           

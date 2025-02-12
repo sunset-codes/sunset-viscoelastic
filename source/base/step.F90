@@ -439,6 +439,12 @@ contains
         enrm_yz = max(enrm_yz,abs(e_acc_yz(i))*exx_norm)
         enrm_zz = max(enrm_zz,abs(e_acc_zz(i))*exx_norm)  
 
+        !! Uncomment this if we want to see the distribution of time-stepping errors (useful for finding
+        !! the least-stable nodes whilst debugging)
+!        alpha_out(i) = max(abs(e_acc_ro(i))*ero_norm,max(abs(e_acc_rou(i))*erou_norm, &
+!                       max(abs(e_acc_rov(i))*erou_norm,max(abs(e_acc_xx(i))*exx_norm,max(&
+!                       abs(e_acc_xy(i))*exx_norm,abs(e_acc_yy(i))*exx_norm)))))
+
      end do
      !$omp end parallel do  
 
@@ -613,7 +619,7 @@ contains
 
      !! Scale by characteristic lengths and coefficients
      dt_cfl = one*dt_cfl*L_char
-     dt_visc = 0.3d0*dt_visc*L_char*L_char
+     dt_visc = twothirds*dt_visc*L_char*L_char
                            
      !! Find most restrictive parabolic constraint
      dt_parabolic = dt_visc 

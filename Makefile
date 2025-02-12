@@ -12,6 +12,7 @@
 # newt       Newtonian calculations (1) or not (0)                                     (default: 0)
 # fenep      FENE-P (1) or sPTT (0)                                                    (default: 1)
 # morder     m (order) value = 4,6,8,10                                                (default: 8)
+# mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
 # -------------------------------------------------------------------------------------------------
 #
 # EXAMPLE USAGE:
@@ -94,12 +95,17 @@ ifeq ($(pgrad),1)
 FFLAGS += -Dpgrad
 endif
 
+# Correction for mass conservation
+ifneq ($(mcorr),0)
+FFLAGS += -Dmcorr
+endif
+
 # Output entire domain?
 ifneq ($(allout),0)
 FFLAGS += -Dallout
 endif
 
-LDFLAGS := -fopenmp -m64 -lopenblas 
+LDFLAGS := -fopenmp -m64 
 
 # Identify directories
 SUB_DIRS := common base

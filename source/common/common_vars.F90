@@ -47,7 +47,7 @@ module common_vars
     
   !! Discretisation properties
   real(rkind), dimension(:,:), allocatable, target :: rp,rnorm
-  real(rkind), dimension(:), allocatable, target   :: h,filter_coeff,s,vol
+  real(rkind), dimension(:), allocatable, target   :: h,filter_coeff,s,vol,h_ABF1,h_ABF2
   integer(ikind),dimension(:),allocatable :: node_type !! Identify whether node is boundary, fluid etc...
   integer(ikind),dimension(:),allocatable :: zlayer_index_global,ilayer_index !! Identify where in the z-stack the node is
   integer(ikind),dimension(:),allocatable :: boundary_list,internal_list !! Lists for quick looping
@@ -81,13 +81,13 @@ module common_vars
   real(rkind) :: mean_int_energy0 
   
   !! Neighbour numbers and lists
-  integer(ikind),dimension(:),allocatable :: ij_count
-  integer(ikind),dimension(:,:),allocatable :: ij_link
+  integer(ikind),dimension(:),allocatable :: ij_count,ij_count_ABF1,ij_count_ABF2
+  integer(ikind),dimension(:,:),allocatable :: ij_link,ij_link_ABF1,ij_link_ABF2
   integer(ikind),dimension(:,:),allocatable :: ij_link_fd
 
   !! LABFM weightings for derivative operators
-  real(rkind),dimension(:,:,:),allocatable :: ij_w_grad,ij_wb_grad2
-  real(rkind),dimension(:,:),allocatable :: ij_w_hyp,ij_w_lap
+  real(rkind),dimension(:,:,:),allocatable :: ij_w_grad,ij_wb_grad2,ij_w_grad_ABF1,ij_w_grad_ABF2
+  real(rkind),dimension(:,:),allocatable :: ij_w_hyp,ij_w_lap,ij_w_hyp_ABF1,ij_w_hyp_ABF2,ij_w_lap_ABF1,ij_w_lap_ABF2
   real(rkind),dimension(:,:),allocatable :: ij_w_grad_sum,ij_wb_grad2_sum
   real(rkind),dimension(:),allocatable :: ij_w_hyp_sum,ij_w_lap_sum
   

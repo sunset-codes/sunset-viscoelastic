@@ -115,10 +115,10 @@ contains
 #ifndef newt
      deallocate(gradcxx,gradcxy,gradcyy)  
      deallocate(gradcxz,gradcyz,gradczz)
-#endif  
 #ifdef fenep
      deallocate(fenepf)
 #endif  
+#endif
   
      return
   end subroutine calc_all_rhs
@@ -240,16 +240,16 @@ contains
 #ifdef fenep
         !! For FENE-P it is a little more complex. Here we use the quotient rule...
         f1 = fenepf(i)
-        f2 = f1*f1
-        f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1)*f1 - f2*cxx(i)*gradfenepf(i,1) &
-                                             +gradcxy(i,2)*f1 - f2*cxy(i)*gradfenepf(i,2) &
-                                             +gradcxz(i,3)*f1 - f2*cxz(i)*gradfenepf(i,3))
-        f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1)*f1 - f2*cxy(i)*gradfenepf(i,1) &
-                                             +gradcyy(i,2)*f1 - f2*cyy(i)*gradfenepf(i,2) &
-                                             +gradcyz(i,3)*f1 - f2*cyz(i)*gradfenepf(i,3))
-        f_visc_w = f_visc_w + coef_polymeric*(gradcxz(i,1)*f1 - f2*cxz(i)*gradfenepf(i,1) &
-                                             +gradcyz(i,2)*f1 - f2*cyz(i)*gradfenepf(i,2) &
-                                             +gradczz(i,3)*f1 - f2*czz(i)*gradfenepf(i,3))
+        !f2 = f1*f1
+        f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1)*f1 + cxx(i)*gradfenepf(i,1) &
+                                             +gradcxy(i,2)*f1 + cxy(i)*gradfenepf(i,2) &
+                                             +gradcxz(i,3)*f1 + cxz(i)*gradfenepf(i,3))
+        f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1)*f1 + cxy(i)*gradfenepf(i,1) &
+                                             +gradcyy(i,2)*f1 + cyy(i)*gradfenepf(i,2) &
+                                             +gradcyz(i,3)*f1 + cyz(i)*gradfenepf(i,3))
+        f_visc_w = f_visc_w + coef_polymeric*(gradcxz(i,1)*f1 + cxz(i)*gradfenepf(i,1) &
+                                             +gradcyz(i,2)*f1 + cyz(i)*gradfenepf(i,2) &
+                                             +gradczz(i,3)*f1 + czz(i)*gradfenepf(i,3))
 #else        
         f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1) + gradcxy(i,2) + gradcxz(i,3))
         f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1) + gradcyy(i,2) + gradcyz(i,3))
@@ -334,16 +334,16 @@ contains
 #ifdef fenep
               !! For FENE-P it is a little more complex. Here we use the quotient rule...
               f1 = fenepf(i)
-              f2 = f1*f1
-              f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1)*f1 - f2*cxx(i)*gradfenepf(i,1) &
-                                                   +gradcxy(i,2)*f1 - f2*cxy(i)*gradfenepf(i,2) &
-                                                   +gradcxz(i,3)*f1 - f2*cxz(i)*gradfenepf(i,3))
-              f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1)*f1 - f2*cxy(i)*gradfenepf(i,1) &
-                                                   +gradcyy(i,2)*f1 - f2*cyy(i)*gradfenepf(i,2) &
-                                                   +gradcyz(i,3)*f1 - f2*cyz(i)*gradfenepf(i,3))
-              f_visc_w = f_visc_w + coef_polymeric*(gradcxz(i,1)*f1 - f2*cxz(i)*gradfenepf(i,1) &
-                                                   +gradcyz(i,2)*f1 - f2*cyz(i)*gradfenepf(i,2) &
-                                                   +gradczz(i,3)*f1 - f2*czz(i)*gradfenepf(i,3))
+              !f2 = f1*f1
+              f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1)*f1 + cxx(i)*gradfenepf(i,1) &
+                                                   +gradcxy(i,2)*f1 + cxy(i)*gradfenepf(i,2) &
+                                                   +gradcxz(i,3)*f1 + cxz(i)*gradfenepf(i,3))
+              f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1)*f1 + cxy(i)*gradfenepf(i,1) &
+                                                   +gradcyy(i,2)*f1 + cyy(i)*gradfenepf(i,2) &
+                                                   +gradcyz(i,3)*f1 + cyz(i)*gradfenepf(i,3))
+              f_visc_w = f_visc_w + coef_polymeric*(gradcxz(i,1)*f1 + cxz(i)*gradfenepf(i,1) &
+                                                   +gradcyz(i,2)*f1 + cyz(i)*gradfenepf(i,2) &
+                                                   +gradczz(i,3)*f1 + czz(i)*gradfenepf(i,3))
 #else        
               f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1) + gradcxy(i,2) + gradcxz(i,3))
               f_visc_v = f_visc_v + coef_polymeric*(gradcxy(i,1) + gradcyy(i,2) + gradcyz(i,3))
@@ -370,9 +370,11 @@ contains
          
      !! Deallocate any stores no longer required
      deallocate(lapu,lapv,lapw)
+#ifndef newt
 #ifdef fenep
      deallocate(gradfenepf)
-#endif     
+#endif    
+#endif 
 
      return
   end subroutine calc_rhs_rovel
@@ -389,20 +391,20 @@ contains
      real(rkind),dimension(:),allocatable :: lapCxz,lapCyz,lapCzz     
          
      !! Laplacian for conformation tensor components
-!     allocate(lapCxx(npfb),lapCxy(npfb),lapCyy(npfb))
-!     allocate(lapCxz(npfb),lapCyz(npfb),lapCzz(npfb))
-!     if(Mdiff.ne.zero) then
-!        call calc_laplacian(Cxx,lapCxx)  
-!        call calc_laplacian(Cxy,lapCxy)
-!        call calc_laplacian(Cyy,lapCyy)            
-!#ifdef dim3
-!        call calc_laplacian(Cxz,lapCxz)  
-!        call calc_laplacian(Cyz,lapCyz)
-!        call calc_laplacian(Czz,lapCzz)    
-!#else
-!        lapCxz=zero;lapCyz=zero;lapCzz=zero
-!#endif           
-!     endif
+     allocate(lapCxx(npfb),lapCxy(npfb),lapCyy(npfb))
+     allocate(lapCxz(npfb),lapCyz(npfb),lapCzz(npfb))
+     if(Mdiff.ne.zero) then
+        call calc_laplacian(Cxx,lapCxx)  
+        call calc_laplacian(Cxy,lapCxy)
+        call calc_laplacian(Cyy,lapCyy)            
+#ifdef dim3
+        call calc_laplacian(Cxz,lapCxz)  
+        call calc_laplacian(Cyz,lapCyz)
+        call calc_laplacian(Czz,lapCzz)    
+#else
+        lapCxz=zero;lapCyz=zero;lapCzz=zero
+#endif           
+     endif
      
      !$omp parallel do private(i,adxx,adxy,adyy,adxz,adyz,adzz, &
      !$omp sxx,sxy,syy,sxz,syz,szz,ucxx,ucxy,ucyy,ucxz,ucyz,uczz,fr)
@@ -456,13 +458,13 @@ contains
 #endif      
        
         !! Construct the RHS
-        rhs_xx(i) = adxx + ucxx + sxx! + Mdiff*lapcxx(i)
-        rhs_xy(i) = adxy + ucxy + sxy! + Mdiff*lapcxy(i)
-        rhs_yy(i) = adyy + ucyy + syy! + Mdiff*lapcyy(i)
+        rhs_xx(i) = adxx + ucxx + sxx + Mdiff*lapcxx(i)
+        rhs_xy(i) = adxy + ucxy + sxy + Mdiff*lapcxy(i)
+        rhs_yy(i) = adyy + ucyy + syy + Mdiff*lapcyy(i)
 #ifdef dim3
-        rhs_xz(i) = adxz + ucxz + sxz! + Mdiff*lapcxz(i)
-        rhs_yz(i) = adyz + ucyz + syz! + Mdiff*lapcyz(i)
-        rhs_zz(i) = adzz + uczz + szz! + Mdiff*lapczz(i)                
+        rhs_xz(i) = adxz + ucxz + sxz + Mdiff*lapcxz(i)
+        rhs_yz(i) = adyz + ucyz + syz + Mdiff*lapcyz(i)
+        rhs_zz(i) = adzz + uczz + szz + Mdiff*lapczz(i)                
 #endif        
      end do
      !$omp end parallel do
@@ -544,13 +546,13 @@ contains
        
            if(node_type(i).eq.0) then !! Walls
               !! Construct the RHS
-              rhs_xx(i) = ucxx + sxx! + Mdiff*lapcxx(i)
-              rhs_xy(i) = ucxy + sxy! + Mdiff*lapcxy(i)
-              rhs_yy(i) = ucyy + syy! + Mdiff*lapcyy(i)          
+              rhs_xx(i) = ucxx + sxx + Mdiff*lapcxx(i)
+              rhs_xy(i) = ucxy + sxy + Mdiff*lapcxy(i)
+              rhs_yy(i) = ucyy + syy + Mdiff*lapcyy(i)          
 #ifdef dim3
-              rhs_xz(i) = ucxz + sxz! + Mdiff*lapcxz(i)
-              rhs_yz(i) = ucyz + syz! + Mdiff*lapcyz(i)
-              rhs_zz(i) = uczz + szz! + Mdiff*lapczz(i)          
+              rhs_xz(i) = ucxz + sxz + Mdiff*lapcxz(i)
+              rhs_yz(i) = ucyz + syz + Mdiff*lapcyz(i)
+              rhs_zz(i) = uczz + szz + Mdiff*lapczz(i)          
 #endif              
            else  !! Inflow/outflow
 
@@ -583,7 +585,17 @@ contains
      real(rkind) :: csxx,csxy,csyy
      real(rkind),dimension(:,:),allocatable :: gradpsixx,gradpsixy,gradpsiyy     
      real(rkind),dimension(2) :: gradu_local,gradv_local
-     real(rkind) :: xn,yn,fR
+     real(rkind) :: xn,yn,fR     
+     real(rkind),dimension(:),allocatable :: lapCxx,lapCxy,lapCyy
+         
+     !! Laplacian for conformation tensor components
+     allocate(lapCxx(npfb),lapCxy(npfb),lapCyy(npfb))
+     if(Mdiff.ne.zero) then
+        call calc_laplacian(Cxx,lapCxx)  
+        call calc_laplacian(Cxy,lapCxy)
+        call calc_laplacian(Cyy,lapCyy)                     
+     endif
+     
 
      !! Cholesky component gradients
      allocate(gradpsixx(npfb,ithree),gradpsixy(npfb,ithree),gradpsiyy(npfb,ithree))
@@ -642,6 +654,11 @@ contains
         sxy = fr*cxy(i)
         syy = fr*(cyy(i) - one)
 #endif        
+
+        !! Add polymeric diffusion to source terms
+        sxx = sxx + Mdiff*lapcxx(i)
+        sxy = sxy + Mdiff*lapcxy(i)
+        syy = syy + Mdiff*lapcyy(i)                
         
         !! Cholesky source terms
 #ifdef ch        
@@ -725,6 +742,11 @@ contains
            sxy = fr*cxy(i)
            syy = fr*(cyy(i) - one)
 #endif   
+
+           !! Add polymeric diffusion to source terms
+           sxx = sxx + Mdiff*lapcxx(i)
+           sxy = sxy + Mdiff*lapcxy(i)
+           syy = syy + Mdiff*lapcyy(i)    
         
            !! Cholesky source terms
 #ifdef ch           
@@ -841,20 +863,20 @@ contains
         
         !! Evaluate little omega
         omga_xy = (Lvec(2)*Mmat(1,2) + Lvec(1)*Mmat(2,1))
-        if(abs(Lvec(2)-Lvec(1)).le.verysmall) then   !! If eigenvalues are equal (basically if C=I), a bodge
+        if(abs(Lvec(2)-Lvec(1)).le.verysmall) then   !! If eigenvalues are equal (basically if C=I)
            omga_xy = zero
         else
            omga_xy = omga_xy/(Lvec(2)-Lvec(1))        
         end if
 #ifdef dim3
         omga_xz = (Lvec(3)*Mmat(1,3) + Lvec(1)*Mmat(3,1))
-        if(abs(Lvec(3)-Lvec(1)).le.verysmall) then   !! If eigenvalues are equal (basically if C=I), a bodge
+        if(abs(Lvec(3)-Lvec(1)).le.verysmall) then   !! If eigenvalues are equal (basically if C=I)
            omga_xz = zero
         else
            omga_xz = omga_xz/(Lvec(3)-Lvec(1))        
         end if
         omga_yz = (Lvec(3)*Mmat(2,3) + Lvec(2)*Mmat(3,2))
-        if(abs(Lvec(3)-Lvec(2)).le.verysmall) then   !! If eigenvalues are equal (basically if C=I), a bodge
+        if(abs(Lvec(3)-Lvec(2)).le.verysmall) then   !! If eigenvalues are equal (basically if C=I)
            omga_yz = zero
         else
            omga_yz = omga_yz/(Lvec(3)-Lvec(2))        
@@ -895,28 +917,35 @@ contains
         !! Evaluate Upper convected terms  Omega*Psi - Psi*Omega + 2B
         UCterms = matmul(Ommat,Psimat) - matmul(Psimat,Ommat) + two*Bmat
                      
-        !! Relaxation term = (-1/lambda)*c^-1 * (c-I)* PTT-term
-        !! Alternative formulation               
-        Cmatinv = zero
+        !! Relaxation term = (-1/lambda)*c^-1 * (fenep*c-I)
 #ifdef fenep
         !! FENE-P model
         fR = fenepf(i)
-        Cmatinv(1,1) = fR/Lvec(1) - one
-        Cmatinv(2,2) = fR/Lvec(2) - one            
+        !! Inverse of conformation tensor
+        Cmatinv(1,1) = cyy(i);Cmatinv(2,2) = cxx(i);Cmatinv(1,2) = -cxy(i);Cmatinv(2,1)= -cxy(i)
+        Cmatinv = Cmatinv/(cxx(i)*cyy(i) - cxy(i)*cxy(i))                      
 #ifdef dim3
         Cmatinv(3,3) = fR/Lvec(3) - one
 #endif          
-        Cmatinv = Cmatinv/lambda
+        !! Store C in Bmat
+        Bmat(1,1) = cxx(i);Bmat(2,2)=cyy(i);Bmat(1,2)=cxy(i);Bmat(2,1)=cxy(i)
+        !! Store term prop to tau_p in Bmat
+        Bmat = Bmat*fR
+        Bmat(1,1) = Bmat(1,1)-one;Bmat(2,2) = Bmat(2,2)-one
+
+        Relax_terms = (-one/lambda)*matmul(Cmatinv,Bmat)
 #else
-        !! sPTT model
-        fR = (one - two*epsPTT + epsPTT*tr_c)/lambda 
+        !! sPTT model - slightly simpler formulation
+        fR = (one - two*epsPTT + epsPTT*tr_c) 
+        Cmatinv=zero
         Cmatinv(1,1) = fR/Lvec(1) - fR
         Cmatinv(2,2) = fR/Lvec(2) - fR             
 #ifdef dim3
         Cmatinv(3,3) = fR/Lvec(3) - fR
-#endif          
+#endif  
+        Relax_terms = matmul(Rmat,matmul(Cmatinv,RTmat))/lambda
 #endif
-        Relax_terms = matmul(Rmat,matmul(Cmatinv,RTmat))
+        
                                                                                
         !! RHS 
         rhs_xx(i) = adxx + UCterms(1,1) + Relax_terms(1,1)
@@ -1056,15 +1085,34 @@ contains
            UCterms = matmul(Ommat,Psimat) - matmul(Psimat,Ommat) + two*Bmat
                      
            !! Relaxation term = (-1/lambda)*c^-1 * (c-I)* PTT-term
-           !! Alternative formulation               
-           fR = (one - two*epsPTT + epsPTT*tr_c)/lambda 
-           Cmatinv = zero
-           Cmatinv(1,1) = one/Lvec(1) - one
-           Cmatinv(2,2) = one/Lvec(2) - one             
+#ifdef fenep
+           !! FENE-P model
+           fR = fenepf(i)
+           !! Inverse of conformation tensor
+           Cmatinv(1,1) = cyy(i);Cmatinv(2,2) = cxx(i);Cmatinv(1,2) = -cxy(i);Cmatinv(2,1)= -cxy(i)
+           Cmatinv = Cmatinv/(cxx(i)*cyy(i) - cxy(i)*cxy(i))                    
 #ifdef dim3
-           Cmatinv(3,3) = one/Lvec(3) - one
+           Cmatinv(3,3) = fR/Lvec(3) - one
 #endif          
-           Relax_terms = fR*matmul(Rmat,matmul(Cmatinv,RTmat))
+            !! Store C in Bmat
+           Bmat(1,1) = cxx(i);Bmat(2,2)=cyy(i);Bmat(1,2)=cxy(i);Bmat(2,1)=cxy(i)      
+           !! Store term prop to tau_p in Bmat
+           Bmat = Bmat*fR
+           Bmat(1,1) = Bmat(1,1)-one;Bmat(2,2) = Bmat(2,2)-one
+
+           Relax_terms = (-one/lambda)*matmul(Cmatinv,Bmat)
+#else
+           !! sPTT model (slightly simpler formulation)
+           fR = (one - two*epsPTT + epsPTT*tr_c)
+           Cmatinv=zero
+           Cmatinv(1,1) = fR/Lvec(1) - fR
+           Cmatinv(2,2) = fR/Lvec(2) - fR             
+#ifdef dim3
+           Cmatinv(3,3) = fR/Lvec(3) - fR
+#endif          
+           Relax_terms = matmul(Rmat,matmul(Cmatinv,RTmat))/lambda
+#endif
+
                                                                                         
            !! Build the RHS                                       
            if(node_type(i).eq.0)then !! walls are in bound norm coords
@@ -1171,8 +1219,10 @@ contains
   subroutine filter_variables
      !! This routine calls the specific filtering routine (within derivatives module) for each
      !! variable - ro,u,v,w,roE,Yspec - and forces certain values on boundaries as required.
-     integer(ikind) :: ispec
+     use mpi_transfers
+     integer(ikind) :: ispec,i
      real(rkind),dimension(:),allocatable :: filter_correction
+     real(rkind) :: tm,tv,dro
       
      segment_tstart = omp_get_wtime()
             
@@ -1189,7 +1239,7 @@ contains
 
 #ifndef newt
 #ifndef di
-     !! Filter log-conformation tensor
+     !! Filter log-conformation or cholesky components
      call calc_filtered_var(psixx)
      call calc_filtered_var(psixy)
      call calc_filtered_var(psiyy)          
@@ -1210,6 +1260,28 @@ contains
 #endif            
 #endif     
 #endif     
+
+     !! Correct mass conservation if required
+#ifdef mcorr
+     !! Calculate average density deviation (from rho_char)
+     tm = zero;tv = zero
+     !$omp parallel do reduction(+:tm,tv)
+     do i=1,npfb
+        tm = tm + (ro(i)-rho_char)*vol(i)  !! N.B. there is no need to scale to make dimensional
+        tv = tv + vol(i)
+     end do
+     !$omp end parallel do         
+#ifdef mp
+     call global_reduce_sum(tm)
+     call global_reduce_sum(tv)
+#endif
+     dro = tm/tv   
+     
+     !! Adjust density uniformly
+     do i=1,npfb
+        ro(i) = ro(i) - dro
+     end do
+#endif
      
      !! Profiling
      segment_tend = omp_get_wtime()

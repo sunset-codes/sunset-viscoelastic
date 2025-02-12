@@ -154,8 +154,8 @@ contains
         x = rp(i,1);y=rp(i,2);z=rp(i,3)
 
         !! TG 3D Re1600 as in Cant 2022, Sandham 2017 etc (ish)
-        u(i) = -cos(x)*sin(y)!*cos(z)!*oosqrt2
-        v(i) = sin(x)*cos(y)!*cos(z)    !!c c
+        u(i) = -cos(2.0*pi*x)*sin(2.0*pi*y)!*cos(z)!*oosqrt2
+        v(i) = sin(2.0*pi*x)*cos(2.0*pi*y)!*cos(z)    !!c c
         w(i) = zero!u(i);u(i)=zero
                                  
         !! No initial flow
@@ -164,7 +164,7 @@ contains
 !        ro(i) = rho_char;p(i) = ro(i)*csq        
         
         tmp = -(1.00d0/4.0d0)*(cos(two*x)+cos(two*y))!*(two+cos(two*z))       
-        ro(i) = rho_char !+ tmp*Ma*Ma
+        ro(i) = rho_char! + tmp*Ma*Ma
         p(i) = ro(i)*csq
         
         !! Initial conformation tensor
@@ -185,7 +185,7 @@ contains
 #endif
         RTmat = transpose(Rmat)
         
-        !! Exponentiate eigenvalues
+        !! Take log of eigenvalues
         Lmat = zero
         Lmat(1,1) = log(Lvec(1))
         Lmat(2,2) = log(Lvec(2))
