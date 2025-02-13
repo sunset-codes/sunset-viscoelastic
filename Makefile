@@ -13,6 +13,7 @@
 # fenep      FENE-P (1) or sPTT (0)                                                    (default: 1)
 # morder     m (order) value = 4,6,8,10                                                (default: 8)
 # mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
+# tarout     Compress files as they're written (1) or don't (0)                        (default: 0)
 # -------------------------------------------------------------------------------------------------
 #
 # EXAMPLE USAGE:
@@ -85,6 +86,11 @@ ifneq ($(fenep),0)
 FFLAGS += -Dfenep
 endif
 
+# Tar output files
+ifeq ($(tarout),1) 
+FFLAGS += -Dtarout
+endif
+
 # Three dimensional?
 ifeq ($(dim3),1)
 FFLAGS += -Ddim3
@@ -146,4 +152,5 @@ clean:
 	rm -vf ./data_out/statistics/*.out
 	rm -vf ./paraview_files/LAYER*
 	rm -vf ./data_out/grilli*
+	rm -vf ./data_out/*.tar.gz
 

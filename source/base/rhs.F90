@@ -591,9 +591,9 @@ contains
      !! Laplacian for conformation tensor components
      allocate(lapCxx(npfb),lapCxy(npfb),lapCyy(npfb))
      if(Mdiff.ne.zero) then
-        call calc_laplacian(Cxx,lapCxx)  
-        call calc_laplacian(Cxy,lapCxy)
-        call calc_laplacian(Cyy,lapCyy)                     
+        call calc_laplacian_transverse_only_on_bound(Cxx,lapCxx)  
+        call calc_laplacian_transverse_only_on_bound(Cxy,lapCxy)
+        call calc_laplacian_transverse_only_on_bound(Cyy,lapCyy)   
      endif
      
 
@@ -743,10 +743,20 @@ contains
            syy = fr*(cyy(i) - one)
 #endif   
 
-           !! Add polymeric diffusion to source terms
+           !! Modify conformation tensor laplacian to set no diffusive flux through boundaries:
+           !! (actually setting d2c/dtangent2=0 as well)
+           lapcxx(i) = lapcxx(i) + (-170.0d0*cxx(i) + 216.0d0*cxx(i+1) - 54.0d0*cxx(i+2) + 8.0d0*cxx(i+3))/ &
+                                   (36.0d0*s(i)*s(i)*L_char*L_char)
+           lapcxy(i) = lapcxy(i) + (-170.0d0*cxy(i) + 216.0d0*cxy(i+1) - 54.0d0*cxy(i+2) + 8.0d0*cxy(i+3))/ &
+                                   (36.0d0*s(i)*s(i)*L_char*L_char)          
+           lapcyy(i) = lapcyy(i) + (-170.0d0*cyy(i) + 216.0d0*cyy(i+1) - 54.0d0*cyy(i+2) + 8.0d0*cyy(i+3))/ &
+                                   (36.0d0*s(i)*s(i)*L_char*L_char) 
+
+           !! Add diffusion to source terms
            sxx = sxx + Mdiff*lapcxx(i)
            sxy = sxy + Mdiff*lapcxy(i)
            syy = syy + Mdiff*lapcyy(i)    
+
         
            !! Cholesky source terms
 #ifdef ch           

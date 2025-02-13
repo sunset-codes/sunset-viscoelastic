@@ -324,6 +324,61 @@ contains
 
     return
   end subroutine calc_grad2crossbound 
+!! ------------------------------------------------------------------------------------------------
+  subroutine calc_laplacian_transverse_only_on_bound(phi,lapphi)
+    !! Calculate the Laplacian of a scalar phi, but on wall boundaries, neglect the normal derivatives
+    real(rkind),dimension(:),intent(in) :: phi
+    real(rkind),dimension(:),intent(inout) :: lapphi
+    integer i,j,k,ii
+    real(rkind) :: lap_tmp   
+    
+    segment_tstart = omp_get_wtime()         
+
+    !$OMP PARALLEL DO PRIVATE(i,j,k,lap_tmp)
+    do ii=1,npfb-nb
+       i=internal_list(ii)
+       lap_tmp = zero
+       do k=1,ij_count(i)
+          j = ij_link(k,i) 
+          lap_tmp = lap_tmp + phi(j)*ij_w_lap(k,i)
+       end do
+       lapphi(i) = lap_tmp - phi(i)*ij_w_lap_sum(i)         
+
+    end do
+    !$OMP END PARALLEL DO
+    
+    !$omp parallel do private(j,k,lap_tmp,i)
+    do ii=1,nb
+       i=boundary_list(ii)
+       lap_tmp = zero
+       do k=1,ij_count(i)
+          j=ij_link(k,i)
+          lap_tmp = lap_tmp + phi(j)*ij_wb_grad2(2,k,ii)
+       end do
+       lapphi(i) = lap_tmp - phi(i)*ij_wb_grad2_sum(2,ii)
+    end do
+    !$omp end parallel do
+        
+
+#ifdef dim3
+    !! Finite differences along z    
+    !$OMP PARALLEL DO PRIVATE(j,k,lap_tmp)
+    do i=1,npfb
+       lap_tmp=zero
+       do k=1,ij_count_fd
+          j = ij_link_fd(k,i) 
+          lap_tmp = lap_tmp + phi(j)*ij_fd_grad2(k)
+       end do
+       lapphi(i) = lapphi(i) + lap_tmp
+    end do
+    !$OMP END PARALLEL DO
+#endif    
+
+    !! Profiling
+    segment_tend = omp_get_wtime()
+    segment_time_local(5) = segment_time_local(5) + segment_tend - segment_tstart    
+    return
+  end subroutine calc_laplacian_transverse_only_on_bound    
 !! ------------------------------------------------------------------------------------------------ 
   subroutine calc_filtered_var(phi)
     !! Calculate the hyperviscosity filtered phi

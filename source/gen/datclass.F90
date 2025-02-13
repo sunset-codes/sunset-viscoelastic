@@ -57,8 +57,8 @@ program datgen
      D_cyl = 1.0d0
      h0=D_cyl/2.0d0      !cylinder radius
      yl=2.0d0*D_cyl ! box height
-     xl=yl ! channel length
-     dx0=D_cyl/50.0       !75
+     xl=2.0d0*D_cyl ! channel length
+     dx0=D_cyl/100.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -66,7 +66,7 @@ program datgen
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
      b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.50d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 1;n_blob_coefs=3
