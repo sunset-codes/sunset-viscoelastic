@@ -679,13 +679,17 @@ contains
 #ifdef mp     
      !! Find global time-step
      call global_reduce_min(dt)
-     if(iproc.eq.0) then
-        write(192,*) time,dt,dt/dt_cfl,dt/dt_parabolic,emax_np1
-        flush(192)
+     if(mod(itime,100).eq.0) then     
+        if(iproc.eq.0) then
+           write(192,*) time,dt,dt/dt_cfl,dt/dt_parabolic,emax_np1
+           flush(192)
+        end if
      end if
 #else
-     write(192,*) time,dt,dt/dt_cfl,emax_np1
-     flush(192)         
+     if(mod(itime,100).eq.0) then
+        write(192,*) time,dt,dt/dt_cfl,emax_np1
+        flush(192)         
+     endif
 #endif 
  
 

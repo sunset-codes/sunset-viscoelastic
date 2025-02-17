@@ -13,10 +13,10 @@
 1.0d0 1.0d-3
 
 !! Gravity vector (grav)
-1.075d0 0.0d0 0.0d0
+0.15d0 0.0d0 0.0d0
 
 !! Reynolds number
-10.0d0
+1.0d2
 
 !! Weissenberg number
 1.0d1

@@ -58,7 +58,7 @@ program datgen
      h0=D_cyl/2.0d0      !cylinder radius
      yl=2.0d0*D_cyl ! box height
      xl=2.0d0*D_cyl ! channel length
-     dx0=D_cyl/100.0       !75
+     dx0=D_cyl/50.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4

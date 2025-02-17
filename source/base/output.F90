@@ -44,13 +44,17 @@ contains
 #ifdef mp
      cput = ts_end-ts_start
      call global_reduce_sum(cput)
-     if(iproc.eq.0) then 
-        write(191,*) itime,cput/(dble(nprocs)+one)
-        flush(191)
+     if(mod(itime,100).eq.0) then
+        if(iproc.eq.0) then 
+           write(191,*) itime,cput/(dble(nprocs)+one)
+           flush(191)
+        end if
      end if
 #else
-     write(191,*) itime,ts_end-ts_start
-     flush(191)  
+     if(mod(itime,100).eq.0) then
+        write(191,*) itime,ts_end-ts _start
+        flush(191)  
+     end if
 #endif  
   
      ! Some to screen
