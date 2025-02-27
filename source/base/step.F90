@@ -441,9 +441,9 @@ contains
 
         !! Uncomment this if we want to see the distribution of time-stepping errors (useful for finding
         !! the least-stable nodes whilst debugging)
-!        alpha_out(i) = max(abs(e_acc_ro(i))*ero_norm,max(abs(e_acc_rou(i))*erou_norm, &
-!                       max(abs(e_acc_rov(i))*erou_norm,max(abs(e_acc_xx(i))*exx_norm,max(&
-!                       abs(e_acc_xy(i))*exx_norm,abs(e_acc_yy(i))*exx_norm)))))
+        alpha_out(i) = max(abs(e_acc_ro(i))*ero_norm,max(abs(e_acc_rou(i))*erou_norm, &
+                       max(abs(e_acc_rov(i))*erou_norm,max(abs(e_acc_xx(i))*exx_norm,max(&
+                       abs(e_acc_xy(i))*exx_norm,abs(e_acc_yy(i))*exx_norm)))))
 
      end do
      !$omp end parallel do  

@@ -94,7 +94,7 @@ contains
 !        call check_load_balance
 
         !! Evaluate L2 error norms for Poiseuille flow
-        call poiseuille_l2norm
+!        call poiseuille_l2norm
         
         !! Evaluate L2 error norms for Kolmogorov flow
 !        call kolmogorov_l2norm
@@ -237,7 +237,7 @@ contains
      !! If we want to P.I.D. control over the mean velocity
 #ifdef pgrad     
      !! New error     
-     eflow_n = u_char - tot_u(1)!tot_vel
+     eflow_n = u_char - tot_vel
           
      !! Integral term
      sum_eflow = sum_eflow + eflow_n*dt

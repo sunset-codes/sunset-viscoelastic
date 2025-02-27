@@ -20,7 +20,7 @@ program datgen
 
   integer ipart
   integer i,j,icha,nn,ve_model,ii,jj
-  double precision h0,r_mag,yl,D_cyl,S_cyl
+  double precision h0,r_mag,yl,D_cyl,S_cyl,SovD
   integer xbcond_L,xbcond_U,ybcond_L,ybcond_U
   
   double precision :: a0,a1,a2,a3,a4,a5 !! NACA coefficients
@@ -53,11 +53,12 @@ program datgen
   case(1) !! EMPTY
 !! ------------------------------------------------------------------------------------------------
   case(2) !! Cylinder in a doubly-periodic box
-
+ 
+     SovD = sqrt(pi/2.0d0)
      D_cyl = 1.0d0
      h0=D_cyl/2.0d0      !cylinder radius
-     yl=2.0d0*D_cyl ! box height
-     xl=2.0d0*D_cyl ! channel length
+     yl=SovD*D_cyl ! box height
+     xl=SovD*D_cyl ! channel length
      dx0=D_cyl/50.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
@@ -226,20 +227,21 @@ case(7) !! Grilli cylinders
 !! ------------------------------------------------------------------------------------------------
 case(8) !! Minimal unit cell of isometric cylinder array
 
-     D_cyl = 1.0d0
-     S_cyl = D_cyl*1.2d0
+     SovD = 1.5d0!sqrt(pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
+     D_cyl = 1.0d0!/(SovD-1.0d0)
+     S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=S_cyl ! box height
      xl=sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/250.0       !75
-     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
+     dx0=D_cyl/300.0       !75
+     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
+     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
@@ -253,14 +255,9 @@ case(8) !! Minimal unit cell of isometric cylinder array
      do i=1,nb_blobs
         blob_coeffs(i,:) = 0.0d0
         blob_coeffs(i,1) = h0;blob_rotation(i) = 0.0d0
-!        do j=3,n_blob_coefs
-!           blob_coeffs(i,j) = 0.02*h0*rand()
-!        end do
-!        blob_coeffs(i,n_blob_coefs) = 0.08d0*h0
         blob_rotation(i)=2.0d0*pi*rand()!-pi/9.0d0;
      end do
-!     blob_coeffs(2,:) = blob_coeffs(1,:);blob_rotation(2) = blob_rotation(1)
-!     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
+
 
 
      dxmin = dx0/2.0d0

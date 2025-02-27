@@ -76,7 +76,7 @@ module common_parameter
   real(rkind),dimension(4),parameter :: rk3_4s_2r_c=(/rk3_4s_2r_c1,rk3_4s_2r_c2,rk3_4s_2r_c3,rk3_4s_2r_c4/)      
 
   !! Parameters for PID error estimators 
-  real(rkind), parameter :: pid_tol = 1.0d-3        !! Error tolerance
+  real(rkind), parameter :: pid_tol = 1.0d-5        !! Error tolerance
   real(rkind), parameter :: pid_a=0.49d0/two  !! P-coefficient   ! 0.7
   real(rkind), parameter :: pid_b=0.34d0/two  !! I-coefficient   ! 0.4
   real(rkind), parameter :: pid_c=0.1d0/two  !! D-coefficient   ! 0.1

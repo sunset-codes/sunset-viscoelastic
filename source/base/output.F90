@@ -281,6 +281,9 @@ contains
            tmpVort = vort(i)
                 
            !! Pass SOMETHING to alpha_out?
+           !! If we don't (i.e. comment out the next lines) then alpha_out contains the time-stepping error.
+           !! This is a useful diagnostic for identifying the location within the discretisation which is
+           !! triggering the greatest error and limiting the value of the time-step.
 #ifdef dim3
            alpha_out(i) = cxx(i)+cyy(i)+czz(i)
 #else

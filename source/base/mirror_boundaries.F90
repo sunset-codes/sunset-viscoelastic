@@ -153,16 +153,16 @@ contains
              imp = imp + 1
              k = npfb + imp
              irelation(k)=i
-             if(xbcond_L_noMPI.eq.1.and.ybcond_L_noMPI.eq.1)then
+             if(xbcond_L_noMPI.eq.1.and.ybcond_L_noMPI.eq.1)then !! Periodic-periodic
                 rp(k,1) = rp(i,1) + xmax - xmin;rp(k,2) = rp(i,2) + ymax - ymin;rp(k,3)=rp(i,3)
                 vrelation(k)=1
-             else if(xbcond_L_noMPI.eq.2.and.ybcond_L_noMPI.eq.1)then
+             else if(xbcond_L_noMPI.eq.2.and.ybcond_L_noMPI.eq.1)then !! Symmetric-periodic
                 rp(k,1) = two*xmin - rp(i,1);rp(k,2) = rp(i,2) + ymax - ymin;rp(k,3)=rp(i,3)
                 vrelation(k)=2          
-             else if(xbcond_L_noMPI.eq.1.and.ybcond_L_noMPI.eq.2)then
+             else if(xbcond_L_noMPI.eq.1.and.ybcond_L_noMPI.eq.2)then  !! Periodic-symmetric
                 rp(k,1) = rp(i,1) + xmax - xmin;rp(k,2) = two*ymin - rp(i,2);rp(k,3)=rp(i,3)
                 vrelation(k)=3          
-             else if(xbcond_L_noMPI.eq.2.and.ybcond_L_noMPI.eq.2)then
+             else if(xbcond_L_noMPI.eq.2.and.ybcond_L_noMPI.eq.2)then  !! Symmetric-symmetric
                 rp(k,1) = two*xmin - rp(i,1);rp(k,2) = two*ymin - rp(i,2);rp(k,3)=rp(i,3)
                 vrelation(k)=4         
              end if
@@ -274,7 +274,11 @@ contains
      do j=npfb+1,np
 #endif
         i = irelation(j)
+
+        !! Mirror density
         ro(j) = ro(i)
+        
+        !! Mirror velocities        
         if(vrelation(j).eq.1)then
            rou(j) = rou(i)
            rov(j) = rov(i) 
@@ -297,20 +301,28 @@ contains
 #ifndef di        
         !! Log-conformation or Cholesky components
         psixx(j) = psixx(i)
-        psixy(j) = psixy(i)
+        if(vrelation(j).eq.2.or.vrelation(j).eq.3) then
+           psixy(j) = -psixy(i)  !! Symmetric
+        else
+           psixy(j) = psixy(i) !! periodic wall, or periodic-periodic corner, or symmetric-symmetric corner
+        endif
         psiyy(j) = psiyy(i)
 #ifdef dim3
-        psixz(j) = psixz(i)
+        psixz(j) = psixz(i)  !! N.B. THIS NEEDS MODIFYING FOR SYMMETRIC CONDITIONS IN 3D
         psiyz(j) = psiyz(i)
         psizz(j) = psizz(i)
 #endif        
 #else
         !! Components of C
         cxx(j) = cxx(i)
-        cxy(j) = cxy(i)
+        if(vrelation(j).eq.2.or.vrelation(j).eq.3) then
+           cxy(j) = -cxy(i)
+        else
+           cxy(j) = cxy(i)
+        endif
         cyy(j) = cyy(i)      
 #ifdef dim3
-        cxz(j) = cxz(i)
+        cxz(j) = cxz(i) !! N.B. THIS NEEDS MODIFYING FOR SYMMETRIC CONDITIONS IN 3D
         cyz(j) = cyz(i)
         czz(j) = czz(i)      
 #endif        
