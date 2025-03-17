@@ -10,16 +10,16 @@
 0.0d0 4.0d2
 
 !! Output period (in multiples of L_char/U_char), stats output period
-1.0d-1 1.0d-3
+1.0d-1 2.5d-4
 
 !! Gravity vector (grav)
-4.54d0 0.0d0 0.0d0
+9.718d0 0.0d0 0.0d0
 
 !! Reynolds number
-1.0d1
+1.0d2
 
 !! Weissenberg number
-5.0d0
+1.0d1
 
 !! Viscosity ratio (beta)
 0.9d0

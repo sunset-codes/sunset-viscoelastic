@@ -887,6 +887,13 @@ contains
      cxvec(2) = ff1*Legendre2(z)
      cxvec(3) = ff1*Legendre3(z)
      cxvec(4) = ff1*Legendre4(z)     
+#elif ABF==4   
+     cxvec(1) = ff1*Hermite1(z)   !! For now, use Hermite in the 1D version if using Fourier ABFs in 2D.
+     cxvec(2) = ff1*Hermite2(z)
+     cxvec(3) = ff1*oosqrt2*Hermite3(z)
+     cxvec(4) = ff1*Hermite4(z)
+     cxvec(5) = ff1*Hermite5(z)               
+     cxvec(6) = ff1*Hermite6(z)      
 #endif     
   end function abfs1D
 !! ------------------------------------------------------------------------------------------------  
@@ -1420,101 +1427,6 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 #endif
   end function monomials
 !! ------------------------------------------------------------------------------------------------
-  function monomials2(x,y) result(cxvec)
-     real(rkind),intent(in) :: x,y
-#if order==4
-     real(rkind),dimension(27) :: cxvec
-#elif order==6
-     real(rkind),dimension(44) :: cxvec
-#elif order==8
-     real(rkind),dimension(65) :: cxvec
-#endif     
-     real(rkind) :: x2,y2,x3,y3,x4,y4,x5,y5,x6,y6,x7,y7,x8,y8,x9,y9,x10,y10
- 
-     x2=x*x;y2=y*y
-#if order>=2
-     x3=x2*x;y3=y2*y 
-     cxvec(6) = (one/6.0)*x3
-     cxvec(7) = half*x2*y
-     cxvec(8) = half*x*y2
-     cxvec(9) = (one/6.0)*y3
-     x4=x3*x;y4=y3*y
-     cxvec(10) = (one/24.0)*x4
-     cxvec(11)=(one/6.0)*x3*y
-     cxvec(12) = 0.25d0*x2*y2
-     cxvec(13)=(one/6.0)*x*y3
-     cxvec(14)=(one/24.0)*y4
-#endif
-#if order>=3
-     x5=x4*x;y5=y4*y         
-     cxvec(15) = (one/120.0)*x5
-     cxvec(16)=(one/24.0)*x4*y
-     cxvec(17)=(one/12.0)*x3*y2
-     cxvec(18) = (one/12.0)*x2*y3
-     cxvec(19)=(one/24.0)*x*y4
-     cxvec(20)=(one/120.0)*y5
-#endif
-#if order>=4
-     x6=x5*x;y6=y5*y         
-     cxvec(21)= (one/720.0)*x6
-     cxvec(22)=(one/120.0)*x5*y
-     cxvec(23)=(one/48.0)*x4*y2
-     cxvec(24)=(one/36.0)*x3*y3
-     cxvec(25)=(one/48.0)*x2*y4
-     cxvec(26)=(one/120.0)*x*y5
-     cxvec(27)=(one/720.0)*y6
-#endif
-#if order>=5
-     x7=x6*x;y7=y6*y         
-     cxvec(28) = (one/5040.0)*x7
-     cxvec(29)=(one/720.0)*x6*y
-     cxvec(30)=(one/240.0)*x5*y2
-     cxvec(31)=(one/144.0)*x4*y3
-     cxvec(32) = (one/144.0)*x3*y4
-     cxvec(33)=(one/240.0)*x2*y5
-     cxvec(34)=(one/720.0)*x*y6
-     cxvec(35)=(one/5040.0)*y7
-#endif
-#if order>=6
-     x8=x7*x;y8=y7*y         
-     cxvec(36) = (one/40320.0)*x8
-     cxvec(37)=(one/5040.0)*x7*y
-     cxvec(38)=(one/1440.0)*x6*y2
-     cxvec(39)=(one/720.0)*x5*y3
-     cxvec(40) = (one/576.0)*x4*y4
-     cxvec(41)=(one/720.0)*x3*y5
-     cxvec(42)=(one/1440.0)*x2*y6
-     cxvec(43)=(one/5040.0)*x*y7
-     cxvec(44) = (one/40320.0)*y8
-#endif
-#if order>=7
-     x9=x8*x;y9=y8*y
-     cxvec(45) = (one/362880.0)*x9
-     cxvec(46)=(one/40320.0)*x8*y
-     cxvec(47)=(one/10080.0)*x7*y2
-     cxvec(48)=(one/4320.0)*x6*y3
-     cxvec(49)=(one/2880.0)*x5*y4
-     cxvec(50) = (one/2880.0)*x4*y5
-     cxvec(51)=(one/4320.0)*x3*y6
-     cxvec(52)=(one/10080.0)*x2*y7
-     cxvec(53)=(one/40320.0)*x*y8
-     cxvec(54) = (one/362880.0)*y9
-#endif
-#if order>=8
-     x10=x9*x;y10=y9*y
-     cxvec(55)=(one/3628800.0)*x10
-     cxvec(56)=(one/362880.0)*x9*y
-     cxvec(57)=(one/80640.0)*x8*y2
-     cxvec(58)=(one/30240.0)*x7*y3
-     cxvec(59)=(one/17280.0)*x6*y4
-     cxvec(60)=(one/14400.0)*x5*y5
-     cxvec(61)=(one/17280.0)*x4*y6
-     cxvec(62)=(one/30240.0)*x3*y7
-     cxvec(63)=(one/80640.0)*x2*y8
-     cxvec(64)=(one/362880.0)*x*y9
-     cxvec(65)=(one/3628800.0)*y10
-#endif
-  end function monomials2
 !! ------------------------------------------------------------------------------------------------
 !! ABFs generated from partial derivatives of an RBF
 !! The "original" LABFM
@@ -1609,7 +1521,6 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(43) = (11025.0*x7*y-66150.0*x5*y3+52920.0*x3*y5-5040.0*x*y7)/r15
      ggvec(44) = (20160.0*x2*y6 - 75600.0*x4*y4+37800.0*x6*y2-1575.0*x8)/r15 
 #endif
-  end function abfs
 !! ------------------------------------------------------------------------------------------------
 #elif ABF==2
 !! HERMITE ABFs: Bivariate Hermite polynomials (probabalistic kind)
@@ -1715,8 +1626,6 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(64)= Hermite1(x)*Hermite9(y)
      ggvec(65)= Hermite10(y)
 #endif
-
-  end function abfs
 !! ------------------------------------------------------------------------------------------------
 #elif ABF==3
 !! LEGENDRE ABFs: Legendre polynomials
@@ -1817,11 +1726,12 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(64)= Legendre1(x)*Legendre9(y)
      ggvec(65)= Legendre10(y)
 #endif
-  end function abfs
 !! ------------------------------------------------------------------------------------------------
+!! Fourier ABFs
+!!
 #elif ABF==4
-    function abfs(dummy,x,y,ff1) result(ggvec)         !! TEN
-     real(rkind),intent(in) :: x,y,dummy,ff1
+    function abfs(dummy,x,y) result(ggvec)         
+     real(rkind),intent(in) :: x,y,dummy
 #if order==4
      real(rkind),dimension(14) :: ggvec
 #elif order==6
@@ -1917,6 +1827,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 #endif
 !! ------------------------------------------------------------------------------------------------
 #endif
+  end function abfs
 !! ------------------------------------------------------------------------------------------------
 !! ------------------------------------------------------------------------------------------------
 !! Below this line are functions which return univariate polynomials from which some ABFs above

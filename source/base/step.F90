@@ -462,6 +462,7 @@ contains
      
      !! Finalise L_infinity error norms: find max and ensure it's >0     
      emax_conf = max(enrm_xx,max(enrm_xy,max(enrm_yy,max(enrm_xz,max(enrm_yz,enrm_zz)))))
+!     emax_conf = emax_conf*1.0d-2  !! Permit two extra orders of magnitude in conformation tensor time-stepping error
 
      emax_np1 = max(emax_conf, &
                 max(enrm_ro, &

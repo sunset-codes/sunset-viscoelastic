@@ -275,9 +275,14 @@ contains
 #endif
         i = irelation(j)
 
-        !! Mirror density
+        !! Mirror density (with adjustments if there's a pressure gradient)
+#ifdef pgrad       
+        ro(j) = ro(i) + Ma*Ma*( (grav(1)+driving_force(1))*(rp(i,1)-rp(j,1)) &
+                               +(grav(2)+driving_force(2))*(rp(i,2)-rp(j,2)) &
+                               +(grav(3)+driving_force(3))*(rp(i,3)-rp(j,3))) 
+#else                          
         ro(j) = ro(i)
-        
+#endif        
         !! Mirror velocities        
         if(vrelation(j).eq.1)then
            rou(j) = rou(i)
@@ -295,6 +300,12 @@ contains
 #ifdef dim3
         row(j) = row(i) !! Never reversed for periodic or symmetric BCs in X-Y plane
 #endif              
+        
+#ifdef pgrad        
+        rou(j) = rou(j)*(ro(j)/ro(i))  !! Adjust for change in density if pressure gradient
+        rov(j) = rov(j)*(ro(j)/ro(i))
+        row(j) = row(j)*(ro(j)/ro(i))                
+#endif        
         
 #ifndef newt        
        !! Only mirror conformation tensor for non-newtonian

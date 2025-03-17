@@ -132,6 +132,7 @@ module common_vars
   integer(ikind),dimension(:),allocatable :: nhalo_LR,nhalo_UD,inhalo_LR,inhalo_UD  !! Halo sizes, outgoing, incoming
   integer(ikind),dimension(:),allocatable :: nhalo_FB,inhalo_FB
   integer(ikind),dimension(:),allocatable :: nrecstart  !! Indexing for halos
+  integer(ikind),dimension(:),allocatable :: halo_periodic
   
   
           

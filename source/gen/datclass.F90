@@ -54,12 +54,12 @@ program datgen
 !! ------------------------------------------------------------------------------------------------
   case(2) !! Cylinder in a doubly-periodic box
  
-     SovD = sqrt(pi/2.0d0)
+     SovD = 1.5d0!sqrt(pi/2.0d0)
      D_cyl = 1.0d0
      h0=D_cyl/2.0d0      !cylinder radius
      yl=SovD*D_cyl ! box height
      xl=SovD*D_cyl ! channel length
-     dx0=D_cyl/50.0       !75
+     dx0=D_cyl/300.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -79,7 +79,7 @@ program datgen
         blob_coeffs(i,1) = h0;blob_rotation(i) = 0.0d0
      end do
 
-     dxmin = dx0/2.0d0 !!2.0d0
+     dxmin = dx0/1.66667d0 !!2.0d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin      
 !! ------------------------------------------------------------------------------------------------
@@ -227,13 +227,13 @@ case(7) !! Grilli cylinders
 !! ------------------------------------------------------------------------------------------------
 case(8) !! Minimal unit cell of isometric cylinder array
 
-     SovD = 1.5d0!sqrt(pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
+     SovD = 1.2d0!sqrt(pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
      D_cyl = 1.0d0!/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=S_cyl ! box height
      xl=sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/300.0       !75
+     dx0=D_cyl/75.0d0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
@@ -260,18 +260,19 @@ case(8) !! Minimal unit cell of isometric cylinder array
 
 
 
-     dxmin = dx0/2.0d0
+     dxmin = dx0/1.3d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin              
 !! ------------------------------------------------------------------------------------------------
 case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 degrees)
 
-     D_cyl = 1.0d0
-     S_cyl = D_cyl*1.2d0
+     SovD = 1.0996d0!sqrt(pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
+     D_cyl = 1.0d0!/(SovD-1.0d0)
+     S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/100.0       !250
+     dx0=D_cyl/400.0d0!499.50       !250
      xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
@@ -303,7 +304,7 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
 !     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
 
 
-     dxmin = dx0/2.0d0  !! 2.0d0
+     dxmin = dx0/1.5d0  !! 2.0d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 !! ------------------------------------------------------------------------------------------------     
@@ -391,12 +392,12 @@ end select
         !! Place a particle here
         if(keepgoing) then
            ipart = ipart + 1
-           call random_number(temp);temp = temp -0.5d0;xp(ipart) = pdp_x(j) + temp*dxmin*0.5d0
-           call random_number(temp);temp = temp -0.5d0;yp(ipart) = pdp_y(j) + temp*dxmin*0.5d0
+           call random_number(temp);temp = temp -0.5d0;xp(ipart) = pdp_x(j) + temp*dxmin*0.0d0
+           call random_number(temp);temp = temp -0.5d0;yp(ipart) = pdp_y(j) + temp*dxmin*0.0d0
            dxp(ipart) = dx     
         end if           
         
-        !! Deactive all pdps within dx of this pdp
+        !! Deactivate all pdps within dx of this pdp
         !! Search down
         i=j;keepgoing = .true.
         do while(keepgoing)
@@ -405,7 +406,7 @@ end select
               idown = 0
               thdown = -0.49999999d0*pi
               keepgoing = .false.
-           else if(pdp_dist2(i).ge.dx*dx) then      !! Distance??        
+           else if(pdp_dist2(i).ge.dx*dx*(0.8725**2)) then      !! Distance??        
               idown = i
               thdown = atan2((pdp_y(idown)-y),(pdp_x(idown)-x))
               keepgoing = .false.    
@@ -420,7 +421,7 @@ end select
               iup = npdps+1
               thup = 0.4999999999d0*pi
               keepgoing = .false.              
-           else if(pdp_dist2(i).ge.dx*dx) then !! Distance
+           else if(pdp_dist2(i).ge.dx*dx*(0.8725**2)) then !! Distance
               iup = i
               thup = atan2((pdp_y(iup)-y),(pdp_x(iup)-x))              
               keepgoing = .false.

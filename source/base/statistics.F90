@@ -68,7 +68,7 @@ contains
      
      !! Evaluate the mean velocity and adjust pressure gradient if required
      !! This should be done every step if using PID for pressure gradient
-#ifdef pgrad     
+#ifdef vpid     
      call velocity_control
 #endif  
      
@@ -76,7 +76,7 @@ contains
      if(itime.eq.0.or.time.gt.m_out_stats*dt_out_stats) then
         m_out_stats = m_out_stats+1
 
-#ifndef pgrad
+#ifndef vpid
         !! Velocity control
         call velocity_control     
 #endif
@@ -235,7 +235,7 @@ contains
      tot_u(:) = tot_u(:)/tot_vol
 
      !! If we want to P.I.D. control over the mean velocity
-#ifdef pgrad     
+#ifdef vpid     
      !! New error     
      eflow_n = u_char - tot_vel
           

@@ -258,9 +258,13 @@ contains
 #endif
 
         !! Body force
-        body_force_u = tmpro*grav(1) + driving_force(1)
-        body_force_v = tmpro*grav(2) + driving_force(2)
-        body_force_w = tmpro*grav(3) + driving_force(3)
+#ifdef pgrad
+        body_force_u = zero;body_force_v = zero;body_force_w = zero !!Don't apply body forces here
+#else
+        body_force_u = tmpro*(grav(1) + driving_force(1))
+        body_force_v = tmpro*(grav(2) + driving_force(2))
+        body_force_w = tmpro*(grav(3) + driving_force(3))
+#endif        
  
         !! Uncomment for some Kolmogorov forcing. The hard-coded numbers are n and n**2.       
 !        body_force_u = body_force_u + (4.0d0*visc_total/rho_char)*cos(2.0d0*rp(i,2)) !! 16,4                       
@@ -352,9 +356,13 @@ contains
 #endif            
             
               !! Body force
-              body_force_u = tmpro*grav(1) + driving_force(1)
-              body_force_v = tmpro*grav(2) + driving_force(2)
-              body_force_w = tmpro*grav(3) + driving_force(3)                         
+#ifdef pgrad
+              body_force_u = zero;body_force_v = zero;body_force_w = zero !!Don't apply body forces here
+#else
+              body_force_u = tmpro*(grav(1) + driving_force(1))
+              body_force_v = tmpro*(grav(2) + driving_force(2))
+              body_force_w = tmpro*(grav(3) + driving_force(3))
+#endif                         
                 
               !! Transverse + visc + source terms only
               rhs_rou(i) = -v(i)*gradu(i,2) - w(i)*gradu(i,3) + f_visc_u + body_force_u  
@@ -1233,9 +1241,6 @@ contains
      integer(ikind) :: ispec,i
      real(rkind),dimension(:),allocatable :: filter_correction
      real(rkind) :: tm,tv,dro
-      
-     segment_tstart = omp_get_wtime()
-            
             
      !! Filter density
      call calc_filtered_var(ro)
@@ -1292,10 +1297,6 @@ contains
         ro(i) = ro(i) - dro
      end do
 #endif
-     
-     !! Profiling
-     segment_tend = omp_get_wtime()
-     segment_time_local(3) = segment_time_local(3) + segment_tend - segment_tstart
      
      return
   end subroutine filter_variables  

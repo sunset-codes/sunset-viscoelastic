@@ -147,6 +147,7 @@ contains
      allocate(rp(nm*npfb,ithree),rnorm(nm*npfb,ithree),h(nm*npfb),s(nm*npfb));rp=zero;rnorm=zero
      allocate(node_type(nm*npfb));node_type=0
      allocate(fd_parent(nm*npfb));fd_parent=0
+     allocate(halo_periodic(nm*npfb));halo_periodic=0
          
      !! Load all nodes. Build FD stencils near boundaries on the fly.
      npfb_tmp = npfb
@@ -304,6 +305,7 @@ contains
 !! ------------------------------------------------------------------------------------------------
   subroutine refine_and_finalise_domain    
      use mirror_boundaries
+     use tracer_particles
      integer(ikind) i,j,ii,jj
      
 #ifdef mp     
@@ -351,7 +353,9 @@ contains
 !     call MPI_BARRIER( MPI_COMM_WORLD, ierror)     
 !     call MPI_Abort(MPI_COMM_WORLD, ii, ierror)
                            
-write(6,*) "sizes",iproc,npfb,np_nohalo,np            
+write(6,*) "sizes",iproc,npfb,np_nohalo,np   
+
+     call initialise_tracer_particles         
                  
      return
   end subroutine refine_and_finalise_domain
@@ -497,6 +501,11 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
      deallocate(ilayer_index);allocate(ilayer_index(newsize))
      ilayer_index = tmp_array_int
 #endif
+
+     !! Copy halo_periodic
+     tmp_array_int(1:newsize)=halo_periodic(1:newsize)
+     deallocate(halo_periodic);allocate(halo_periodic(newsize))
+     halo_periodic = tmp_array_int
 
      deallocate(tmp_array_real,tmp_array_int,tmp_array2_real)
      

@@ -164,7 +164,14 @@ contains
 !        ro(i) = rho_char;p(i) = ro(i)*csq        
         
         tmp = -(1.00d0/4.0d0)*(cos(two*x)+cos(two*y))!*(two+cos(two*z))       
-        ro(i) = rho_char! + tmp*Ma*Ma
+
+        ro(i) = rho_char! + tmp*Ma*Ma      
+#ifdef pgrad
+        ro(i) = rho_char - Ma*Ma*( (grav(1)+driving_force(1))*x &
+                                  +(grav(2)+driving_force(2))*y &
+                                  +(grav(3)+driving_force(3))*z)
+#endif                                  
+           
         p(i) = ro(i)*csq
         
         !! Initial conformation tensor

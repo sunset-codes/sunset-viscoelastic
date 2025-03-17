@@ -74,7 +74,8 @@ contains
   subroutine halo_exchanges_all  
      !! If using mpi, this calls routines to transfer all properties between halos. If not using
      !! mpi, it does nothing
-     integer(ikind) :: ispec
+     integer(ikind) :: ispec,i
+     real(rkind) :: roi0
           
      segment_tstart = omp_get_wtime()
 #ifdef mp
@@ -102,6 +103,25 @@ contains
 
      !! density
      call halo_exchange(ro)
+     
+#ifdef pgrad
+     !! Adjust density for imposed pressure gradient
+     do i=npfb,np
+        if(halo_periodic(i).eq.1) then
+           roi0 = ro(i)
+           ro(i) = roi0 + Ma*Ma*(grav(1)+driving_force(1))*L_domain_x 
+           rou(i) = rou(i)*(ro(i)/roi0) 
+           rov(i) = rov(i)*(ro(i)/roi0)
+           row(i) = row(i)*(ro(i)/roi0)            
+        else if(halo_periodic(i).eq.-1) then
+           roi0 = ro(i)
+           ro(i) = roi0 - Ma*Ma*(grav(1)+driving_force(1))*L_domain_x        
+           rou(i) = rou(i)*(ro(i)/roi0) 
+           rov(i) = rov(i)*(ro(i)/roi0)
+           row(i) = row(i)*(ro(i)/roi0)            
+        end if
+     end do
+#endif     
 
 #ifndef newt
 #ifndef di
@@ -1159,17 +1179,20 @@ contains
      end do
 
      !! Adjust positions for X-periodicity
-     if(xbcond_L.eq.1.and.nprocsX.gt.1) then
+     halo_periodic=0
+     if(xbcond_L.eq.1.and.nprocsX.gt.1) then     
         if(iprocX.eq.0) then
            do k=2+nprocsY+1,2+2*nprocsY
               is = nrecstart(k);ie = is + inhalo_LR(k-2)-1
               rp(is:ie,1) = rp(is:ie,1) - (xmax-xmin)
+              halo_periodic(is:ie) = 1
            end do
         end if           
         if(iprocX.eq.nprocsX-1) then
            do k=2+1,2+nprocsY        
               is = nrecstart(k);ie = is + inhalo_LR(k-2)-1
               rp(is:ie,1) = rp(is:ie,1) + (xmax-xmin)
+              halo_periodic(is:ie) = -1              
            end do
         end if   
      end if    

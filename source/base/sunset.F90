@@ -23,6 +23,7 @@ program sunset
 #ifdef mp  
   use mpi
 #endif  
+  use tracer_particles
   implicit none
 
   integer(ikind) :: n_out,m_out
@@ -92,6 +93,7 @@ program sunset
  
      !! Perform one time step 
 !     call step_rk3_4S_2R
+     call advect_tracer_particles
      call step_rk3_4S_2R_EE     
 
      !! Profiling and write some things to screen

@@ -84,7 +84,7 @@ contains
         if(node_type(i).ge.3)then  !! only perturb interior nodes
         dx = rand();dx = smag*(dx - 0.5d0)*2.0d0*s(i)
         dy = rand();dy = smag*(dy - 0.5d0)*2.0d0*s(i)        
-        rp(i,:) = rp(i,:) + (/dx,dy/)
+!        rp(i,:) = rp(i,:) + (/dx,dy/)
         end if
 !        write(32,*) rp(i,:)
      end do
@@ -95,7 +95,12 @@ contains
      call iteratively_shift(10)
      call iteratively_shift(10)
      call iteratively_shift(10)
-     call iteratively_shift(10)                                       
+     call iteratively_shift(10)             
+     call iteratively_shift(10)
+     call iteratively_shift(10)
+     call iteratively_shift(10)             
+     call iteratively_shift(10)
+     call iteratively_shift(10)                                            
      write(6,*) "After iterative shifting:",nb,npfb,np
      
      !! Write new file to ../gen/IPART

@@ -1,7 +1,7 @@
 program main
   use omp_lib 
   implicit none
-
+#define numdims 2
   integer :: n,i,nthreads,np,npp,ngrab,Nframes,iframe,i_loop_finish,N_start,ii,iii,i_PART_counter
   integer,parameter :: np_max = 8100010
   integer, parameter :: i_PART_counter_max=20000
@@ -20,7 +20,7 @@ program main
   real :: dr
       
   real,allocatable,dimension(:):: xp,zp,up,vp,wp,ro,vort,h,Temp,yp
-  real,allocatable,dimension(:):: alpha,p,cxx,cxy,cyy,cxz,cyz,czz
+  real,allocatable,dimension(:):: alpha,p,cxx,cxy,cyy,cxz,cyz,czz,Qcrit
   real,allocatable,dimension(:,:) :: Yspec
   integer,allocatable,dimension(:) :: processor,node_type
   real time(i_PART_counter_max), DT(i_PART_counter_max)
@@ -40,15 +40,18 @@ program main
   zp = 0.0d0;yp=0.0d0;wp=0.0d0
   allocate(ro(np_max))
   allocate(vort(np_max))
+  allocate(Qcrit(np_max))
   allocate(h(np_max))
   allocate(alpha(np_max))
   allocate(cxx(np_max))
   allocate(cxy(np_max))
   allocate(cyy(np_max)) 
+#if numdims==3  
   allocate(cxz(np_max))
   allocate(cyz(np_max))
   allocate(czz(np_max)) 
   cxz=0.0d0;cyz=0.0d0;czz=0.0d0
+#endif  
   
   allocate(processor(np_max),node_type(np_max))
   
@@ -176,7 +179,7 @@ program main
            do i=np_ini,np_end
               read(ifi,*,end=300) ro(i), &
                                   up(i),vp(i),wp(i), &
-                                  vort(i),alpha(i), &
+                                  vort(i),Qcrit(i),alpha(i), &
                                   cxx(i),cxy(i),cyy(i), &
                                   cxz(i),cyz(i),czz(i)
               processor(i) = iproc
@@ -186,7 +189,7 @@ program main
            do i=np_ini,np_end
               read(ifi,*,end=300) ro(i), &
                                   up(i),vp(i), &
-                                  vort(i),alpha(i), &
+                                  vort(i),Qcrit(i),alpha(i), &
                                   cxx(i),cxy(i),cyy(i)
               processor(i) = iproc
               npp=npp+1
@@ -253,6 +256,16 @@ program main
      string3 = '    </DataArray>'
      write(ifo,202) string3
 
+     !! Q Criterion
+     string1 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'Qcriterion'//DQ// &
+               ' format='//DQ//'ascii'//DQ//'>'
+     write(ifo,202)string1
+     do ii=1,np
+        write(ifo,*)Qcrit(ii)
+     enddo
+     string3 = '    </DataArray>'
+     write(ifo,202) string3     
+
      string2 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'s'//DQ//' format='//DQ//'ascii'//DQ//'>'
      !! Resolution (actualy s, though array is h)
      write(ifo,202)string2
@@ -311,6 +324,8 @@ program main
      string3 = '    </DataArray>'
      write(ifo,202) string3       
 
+#if numdims==3
+write(6,*) " HELLLO"
      !! Cxz
      string1 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'Cxz'//DQ// &
                ' format='//DQ//'ascii'//DQ//'>'
@@ -340,7 +355,7 @@ program main
      enddo
      string3 = '    </DataArray>'
      write(ifo,202) string3              
-
+#endif
 
      !! Processor
      string1 = '    <DataArray type='//DQ//'Int32'//DQ//' Name='//DQ//'processor'//DQ//' format='//DQ//'ascii'//DQ//'>'
@@ -378,6 +393,7 @@ program main
      string3 = '    </DataArray>'
      write(ifo,202) string3
         
+#if numdims==3
      !! W-velocity
      string1 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'w'//DQ//' format='//DQ//'ascii'//DQ//'>'
      write(ifo,202)string1
@@ -386,13 +402,23 @@ program main
      enddo
      string3 = '    </DataArray>'
      write(ifo,202) string3        
+#endif     
             
      !! Vector velocity
+#if numdims==3
      string1 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'Velocity'//DQ// &
                ' NumberOfComponents='//DQ//'3'//DQ//' format='//DQ//'ascii'//DQ//'>'
+#else
+     string1 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'Velocity'//DQ// &
+               ' NumberOfComponents='//DQ//'3'//DQ//' format='//DQ//'ascii'//DQ//'>'
+#endif               
      write(ifo,202) string1
      do ii=1,np
+#if numdims==3     
         write(ifo,*)up(ii),vp(ii),wp(ii)
+#else
+        write(ifo,*)up(ii),vp(ii),0.0d0
+#endif        
      enddo
      string3 = '    </DataArray>'
      write(ifo,202) string3
@@ -404,12 +430,21 @@ program main
               
      !! Finally, particle positions!!
      string2 = '   <Points>'
+#if numdims==3     
      string1 = '    <DataArray type='//DQ//'Float32'//DQ//' NumberOfComponents='//DQ//'3'//DQ// &
                ' format='//DQ//'ascii'//DQ//'>'
+#else
+     string1 = '    <DataArray type='//DQ//'Float32'//DQ//' NumberOfComponents='//DQ//'3'//DQ// &
+               ' format='//DQ//'ascii'//DQ//'>'
+#endif               
      write(ifo,202) string2
      write(ifo,202) string1
      do ii=1,np
+#if numdims==3
         write(ifo,*)xp(ii),yp(ii),zp(ii)
+#else
+        write(ifo,*)xp(ii),yp(ii),0.0d0
+#endif        
      enddo
      string3 = '    </DataArray>'
      string2 = '   </Points>'
@@ -460,8 +495,8 @@ program main
 
 
 
-  deallocate(xp,zp,up,vp,wp)
-  deallocate(ro,vort,h,alpha,cxx,cxy,cyy,cxz,cyz,czz)  
+  deallocate(xp,yp,zp,up,vp,wp)
+  deallocate(ro,vort,h,alpha,cxx,cxy,cyy)  
 
 
   stop

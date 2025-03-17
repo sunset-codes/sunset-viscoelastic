@@ -6,7 +6,8 @@
 # restart    Start from initial conditions (0) or restart file (1)                     (default: 0)
 # mpi        Shared only (0) or distributed-shared (1) acceleration                    (default: 1)          
 # dim3       Two (0) or three (1) dimensional simulation                               (default: 0)
-# pgrad      Drive the flow with a pressure gradient and P.I.D control                 (default: 0)
+# vpid       P.I.D control of the velocity (1) or don't (0)                            (default: 0)
+# pgrad      Body forces converted to pressure gradient (1) or not (0)                 (default: 0)
 # allout     If 3D, output the entire domain (1) or just a slice (0)                   (default: 1)
 # ceform     Direct integration (0), Cholesky (1), log-cholesky (2), log-conf (3)      (default: 3)
 # newt       Newtonian calculations (1) or not (0)                                     (default: 0)
@@ -14,6 +15,7 @@
 # morder     m (order) value = 4,6,8,10                                                (default: 8)
 # mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
 # tarout     Compress files as they're written (1) or don't (0)                        (default: 0)
+# tracers    Include some Lagrangian tracer particles (1) or don't (0)                 (default: 0)
 # -------------------------------------------------------------------------------------------------
 #
 # EXAMPLE USAGE:
@@ -96,7 +98,12 @@ ifeq ($(dim3),1)
 FFLAGS += -Ddim3
 endif
 
-# Flow driven by pressure gradient?
+# Flow velocity PID controlled?
+ifeq ($(vpid),1)
+FFLAGS += -Dvpid
+endif
+
+# Body forces converted to pressure gradient
 ifeq ($(pgrad),1)
 FFLAGS += -Dpgrad
 endif
@@ -111,6 +118,11 @@ ifneq ($(allout),0)
 FFLAGS += -Dallout
 endif
 
+# Tracer particles
+ifeq ($(tracers),1)
+FFLAGS += -Dtracers
+endif
+
 LDFLAGS := -fopenmp -m64 
 
 # Identify directories
@@ -122,7 +134,7 @@ SRC_DIR  := $(addprefix source/,$(SUB_DIRS))
 OBJ_FILES := obj/kind_parameters.o obj/common_parameter.o obj/common_vars.o
 OBJ_FILES += obj/rbfs.o obj/mirror_boundaries.o obj/derivatives.o 
 OBJ_FILES += obj/mpi_transfers.o
-OBJ_FILES += obj/neighbours.o obj/output.o obj/statistics.o 
+OBJ_FILES += obj/neighbours.o obj/output.o obj/statistics.o obj/tracer_particles.o
 OBJ_FILES += obj/turbulence.o obj/svdlib.o obj/mat2lib.o
 OBJ_FILES += obj/load_data.o obj/setup_domain.o obj/setup_flow.o
 OBJ_FILES += obj/labf.o obj/fd.o

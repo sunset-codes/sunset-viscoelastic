@@ -274,29 +274,34 @@ contains
         write(20,*) emax_np1,emax_n,emax_nm1,dt   
         write(20,*) "!! end header !!"        
         do i=1,np_out_local
-           tmpro = one/ro(i) !! Store inverse of density
+
+           !! Store the density in tmpro
+#ifdef pgrad
+           !! Remove pressure gradient from output           
+           tmpro = ro(i) + Ma*Ma*( (grav(1)+driving_force(1))*rp(i,1) &
+                                  +(grav(2)+driving_force(2))*rp(i,2) &
+                                  +(grav(3)+driving_force(3))*rp(i,3))
+#else
+           tmpro = ro(i)  
+#endif     
      
  
            !! Pass something to tmpVort (we use vorticity to output other things sometimes during debugging...)
            tmpVort = vort(i)
                 
            !! Pass SOMETHING to alpha_out?
-           !! If we don't (i.e. comment out the next lines) then alpha_out contains the time-stepping error.
-           !! This is a useful diagnostic for identifying the location within the discretisation which is
-           !! triggering the greatest error and limiting the value of the time-step.
-#ifdef dim3
-           alpha_out(i) = cxx(i)+cyy(i)+czz(i)
-#else
-           alpha_out(i) = Qcrit(i)
-#endif           
+           !! If we don't then alpha_out contains the time-stepping error. This is a useful diagnostic 
+           !! for identifying the location within the discretisation which is triggering the greatest error 
+           !! and limiting the value of the time-step.
+!           alpha_out(i) = WHATEVER!
 
 #ifdef dim3
-           write(20,*) ro(i),u(i),v(i),w(i),tmpVort,alpha_out(i),cxx(i),cxy(i),cyy(i), &
+           write(20,*) tmpro,u(i),v(i),w(i),tmpVort,Qcrit(i),alpha_out(i),cxx(i),cxy(i),cyy(i), &
                        cxz(i),cyz(i),czz(i)      
     
 #else
-           write(20,*) ro(i),u(i),v(i),tmpVort,alpha_out(i),cxx(i),cxy(i),cyy(i)
-!           write(20,*) ro(i),u(i),v(i),tmpVort,alpha_out(i),psixx(i),psixy(i),psiyy(i)
+           write(20,*) tmpro,u(i),v(i),tmpVort,Qcrit(i),alpha_out(i),cxx(i),cxy(i),cyy(i)
+!           write(20,*) tmpro,u(i),v(i),tmpVort,alpha_out(i),psixx(i),psixy(i),psiyy(i)
 #endif
         end do
             

@@ -386,6 +386,8 @@ contains
     real(rkind),dimension(:),allocatable :: filtphi
     integer i,j,k
     real(rkind) :: hyp_tmp
+    
+    segment_tstart = omp_get_wtime()             
 
     !! Allocate temporary store
     allocate(filtphi(npfb))
@@ -426,6 +428,10 @@ contains
 #endif
 
     deallocate(filtphi)
+
+    !! Profiling
+    segment_tend = omp_get_wtime()
+    segment_time_local(3) = segment_time_local(3) + segment_tend - segment_tstart    
 
     return
   end subroutine calc_filtered_var     
