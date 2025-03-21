@@ -109,7 +109,7 @@ case(4) !! Poiseuille flow
 
      yl=1.0d0
      xl=yl/1.0d0
-     dx0=yl/50.0d0
+     dx0=yl/75.0d0
      xbcond_L=1;xbcond_U=1;ybcond_L=0;ybcond_U=0
      
      nb_patches = 4
@@ -267,12 +267,12 @@ case(8) !! Minimal unit cell of isometric cylinder array
 case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 degrees)
 
      SovD = 1.0996d0!sqrt(pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
-     D_cyl = 1.0d0!/(SovD-1.0d0)
+     D_cyl = 1.0d0/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/400.0d0!499.50       !250
+     dx0=D_cyl/400.5d0!499.50       !250
      xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
@@ -284,27 +284,32 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
+     open(unit=191,file="blob_fcoefs.in")
+     read(191,*) n_blob_coefs
      allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs))
      blob_centre(1,:) = (/0.5d0*S_cyl,0.0d0/)  
      blob_centre(2,:) = (/-0.5d0*S_cyl,0.0d0/)
      blob_centre(3,:) = (/0.0d0,S_cyl*sqrt(3.0d0)/2.0d0/) 
      blob_centre(4,:) = (/0.0d0,-S_cyl*sqrt(3.0d0)/2.0d0/)
-                          
-     
-     do i=1,nb_blobs
-        blob_coeffs(i,:) = 0.0d0
-        blob_coeffs(i,1) = h0;blob_rotation(i) = 0.0d0
-!        do j=3,n_blob_coefs
-!           blob_coeffs(i,j) = 0.02*h0*rand()
-!        end do
-!        blob_coeffs(i,n_blob_coefs) = 0.08d0*h0
-        blob_rotation(i)=2.0d0*pi*rand()!-pi/9.0d0;
+
+     !! Coefficients (if we want (e.g.) hexagonal obstacles). Load into blob 1, then copy to other blobs
+     do i=1,n_blob_coefs
+        read(191,*) blob_coeffs(1,i)
+        blob_coeffs(1,i) = blob_coeffs(1,i)*h0!*1.1083
      end do
+     blob_rotation(1) = 0.0d0
+     close(191)          
+     do i=2,nb_blobs
+        blob_rotation(i)=0.0d0!2.0d0*pi*rand()!-pi/9.0d0;
+        blob_coeffs(i,:) = blob_coeffs(1,:)
+     end do
+     
+     blob_coeffs(:,:)=0.0d0;blob_coeffs(:,1) = h0
 !     blob_coeffs(2,:) = blob_coeffs(1,:);blob_rotation(2) = blob_rotation(1)
 !     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
 
 
-     dxmin = dx0/1.5d0  !! 2.0d0
+     dxmin = dx0/2.0d0  !! 2.0d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 !! ------------------------------------------------------------------------------------------------     

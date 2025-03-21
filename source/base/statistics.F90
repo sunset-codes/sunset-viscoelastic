@@ -198,11 +198,12 @@ contains
   end subroutine liftdrag
 !! ------------------------------------------------------------------------------------------------  
   subroutine velocity_control
+     use interpolation
      !! Output the L2 of velocity over the domain
      integer(ikind) :: i
      real(rkind) :: tot_vel,tot_vol,tmpro,dVi,tmpvel
      real(rkind),dimension(ithree) :: tot_u
-     real(rkind) :: facA,facB,facC,facT,deflowdt
+     real(rkind) :: facA,facB,facC,facT,deflowdt,vol_flux,flux_length
        
      tot_vel = zero
      tot_vol = zero
@@ -228,16 +229,19 @@ contains
      call global_reduce_sum(tot_u(1))
      call global_reduce_sum(tot_u(2))
      call global_reduce_sum(tot_u(3))                    
-#endif         
+#endif                
     
      !! Normalise over volume
      tot_vel = sqrt(tot_vel/tot_vol)
      tot_u(:) = tot_u(:)/tot_vol
+     
+     !! Calculate the volumetric flux
+     call calculate_volumetric_flux(vol_flux,flux_length)  
 
-     !! If we want to P.I.D. control over the mean velocity
+     !! If we want to P.I.D. control over the velocity
 #ifdef vpid     
      !! New error     
-     eflow_n = u_char - tot_vel
+     eflow_n = one - tot_vel!*1.1831 !! Targetting a volumetric flux of one
           
      !! Integral term
      sum_eflow = sum_eflow + eflow_n*dt
@@ -246,7 +250,7 @@ contains
      deflowdt = (eflow_n-eflow_nm1)/dt
     
      !! P, I and D factors..  
-     facA = two*four     !one  !! Larger facA increases the speed of the response
+     facA = one!*two*four     !one  !! Larger facA increases the speed of the response
      facB = facA/0.1d0 !0.1   !!
      facC = facA*0.02d0 !0.02  !! Larger increases damping?!
          
@@ -263,11 +267,11 @@ contains
       
 #ifdef mp
      if(iproc.eq.0)then  !! time, |u|, mean u, mean v, mean w, force
-        write(195,*) time/Time_char,tot_vel,tot_u,driving_force(1)
+        write(195,*) time/Time_char,tot_vel,tot_u,vol_flux,driving_force(1)
         flush(195)
      end if
 #else
-     write(195,*) time/Time_char,tot_vel,tot_u,driving_force(1)    
+     write(195,*) time/Time_char,tot_vel,tot_u,vol_flux,driving_force(1)    
      flush(195)
 #endif       
      

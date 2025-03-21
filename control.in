@@ -7,16 +7,16 @@
 1.0d0
 
 !! Start and end time (in multiples of L_char/Uchar)
-0.0d0 4.0d2
+0.0d0 1.0d3
 
 !! Output period (in multiples of L_char/U_char), stats output period
-1.0d-1 2.5d-4
+1.0d0 2.5d-3
 
 !! Gravity vector (grav)
-9.718d0 0.0d0 0.0d0
+11.96d0 0.0d0 0.0d0
 
 !! Reynolds number
-1.0d2
+1.0d0
 
 !! Weissenberg number
 1.0d1

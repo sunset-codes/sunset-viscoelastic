@@ -69,7 +69,7 @@ module common_vars
 
   !! Time-stepping
   real(rkind) :: dt,dt_cfl,dt_parabolic  !! Various time-steps
-  real(rkind) :: umax,cmax,smax                  !! maximum velocity,node-spacing,sound speed
+  real(rkind) :: umax,cmax,smax,smin                  !! maximum velocity,node-spacing,sound speed
   integer(ikind) :: itime,iRKstep
   real(rkind) :: emax_nm1,emax_n,emax_np1  !! errors for PID controller
   real(rkind) :: ero_norm,erou_norm,exx_norm

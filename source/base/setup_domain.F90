@@ -74,7 +74,6 @@ contains
      real(rkind),dimension(ithree) :: rij
      real(rkind),dimension(:,:),allocatable :: tmp_vec
      integer(ikind) :: nl_ini,nl_end,nl_iniC,nl_endC,nl_ini2,nl_end2
-     real(rkind) :: smin
 
      !! STEP 1: Load IPART (some params, plus list of nodes + boundary normals)
      !! =======================================================================
@@ -306,6 +305,7 @@ contains
   subroutine refine_and_finalise_domain    
      use mirror_boundaries
      use tracer_particles
+     use interpolation
      integer(ikind) i,j,ii,jj
      
 #ifdef mp     
@@ -355,7 +355,8 @@ contains
                            
 write(6,*) "sizes",iproc,npfb,np_nohalo,np   
 
-     call initialise_tracer_particles         
+     call initialise_tracer_particles   
+     call initialise_flux_points           
                  
      return
   end subroutine refine_and_finalise_domain

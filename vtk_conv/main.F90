@@ -325,7 +325,6 @@ program main
      write(ifo,202) string3       
 
 #if numdims==3
-write(6,*) " HELLLO"
      !! Cxz
      string1 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'Cxz'//DQ// &
                ' format='//DQ//'ascii'//DQ//'>'
