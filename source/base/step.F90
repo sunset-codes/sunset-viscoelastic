@@ -227,7 +227,7 @@ contains
      !! Register 3 is rhs_ro,rhs_rou,rhs_rov (only used for RHS)
      !! Register 4 is e_acc_ro,e_acc_rou,e_acc_rov - error accumulator
      integer(ikind) :: i,k
-     real(rkind) :: time0,emax_conf
+     real(rkind) :: time0,emax_conf,fr
      real(rkind),dimension(:),allocatable :: rou_reg1,rov_reg1,row_reg1,ro_reg1
      real(rkind),dimension(:),allocatable :: xx_reg1,xy_reg1,yy_reg1,xz_reg1,yz_reg1,zz_reg1      
      real(rkind),dimension(:),allocatable :: e_acc_ro,e_acc_rou,e_acc_rov,e_acc_row
@@ -236,7 +236,7 @@ contains
      real(rkind),dimension(4) :: RKb,RKbmbh,RKc
      
      !! Push the max error storage back one
-     emax_nm1 = emax_n;emax_n=emax_np1
+     emax_nm1 = emax_n;emax_n=emax_np1  
      
      !! Set RKa,RKb,RKbmbh with dt (avoids multiplying by dt on per-node basis)
      RKa(:) = dt*rk3_4s_2r_a(:)
@@ -288,7 +288,8 @@ contains
 
         !! Set w_i and new u,v
         !$omp parallel do
-        do i=1,npfb
+        do i=1,npfb 
+
                   
            !! Store next U in register 2
            ro(i) = ro_reg1(i) + RKa(k)*rhs_ro(i)
@@ -336,6 +337,7 @@ contains
            e_acc_xz(i) = e_acc_xz(i) + RKbmbh(k)*rhs_xz(i)
            e_acc_yz(i) = e_acc_yz(i) + RKbmbh(k)*rhs_yz(i)
            e_acc_zz(i) = e_acc_zz(i) + RKbmbh(k)*rhs_zz(i) 
+           
         end do
         !$omp end parallel do
        
@@ -367,8 +369,8 @@ contains
           
      enrm_ro=zero;enrm_rou=zero;enrm_rov=zero;enrm_row=zero
      enrm_xx=zero;enrm_xy=zero;enrm_yy=zero;enrm_xz=zero;enrm_yz=zero;enrm_zz=zero
-     !$omp parallel do reduction(max:enrm_ro,enrm_rou,enrm_rov,enrm_row,enrm_xx,enrm_xy,enrm_yy &
-     !$omp ,enrm_xz,enrm_yz,enrm_zz)
+!     !$omp parallel do reduction(max:enrm_ro,enrm_rou,enrm_rov,enrm_row,enrm_xx,enrm_xy,enrm_yy &
+!     !$omp ,enrm_xz,enrm_yz,enrm_zz,fr)
      do i=1,npfb
      
         !! Final values of conservative variables
@@ -438,7 +440,18 @@ contains
         enrm_xz = max(enrm_xz,abs(e_acc_xz(i))*exx_norm)
         enrm_yz = max(enrm_yz,abs(e_acc_yz(i))*exx_norm)
         enrm_zz = max(enrm_zz,abs(e_acc_zz(i))*exx_norm)  
-
+ 
+        !! Re-normalise errors for Cholesky-FENE-P, to account for possibility that f(r)*c_{ij}-->infty
+#ifdef chl
+#ifdef fenep
+        fr = (fenep_l2-two)/(fenep_l2-cxx(i)-cyy(i))
+        fr = one/sqrt(fr)
+        enrm_xx = enrm_xx*fr
+        enrm_xy = enrm_xy*fr
+        enrm_yy = enrm_yy*fr                
+#endif
+#endif        
+        
         !! Uncomment this if we want to see the distribution of time-stepping errors (useful for finding
         !! the least-stable nodes whilst debugging)
         alpha_out(i) = max(abs(e_acc_ro(i))*ero_norm,max(abs(e_acc_rou(i))*erou_norm, &
@@ -446,7 +459,7 @@ contains
                        abs(e_acc_xy(i))*exx_norm,abs(e_acc_yy(i))*exx_norm)))))
 
      end do
-     !$omp end parallel do  
+!     !$omp end parallel do  
 
      !! Deallocation
      deallocate(rou_reg1,rov_reg1,row_reg1,ro_reg1)
@@ -464,13 +477,14 @@ contains
      emax_conf = max(enrm_xx,max(enrm_xy,max(enrm_yy,max(enrm_xz,max(enrm_yz,enrm_zz)))))
 !     emax_conf = emax_conf*1.0d-2  !! Permit two extra orders of magnitude in conformation tensor time-stepping error
 
+
      emax_np1 = max(emax_conf, &
                 max(enrm_ro, &
                 max(enrm_rou, &
                 max(enrm_rov, &
                 max(enrm_row, &
                 doublesmall)))))
-                                           
+                                                           
      !! Apply BCs and update halos
      if(nb.ne.0) call apply_time_dependent_bounds     
      call reapply_mirror_bcs
@@ -513,71 +527,35 @@ contains
   end subroutine get_velocity_from_momentum  
 !! ------------------------------------------------------------------------------------------------
   subroutine get_c_from_psi
-#ifdef lc
-     use mat2lib
-#endif     
+     use conf_transforms
+
      !! Get the conformation tensor from the SPD components of either log-conf or cholesky     
      integer(ikind) :: i
-#ifdef lc
-     real(rkind),dimension(dims) :: Lvec
-     real(rkind),dimension(dims,dims) :: Rmat,RTmat,Lmat,Cmat
-     
-     !$omp parallel do private(Rmat,Lvec,RTmat,Lmat,Cmat)
-     do i=1,np
-     
-        !! Eigenvalues and eigenvectors of Psi
-#ifdef dim3
-        call eigens(psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i),Lvec,Rmat)
-#else
-        call eigens(psixx(i),psixy(i),psiyy(i),Lvec,Rmat)
-#endif        
-        RTmat = transpose(Rmat)
-        
-        !! Exponentiate eigenvalues
-        Lmat = zero
-        Lmat(1,1) = exp(Lvec(1))
-        Lmat(2,2) = exp(Lvec(2))
-#ifdef dim3
-        Lmat(3,3) = exp(Lvec(3))
-#endif        
-     
-        !! Recompose to get c
-        Cmat = matmul(Rmat,matmul(Lmat,RTmat))
-        
-        !! Pass back to arrays
-        cxx(i) = Cmat(1,1)
-        cxy(i) = Cmat(2,1)
-        cyy(i) = Cmat(2,2)
-#ifdef dim3
-        cxz(i) = Cmat(1,3)
-        cyz(i) = Cmat(2,3)
-        czz(i) = Cmat(3,3)
-#endif        
-     end do
-     !$omp end parallel do
-#else
+    
      !$omp parallel do 
      do i=1,np
-        !! Build C from Cholesky decomposition              
-#ifdef ch
-        cxx(i) = psixx(i)**two        
-        cxy(i) = psixx(i)*psixy(i)
-        cyy(i) = psixy(i)**two + psiyy(i)**two
-#endif        
-        !! For log-cholesky decomposition
-#ifdef chl
-        cxx(i) = exp(psixx(i))**two
-        cxy(i) = exp(psixx(i))*psixy(i)
-        cyy(i) = psixy(i)**two + exp(psiyy(i))**two        
-#endif        
-        
-!!! TEMPORARY FOR 3D
-        cxz(i) = zero
-        cyz(i) = zero
-        czz(i) = one        
+     
+        !! Log-conformation transform
+#ifdef lc    
+#ifdef dim3     
+        call log_conf_c_from_psi(psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i) &
+                                 ,cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i))     
+#else
+        call log_conf_c_from_psi(psixx(i),psixy(i),psiyy(i),psizz(i),cxx(i),cxy(i),cyy(i),czz(i))     
+#endif   
+#endif                              
+        !! Cholesky transform
+#ifdef chl        
+#ifdef dim3             
+        call cholesky_c_from_psi(psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i) &
+                                 ,cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i),fenep_l2)     
+#else
+        call cholesky_c_from_psi(psixx(i),psixy(i),psiyy(i),psizz(i),cxx(i),cxy(i),cyy(i),czz(i),fenep_l2)     
+#endif   
+#endif
+      
      end do
      !$omp end parallel do
-#endif
      
      return
   end subroutine get_c_from_psi    
@@ -644,12 +622,13 @@ contains
      real(rkind) :: dtfactor
      real(rkind) :: facA,facB,facC
      real(rkind) :: dt_max
-                          
+
+                         
 #ifdef mp     
      !! Parallel transfer to obtain the global maximum error          
      call global_reduce_max(emax_np1)
 #endif     
-   
+    
      !! P, I and D factors..  Calculation done in log space...
      facA = pid_a*log(pid_tol/emax_np1)
      facB = pid_b*log(emax_n/pid_tol)
@@ -692,8 +671,7 @@ contains
         flush(192)         
      endif
 #endif 
- 
-
+  
      return
   end subroutine set_tstep_PID  
 !! ------------------------------------------------------------------------------------------------  

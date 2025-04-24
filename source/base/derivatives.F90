@@ -343,7 +343,6 @@ contains
           lap_tmp = lap_tmp + phi(j)*ij_w_lap(k,i)
        end do
        lapphi(i) = lap_tmp - phi(i)*ij_w_lap_sum(i)         
-
     end do
     !$OMP END PARALLEL DO
     
@@ -378,7 +377,7 @@ contains
     segment_tend = omp_get_wtime()
     segment_time_local(5) = segment_time_local(5) + segment_tend - segment_tstart    
     return
-  end subroutine calc_laplacian_transverse_only_on_bound    
+  end subroutine calc_laplacian_transverse_only_on_bound      
 !! ------------------------------------------------------------------------------------------------ 
   subroutine calc_filtered_var(phi)
     !! Calculate the hyperviscosity filtered phi

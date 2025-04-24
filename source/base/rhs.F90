@@ -206,7 +206,7 @@ contains
      !! Calculate the FENE-P non-linearity function
      allocate(fenepf(np),gradfenepf(npfb,ithree));
      do i=1,np
-        fenepf(i) = one/(one - (cxx(i)+cyy(i)+czz(i)-three)/fenep_l2)
+        fenepf(i) = (fenep_l2-three)/(fenep_l2-(cxx(i)+cyy(i)+czz(i)))
      end do
      call calc_gradient(fenepf,gradfenepf)
 #endif
@@ -240,7 +240,6 @@ contains
 #ifdef fenep
         !! For FENE-P it is a little more complex. Here we use the quotient rule...
         f1 = fenepf(i)
-        !f2 = f1*f1
         f_visc_u = f_visc_u + coef_polymeric*(gradcxx(i,1)*f1 + cxx(i)*gradfenepf(i,1) &
                                              +gradcxy(i,2)*f1 + cxy(i)*gradfenepf(i,2) &
                                              +gradcxz(i,3)*f1 + cxz(i)*gradfenepf(i,3))
@@ -408,9 +407,13 @@ contains
 #ifdef dim3
         call calc_laplacian(Cxz,lapCxz)  
         call calc_laplacian(Cyz,lapCyz)
-        call calc_laplacian(Czz,lapCzz)    
 #else
-        lapCxz=zero;lapCyz=zero;lapCzz=zero
+        lapCxz=zero;lapCyz=zero
+#ifdef fenep
+        call calc_laplacian(Czz,lapCzz)    
+#else        
+        lapCzz=zero
+#endif        
 #endif           
      endif
      
@@ -423,10 +426,10 @@ contains
         adxx = - (u(i)*gradcxx(i,1) + v(i)*gradcxx(i,2) + w(i)*gradcxx(i,3))
         adxy = - (u(i)*gradcxy(i,1) + v(i)*gradcxy(i,2) + w(i)*gradcxy(i,3))
         adyy = - (u(i)*gradcyy(i,1) + v(i)*gradcyy(i,2) + w(i)*gradcyy(i,3))  
+        adzz = - (u(i)*gradczz(i,1) + v(i)*gradczz(i,2) + w(i)*gradczz(i,3))                                                  
 #ifdef dim3
         adxz = - (u(i)*gradcxz(i,1) + v(i)*gradcxz(i,2) + w(i)*gradcxz(i,3))
         adyz = - (u(i)*gradcyz(i,1) + v(i)*gradcyz(i,2) + w(i)*gradcyz(i,3))                 
-        adzz = - (u(i)*gradczz(i,1) + v(i)*gradczz(i,2) + w(i)*gradczz(i,3))                                                  
 #endif
                                   
         !! The upper convected terms                    
@@ -434,12 +437,12 @@ contains
         ucxy = gradu(i,1)*cxy(i) + gradu(i,2)*cyy(i) + gradu(i,3)*cyz(i) &
              + gradv(i,1)*cxx(i) + gradv(i,2)*cxy(i) + gradv(i,3)*cxz(i)
         ucyy = two*gradv(i,1)*cxy(i) + two*gradv(i,2)*cyy(i) + two*gradv(i,3)*cyz(i)
+        uczz = two*gradw(i,1)*cxz(i) + two*gradw(i,2)*cyz(i) + two*gradw(i,3)*czz(i)        
 #ifdef dim3
         ucxz = gradu(i,1)*cxz(i) + gradu(i,2)*cyz(i) + gradu(i,3)*czz(i) &
              + gradw(i,1)*cxx(i) + gradw(i,2)*cxy(i) + gradw(i,3)*cxz(i)
         ucyz = gradv(i,1)*cxz(i) + gradv(i,2)*cyz(i) + gradv(i,3)*czz(i) &
              + gradw(i,1)*cxy(i) + gradw(i,2)*cyy(i) + gradw(i,3)*cyz(i)
-        uczz = two*gradw(i,1)*cxz(i) + two*gradw(i,2)*cyz(i) + two*gradw(i,3)*czz(i)        
 #endif        
         
         !! Evaluate relaxation term
@@ -448,10 +451,10 @@ contains
         sxx = (fr*cxx(i) + one)/lambda
         sxy = fr*cxy(i)/lambda
         syy = (fr*cyy(i) + one)/lambda
+        szz = (fr*czz(i) + one)/lambda
 #ifdef dim3
         sxz = fr*cxz(i)/lambda
         syz = fr*cyz(i)/lambda
-        szz = (fr*czz(i) + one)/lambda
 #endif       
 #else        
         fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function
@@ -469,10 +472,10 @@ contains
         rhs_xx(i) = adxx + ucxx + sxx + Mdiff*lapcxx(i)
         rhs_xy(i) = adxy + ucxy + sxy + Mdiff*lapcxy(i)
         rhs_yy(i) = adyy + ucyy + syy + Mdiff*lapcyy(i)
+        rhs_zz(i) = adzz + uczz + szz + Mdiff*lapczz(i)                
 #ifdef dim3
         rhs_xz(i) = adxz + ucxz + sxz + Mdiff*lapcxz(i)
         rhs_yz(i) = adyz + ucyz + syz + Mdiff*lapcyz(i)
-        rhs_zz(i) = adzz + uczz + szz + Mdiff*lapczz(i)                
 #endif        
      end do
      !$omp end parallel do
@@ -583,37 +586,39 @@ contains
   end subroutine calc_rhs_c
 !! ------------------------------------------------------------------------------------------------  
   subroutine calc_rhs_cholesky
-     use mat2lib
-     !! Construct the RHS for log-conformation tensor
+     !! Construct the RHS Cholesky decomposition of conformation tensor.
+     !! N.B. this is only implemented in 2D for now.
      integer(ikind) :: i,j
      real(rkind),dimension(ithree) :: tmp_vec
-     real(rkind) :: adxx,adxy,adyy
-     real(rkind) :: ucxx,ucxy,ucyy,lxx,lxy,lyy
-     real(rkind) :: sxx,sxy,syy
-     real(rkind) :: csxx,csxy,csyy
-     real(rkind),dimension(:,:),allocatable :: gradpsixx,gradpsixy,gradpsiyy     
+     real(rkind) :: adxx,adxy,adyy,adzz
+     real(rkind) :: ucxx,ucxy,ucyy,lxx,lxy,lyy,lzz
+     real(rkind) :: sxx,sxy,syy,srctmp,szz
+     real(rkind) :: csxx,csxy,csyy,cszz
+     real(rkind),dimension(:,:),allocatable :: gradpsixx,gradpsixy,gradpsiyy,gradpsizz    
      real(rkind),dimension(2) :: gradu_local,gradv_local
      real(rkind) :: xn,yn,fR     
-     real(rkind),dimension(:),allocatable :: lapCxx,lapCxy,lapCyy
+     real(rkind),dimension(:),allocatable :: lapCxx,lapCxy,lapCyy,lapCzz
          
      !! Laplacian for conformation tensor components
-     allocate(lapCxx(npfb),lapCxy(npfb),lapCyy(npfb))
+     allocate(lapCxx(npfb),lapCxy(npfb),lapCyy(npfb),lapCzz(npfb));lapCxx=zero;lapCxy=zero;lapCyy=zero;lapCzz=zero
      if(Mdiff.ne.zero) then
         call calc_laplacian_transverse_only_on_bound(Cxx,lapCxx)  
         call calc_laplacian_transverse_only_on_bound(Cxy,lapCxy)
         call calc_laplacian_transverse_only_on_bound(Cyy,lapCyy)   
+        call calc_laplacian_transverse_only_on_bound(Czz,lapCzz)           
      endif
      
 
      !! Cholesky component gradients
-     allocate(gradpsixx(npfb,ithree),gradpsixy(npfb,ithree),gradpsiyy(npfb,ithree))
+     allocate(gradpsixx(npfb,ithree),gradpsixy(npfb,ithree),gradpsiyy(npfb,ithree),gradpsizz(npfb,ithree))
      call calc_gradient(psixx,gradpsixx)
      call calc_gradient(psixy,gradpsixy)
      call calc_gradient(psiyy,gradpsiyy)          
+     call calc_gradient(psizz,gradpsizz)          
               
      !! Build RHS for internal nodes
-     !$omp parallel do private(i,tmp_vec,adxx,adxy,adyy,ucxx,ucxy,ucyy, &
-     !$omp fR,sxx,sxy,syy,csxx,csxy,csyy,lxx,lxy,lyy,gradu_local,gradv_local)
+!     !$omp parallel do private(i,tmp_vec,adxx,adxy,adyy,ucxx,ucxy,ucyy, &
+!     !$omp fR,sxx,sxy,syy,csxx,csxy,csyy,lxx,lxy,lyy,gradu_local,gradv_local,srctmp)
      do j=1,npfb-nb
         i=internal_list(j)
         tmp_vec(1) = u(i);tmp_vec(2) = v(i);tmp_vec(3) = w(i) !! tmp_vec holds (u,v,w) for node i
@@ -621,16 +626,17 @@ contains
         !! (-)Convective terms 
         adxx = dot_product(tmp_vec,gradpsixx(i,:))
         adxy = dot_product(tmp_vec,gradpsixy(i,:))
-        adyy = dot_product(tmp_vec,gradpsiyy(i,:))   
+        adyy = dot_product(tmp_vec,gradpsiyy(i,:))
+        adzz = dot_product(tmp_vec,gradpsizz(i,:))              
                 
         !! Store Cholesky components locally        
         lxx = (psixx(i))
         lxy = psixy(i)
         lyy = (psiyy(i))
-#ifdef chl
         lxx = exp(lxx)
         lyy = exp(lyy)
-#endif        
+        lzz = exp(psizz(i))
+     
         
         !! Store velocity gradient locally
         gradu_local(1) = gradu(i,1)
@@ -639,61 +645,59 @@ contains
         gradv_local(2) = gradv(i,2)                 
                 
         !! Upper convected terms
-#ifdef ch        
-        ucxx = gradu_local(1)*lxx + gradu_local(2)*lxy
-        ucxy = gradv_local(2)*lxy + gradu_local(2)*lyy*lyy/lxx + gradv_local(1)*lxx
-        ucyy = gradv_local(2)*lyy - gradu_local(2)*lxy*lyy/lxx
-#endif
-#ifdef chl
         ucxx = gradu_local(1) + gradu_local(2)*lxy/lxx
         ucxy = gradv_local(2)*lxy + gradu_local(2)*lyy*lyy/lxx + gradv_local(1)*lxx
         ucyy = gradv_local(2) - gradu_local(2)*lxy/lxx
-#endif        
 
         !! Source terms
 #ifdef fenep
-        fr = -fenepf(i)
-        sxx = (fr*cxx(i) + one)/lambda
-        sxy = fr*cxy(i)/lambda
-        syy = (fr*cyy(i) + one)/lambda
+        !! Modified formulation, because we're evolving Cholesky components of J=fr*c
+        fr = fenepf(i)
+#ifdef limtr        
+        srctmp = two*gradu_local(1)*cxx(i) + two*gradu_local(2)*cxy(i) &
+               + two*gradv_local(1)*cxy(i) + two*gradv_local(2)*cyy(i) &
+               - (fr*cxx(i)+fr*cyy(i)+fr*czz(i)-three)/lambda &
+               + Mdiff*(lapcxx(i)+lapcyy(i)+lapczz(i))
+        sxx = -(fr/lambda)*(fr*cxx(i)-one) + Mdiff*fr*lapcxx(i) + fr*cxx(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))       
+        sxy = -(fr/lambda)*(fr*cxy(i)) + Mdiff*fr*lapcxy(i)     + fr*cxy(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))  
+        syy = -(fr/lambda)*(fr*cyy(i)-one) + Mdiff*fr*lapcyy(i) + fr*cyy(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))    
+        szz = -(fr/lambda)*(fr*czz(i)-one) + Mdiff*fr*lapczz(i) + fr*czz(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))
+#else        
+        sxx = -(one/lambda)*(fr*cxx(i)-one) + Mdiff*lapcxx(i)
+        sxy = -(one/lambda)*(fr*cxy(i)) + Mdiff*lapcxy(i)    
+        syy = -(one/lambda)*(fr*cyy(i)-one) + Mdiff*lapcyy(i)
+        szz = -(one/lambda)*(fr*czz(i)-one) + Mdiff*lapczz(i)
+#endif
 #else        
         fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)))/lambda !! scalar function
-        sxx = fr*(cxx(i) - one)
-        sxy = fr*cxy(i)
-        syy = fr*(cyy(i) - one)
+        sxx = fr*(cxx(i) - one) + Mdiff*lapcxx(i)
+        sxy = fr*cxy(i) + Mdiff*lapcxy(i)
+        syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i)    
 #endif        
-
-        !! Add polymeric diffusion to source terms
-        sxx = sxx + Mdiff*lapcxx(i)
-        sxy = sxy + Mdiff*lapcxy(i)
-        syy = syy + Mdiff*lapcyy(i)                
+            
         
         !! Cholesky source terms
-#ifdef ch        
-        csxx = half*sxx/lxx
-        csxy = sxy/lxx - half*sxx*lxy/(lxx**two)
-        csyy = half*syy/lyy - sxy*lxy/(lxx*lyy) &
-             + half*sxx*lxy*lxy/(lyy*lxx**two)
-#endif
-#ifdef chl          
-        !! log-cholesky            
         csxx = half*sxx/lxx/lxx
         csxy = sxy/lxx - half*sxx*lxy/(lxx**two)
         csyy = half*syy/lyy/lyy - sxy*lxy/(lxx*lyy*lyy) &
              + half*sxx*lxy*lxy/(lyy*lyy*lxx**two)            
-#endif             
+        cszz = half*szz/lzz/lzz
         
         !! RHS 
         rhs_xx(i) = -adxx + ucxx + csxx
         rhs_xy(i) = -adxy + ucxy + csxy
         rhs_yy(i) = -adyy + ucyy + csyy
+#ifdef fenep
+        rhs_zz(i) = -adzz + cszz
+#endif        
+        
      end do
-     !$omp end parallel do
+!     !$omp end parallel do
 
      !! Build RHS for boundaries
      if(nb.ne.0)then        
-        !$omp parallel do private(i,tmp_vec,adxx,adxy,adyy,ucxx,ucxy,ucyy, &
-        !$omp fR,sxx,sxy,syy,csxx,csxy,csyy,lxx,lxy,lyy,gradu_local,gradv_local,xn,yn)
+!        !$omp parallel do private(i,tmp_vec,adxx,adxy,adyy,ucxx,ucxy,ucyy, &
+!        !$omp fR,sxx,sxy,syy,csxx,csxy,csyy,lxx,lxy,lyy,gradu_local,gradv_local,xn,yn)
         do j=1,nb
            i=boundary_list(j)
    
@@ -702,16 +706,16 @@ contains
            !! (-)Convective terms 
            adxx = dot_product(tmp_vec,gradpsixx(i,:))
            adxy = dot_product(tmp_vec,gradpsixy(i,:))
-           adyy = dot_product(tmp_vec,gradpsiyy(i,:))                
+           adyy = dot_product(tmp_vec,gradpsiyy(i,:))     
+           adzz = dot_product(tmp_vec,gradpsizz(i,:))           
                 
            !! Store Cholesky components locally
            lxx = (psixx(i))
            lxy = psixy(i)
            lyy = (psiyy(i))
-#ifdef chl
            lxx = exp(lxx)
-           lyy = exp(lyy)
-#endif        
+           lyy = exp(lyy)       
+           lzz = exp(psizz(i))
 
            if(node_type(i).eq.0) then !! Walls, rotate velocity gradients     
               xn=rnorm(i,1);yn=rnorm(i,2)  !! Bound normals                 
@@ -727,30 +731,10 @@ contains
            endif
                                                              
            !! Upper convected terms
-#ifdef ch
-           ucxx = gradu_local(1)*lxx + gradu_local(2)*lxy
-           ucxy = gradv_local(2)*lxy + gradu_local(2)*lyy*lyy/lxx + gradv_local(1)*lxx
-           ucyy = gradv_local(2)*lyy - gradu_local(2)*lxy*lyy/lxx        
-#endif
-#ifdef chl
-           !! log cholesky
            ucxx = gradu_local(1) + gradu_local(2)*lxy/lxx
            ucxy = gradv_local(2)*lxy + gradu_local(2)*lyy*lyy/lxx + gradv_local(1)*lxx
            ucyy = gradv_local(2) - gradu_local(2)*lxy/lxx
-#endif                   
             
-#ifdef fenep
-           fr = -fenepf(i)
-           sxx = (fr*cxx(i) + one)/lambda
-           sxy = fr*cxy(i)/lambda
-           syy = (fr*cyy(i) + one)/lambda
-#else        
-           fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)))/lambda !! scalar function
-           sxx = fr*(cxx(i) - one)
-           sxy = fr*cxy(i)
-           syy = fr*(cyy(i) - one)
-#endif   
-
            !! Modify conformation tensor laplacian to set no diffusive flux through boundaries:
            !! (actually setting d2c/dtangent2=0 as well)
            lapcxx(i) = lapcxx(i) + (-170.0d0*cxx(i) + 216.0d0*cxx(i+1) - 54.0d0*cxx(i+2) + 8.0d0*cxx(i+3))/ &
@@ -759,48 +743,63 @@ contains
                                    (36.0d0*s(i)*s(i)*L_char*L_char)          
            lapcyy(i) = lapcyy(i) + (-170.0d0*cyy(i) + 216.0d0*cyy(i+1) - 54.0d0*cyy(i+2) + 8.0d0*cyy(i+3))/ &
                                    (36.0d0*s(i)*s(i)*L_char*L_char) 
+           lapczz(i) = lapczz(i) + (-170.0d0*czz(i) + 216.0d0*czz(i+1) - 54.0d0*czz(i+2) + 8.0d0*czz(i+3))/ &
+                                   (36.0d0*s(i)*s(i)*L_char*L_char)                                    
 
-           !! Add diffusion to source terms
-           sxx = sxx + Mdiff*lapcxx(i)
-           sxy = sxy + Mdiff*lapcxy(i)
-           syy = syy + Mdiff*lapcyy(i)    
-
+#ifdef fenep
+           fr = fenepf(i)
+#ifdef limtr           
+           srctmp = two*gradu_local(1)*cxx(i) + two*gradu_local(2)*cxy(i) &
+                  + two*gradv_local(1)*cxy(i) + two*gradv_local(2)*cyy(i) &
+                  - (fr*cxx(i)+fr*cyy(i)+fr*czz(i)-three)/lambda &
+                  + Mdiff*(lapcxx(i)+lapcyy(i)+lapczz(i))
+           sxx = -(fr/lambda)*(fr*cxx(i)-one) + Mdiff*fr*lapcxx(i) + fr*cxx(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))  
+           sxy = -(fr/lambda)*(fr*cxy(i)) + Mdiff*fr*lapcxy(i)     + fr*cxy(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))  
+           syy = -(fr/lambda)*(fr*cyy(i)-one) + Mdiff*fr*lapcyy(i) + fr*cyy(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i)) 
+           szz = -(fr/lambda)*(fr*czz(i)-one) + Mdiff*fr*lapczz(i) + fr*czz(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i)) 
+#else           
+           sxx = -(one/lambda)*(fr*cxx(i)-one) + Mdiff*lapcxx(i)
+           sxy = -(one/lambda)*(fr*cxy(i)) + Mdiff*lapcxy(i)    
+           syy = -(one/lambda)*(fr*cyy(i)-one) + Mdiff*lapcyy(i)     
+           szz = -(one/lambda)*(fr*czz(i)-one) + Mdiff*lapczz(i)      
+#endif
+#else        
+           fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)))/lambda !! scalar function
+           sxx = fr*(cxx(i) - one) + Mdiff*lapcxx(i)
+           sxy = fr*cxy(i) + Mdiff*lapcxy(i)
+           syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i)
+#endif   
         
            !! Cholesky source terms
-#ifdef ch           
-           csxx = half*sxx/lxx
-           csxy = sxy/lxx - half*sxx*lxy/(lxx**two)
-           csyy = half*syy/lyy - sxy*lxy/(lxx*lyy) &
-                + half*sxx*lxy*lxy/(lyy*lxx**two)      
-#endif
-#ifdef chl            
-           !! log-cholesky            
            csxx = half*sxx/lxx/lxx
            csxy = sxy/lxx - half*sxx*lxy/(lxx**two)
            csyy = half*syy/lyy/lyy - sxy*lxy/(lxx*lyy*lyy) &
-                + half*sxx*lxy*lxy/(lyy*lyy*lxx**two)      
-#endif                
+                + half*sxx*lxy*lxy/(lyy*lyy*lxx**two)  
+           cszz = half*szz/lzz/lzz                    
                                      
            if(node_type(i).eq.0) then !! Walls
               !! RHS   
               rhs_xx(i) = ucxx + csxx
               rhs_xy(i) = ucxy + csxy
               rhs_yy(i) = ucyy + csyy
+#ifdef fenep
+              rhs_zz(i) = cszz
+#endif              
            else  !! inflow/outflow
               !! TBC
            endif
 
         end do
-        !$omp end parallel do     
+!        !$omp end parallel do     
      end if
 
-     deallocate(gradpsixx,gradpsixy,gradpsiyy)
+     deallocate(gradpsixx,gradpsixy,gradpsiyy,gradpsizz)
 
      return
   end subroutine calc_rhs_cholesky 
 !! ------------------------------------------------------------------------------------------------  
   subroutine calc_rhs_logconf
-     use mat2lib
+     use conf_transforms
      use mpi_transfers
      !! Construct the RHS for log-conformation tensor
      integer(ikind) :: i,j
@@ -1240,7 +1239,7 @@ contains
      use mpi_transfers
      integer(ikind) :: ispec,i
      real(rkind),dimension(:),allocatable :: filter_correction
-     real(rkind) :: tm,tv,dro
+     real(rkind) :: tm,tv,dro,fr
             
      !! Filter density
      call calc_filtered_var(ro)
@@ -1254,24 +1253,54 @@ contains
 
 #ifndef newt
 #ifndef di
+
+#ifdef chl
+#ifdef limtr
+!     !! For Cholesky & FENE-P, we should converge to the Cholesky-components of c to filter
+     do i=1,np
+        fr = (exp(two*psixx(i)) + psixy(i)**two + exp(two*psiyy(i))+exp(two*psizz(i))) !<- trace of J
+        fr = fenep_l2*fr/(fenep_l2-three+fr) !<- trace of c
+        fr = (fenep_l2-three)/(fenep_l2-fr)  !<- fr
+        psixx(i) = psixx(i) - log(sqrt(fr))
+        psixy(i) = psixy(i)/sqrt(fr)
+        psiyy(i) = psiyy(i) - log(sqrt(fr))
+        psizz(i) = psizz(i) - log(sqrt(fr))
+     end do
+#endif
+#endif     
+
      !! Filter log-conformation or cholesky components
      call calc_filtered_var(psixx)
      call calc_filtered_var(psixy)
-     call calc_filtered_var(psiyy)          
+     call calc_filtered_var(psiyy)     
+     call calc_filtered_var(psizz)                
+#ifdef chl
+#ifdef limtr
+!     !! Convert back to Cholesky components of fr*c_{ij}
+     do i=1,npfb
+        fr = (fenep_l2-three)/(fenep_l2 - (exp(two*psixx(i)) + psixy(i)**two + exp(two*psiyy(i))+exp(two*psizz(i))))
+        psixx(i) = psixx(i) + log(sqrt(fr))
+        psixy(i) = psixy(i)*sqrt(fr)
+        psiyy(i) = psiyy(i) + log(sqrt(fr))
+        psizz(i) = psizz(i) + log(sqrt(fr))
+     end do
+#endif
+#endif         
+    
+          
 #ifdef dim3
      call calc_filtered_var(psixz)
      call calc_filtered_var(psiyz)
-     call calc_filtered_var(psizz)          
 #endif     
 #else
      !! Filter conformation tensor
      call calc_filtered_var(cxx)
      call calc_filtered_var(cxy)
      call calc_filtered_var(cyy)   
+     call calc_filtered_var(czz)   
 #ifdef dim3
      call calc_filtered_var(cxz)
      call calc_filtered_var(cyz)
-     call calc_filtered_var(czz)   
 #endif            
 #endif     
 #endif     

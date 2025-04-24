@@ -1,4 +1,4 @@
-module mat2lib
+module conf_transforms
   !! ----------------------------------------------------------------------------------------------
   !! SUNSET CODE: Scalable Unstructured Node-SET code for DNS.
   !! 
@@ -8,8 +8,9 @@ module mat2lib
   !!                                     |matrix operations
   !!
   !! ----------------------------------------------------------------------------------------------
-  !! This module contains simple routines to evaluate properties of 2x2 matrices, for example
-  !! eigenvectors.
+  !! This module contains simple for various transforms of the conformation tensor, alongside
+  !! routines to evaluate properties of 2x2 matrices, for example
+  !! eigenvectors, and to transform between various matrix decompositions.
   !! 3x3 routine adapted from https://github.com/awvwgk/diag3x3 and wikipedia.
 
 
@@ -22,6 +23,184 @@ module mat2lib
 
 
 contains
+!! ------------------------------------------------------------------------------------------------
+#ifdef dim3
+  subroutine cholesky_c_from_psi(psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz,c_xx,c_xy,c_yy,c_xz,c_yz,c_zz,fenep_l2)
+     !! Calculate the conformation tensor from the cholesky decomposition
+     real(rkind),intent(in) :: psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz,fenep_l2
+     real(rkind),intent(out) :: c_xx,c_xy,c_yy,c_xz,c_yz,c_zz
+#else     
+  subroutine cholesky_c_from_psi(psi_xx,psi_xy,psi_yy,psi_zz,c_xx,c_xy,c_yy,c_zz,fenep_l2)
+     real(rkind),intent(in) :: psi_xx,psi_xy,psi_yy,psi_zz,fenep_l2
+     real(rkind),intent(out) :: c_xx,c_xy,c_yy,c_zz
+#endif    
+     real(rkind) :: Jxx,Jxy,Jyy,Jzz,fq
+
+#ifdef limtr
+     !! Cholesky decomposition of fr*c if enforcing FENE-P limit
+     Jxx = exp(two*psi_xx)
+     Jxy = exp(psi_xx)*psi_xy
+     Jyy = psi_xy*psi_xy + exp(two*psi_yy)
+     Jzz = exp(two*psi_zz)
+     fq = fenep_l2/(fenep_l2-three+Jxx+Jyy+Jzz)    
+     c_xx = Jxx*fq
+     c_xy = Jxy*fq
+     c_yy = Jyy*fq
+     c_zz = Jzz*fq
+#else    
+     c_xx = exp(psi_xx)**two
+     c_xy = exp(psi_xx)*psi_xy
+     c_yy = psi_xy**two + exp(psi_yy)**two
+     c_zz = one
+#endif
+
+#ifdef dim3
+     write(6,*) "WARNING, Cholesky formulation not yet implemented in 3D. Stopping."
+     stop
+     c_xz = zero
+     c_yz = zero
+     c_zz = one
+#endif      
+
+
+     return
+  end subroutine cholesky_c_from_psi
+!! ------------------------------------------------------------------------------------------------
+#ifdef dim3
+  subroutine cholesky_psi_from_c(c_xx,c_xy,c_yy,c_xz,c_yz,c_zz,psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz,fenep_l2)
+     !! Calculate the conformation tensor from its Cholesky decomposition
+     real(rkind),intent(in) :: c_xx,c_xy,c_yy,c_xz,c_yz,c_zz,fenep_l2
+     real(rkind),intent(out) :: psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz
+#else     
+  subroutine cholesky_psi_from_c(c_xx,c_xy,c_yy,c_zz,psi_xx,psi_xy,psi_yy,psi_zz,fenep_l2)
+     real(rkind),intent(in) :: c_xx,c_xy,c_yy,c_zz,fenep_l2
+     real(rkind),intent(out) :: psi_xx,psi_xy,psi_yy,psi_zz
+#endif     
+     real(rkind) :: Jxx,Jxy,Jyy,Jzz,fr
+
+   
+#ifdef limtr 
+     fr = (fenep_l2-three)/(fenep_l2 - (c_xx+c_yy+c_zz))
+     Jxx = c_xx*fr
+     Jxy = c_xy*fr
+     Jyy = c_yy*fr
+     Jzz = c_zz*fr    
+     psi_xx = sqrt(Jxx)
+     psi_xy = Jxy/psi_xx
+     psi_yy = sqrt(Jyy-psi_xy**two)    
+     psi_xx = log(psi_xx)
+     psi_yy = log(psi_yy)
+     psi_zz = log(sqrt(Jzz))
+#else
+     psi_xx = sqrt(c_xx)
+     psi_xy = c_xy/(psi_xx)
+     psi_yy = (sqrt(c_yy-psi_xy**two))
+     psi_xx = log(psi_xx)
+     psi_yy = log(psi_yy)     
+     psi_zz = log(one)
+#endif     
+
+     !! Temporary for 3D
+#ifdef dim3
+     write(6,*) "WARNING, Cholesky formulation not yet implemented in 3D. Stopping."
+     stop
+     psi_xz = zero
+     psi_yz = zero
+     psi_zz = log(one)
+#endif     
+
+     return
+  end subroutine cholesky_psi_from_c  
+!! ------------------------------------------------------------------------------------------------
+#ifdef dim3
+  subroutine log_conf_c_from_psi(psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz,c_xx,c_xy,c_yy,c_xz,c_yz,c_zz)
+     !! Calculate the conformation tensor from its matrix logarithm
+     real(rkind),intent(in) :: psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz
+     real(rkind),intent(out) :: c_xx,c_xy,c_yy,c_xz,c_yz,c_zz
+#else     
+  subroutine log_conf_c_from_psi(psi_xx,psi_xy,psi_yy,psi_zz,c_xx,c_xy,c_yy,c_zz)
+     real(rkind),intent(in) :: psi_xx,psi_xy,psi_yy,psi_zz
+     real(rkind),intent(out) :: c_xx,c_xy,c_yy,c_zz
+#endif     
+     real(rkind),dimension(dims,dims) :: Rmat,RTmat,Lmat,Cmat
+     real(rkind),dimension(dims) :: Lvec
+
+     !! Eigenvalues and eigenvectors of Psi
+#ifdef dim3
+     call eigens(psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz,Lvec,Rmat)
+#else
+     call eigens(psi_xx,psi_xy,psi_yy,Lvec,Rmat)
+#endif     
+     RTmat = transpose(Rmat)
+     
+     !! Exponentiate Eigenvalues
+     Lmat = zero
+     Lmat(1,1) = exp(Lvec(1))
+     Lmat(2,2) = exp(Lvec(2))
+#ifdef dim3     
+     Lmat(3,3) = exp(Lvec(3))
+#endif     
+     
+     !! Recompose to get c
+     Cmat = matmul(Rmat,matmul(Lmat,RTmat))
+        
+     !! Pass back to arrays
+     c_xx = Cmat(1,1)
+     c_xy = Cmat(2,1)
+     c_yy = Cmat(2,2)
+#ifdef dim3
+     c_xz = Cmat(1,3)
+     c_yz = Cmat(2,3)
+     c_zz = Cmat(3,3)
+#endif     
+     return
+  end subroutine log_conf_c_from_psi
+!! ------------------------------------------------------------------------------------------------
+#ifdef dim3
+  subroutine log_conf_psi_from_c(c_xx,c_xy,c_yy,c_xz,c_yz,c_zz,psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz)
+     !! Calculate the conformation tensor from its matrix logarithm
+     real(rkind),intent(in) :: c_xx,c_xy,c_yy,c_xz,c_yz,c_zz
+     real(rkind),intent(out) :: psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz
+#else     
+  subroutine log_conf_psi_from_c(c_xx,c_xy,c_yy,c_zz,psi_xx,psi_xy,psi_yy,psi_zz)
+     real(rkind),intent(in) :: c_xx,c_xy,c_yy,c_zz
+     real(rkind),intent(out) :: psi_xx,psi_xy,psi_yy,psi_zz
+#endif     
+     real(rkind),dimension(dims,dims) :: Rmat,RTmat,Lmat,psimat
+     real(rkind),dimension(dims) :: Lvec
+
+
+     !! Eigenvalues and eigenvectors of C
+#ifdef dim3
+     call eigens(c_xx,c_xy,c_yy,c_xz,c_yz,c_zz,Lvec,Rmat)
+#else
+     call eigens(c_xx,c_xy,c_yy,Lvec,Rmat)
+#endif     
+     RTmat = transpose(Rmat)
+     
+     !! Exponentiate Eigenvalues
+     Lmat = zero
+     Lmat(1,1) = log(Lvec(1))
+     Lmat(2,2) = log(Lvec(2))
+#ifdef dim3     
+     Lmat(3,3) = log(Lvec(3))
+#endif     
+     
+     !! Recompose to get c
+     psimat = matmul(Rmat,matmul(Lmat,RTmat))
+        
+     !! Pass back to arrays
+     psi_xx = psimat(1,1)
+     psi_xy = psimat(2,1)
+     psi_yy = psimat(2,2)
+#ifdef dim3
+     psi_xz = psimat(1,3)
+     psi_yz = psimat(2,3)
+     psi_zz = psimat(3,3)
+#endif     
+
+     return
+  end subroutine log_conf_psi_from_c  
 !! ------------------------------------------------------------------------------------------------
 #ifdef dim3
   subroutine eigens(axx,axy,ayy,axz,ayz,azz,L,R)
@@ -285,4 +464,4 @@ contains
   
   end subroutine inverse
 !! ------------------------------------------------------------------------------------------------                
-end module mat2lib
+end module conf_transforms

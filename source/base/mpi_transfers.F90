@@ -129,20 +129,20 @@ contains
      call halo_exchange(psixx)
      call halo_exchange(psixy)
      call halo_exchange(psiyy)   
+     call halo_exchange(psizz)
 #ifdef dim3
      call halo_exchange(psixz)
-     call halo_exchange(psiyz)
-     call halo_exchange(psizz)   
+     call halo_exchange(psiyz)  
 #endif            
 #else
      !! Conformation tensor
      call halo_exchange(cxx)
      call halo_exchange(cxy)
-     call halo_exchange(cyy)          
+     call halo_exchange(cyy)
+     call halo_exchange(czz)                 
 #ifdef dim3
      call halo_exchange(cxz)
-     call halo_exchange(cyz)
-     call halo_exchange(czz)          
+     call halo_exchange(cyz)       
 #endif
 #endif
 #endif
@@ -828,6 +828,7 @@ contains
      !! Find the maximum and minimum values for output to screen
      real(rkind),dimension(:),intent(out) :: maxphi,minphi
      integer(ikind) :: ispec
+     real(rkind) :: maxtr,mintr
      
      call MPI_ALLREDUCE(maxval(u(1:npfb)),maxphi(1),1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,ierror)
      call MPI_ALLREDUCE(maxval(v(1:npfb)),maxphi(2),1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,ierror)               
@@ -840,6 +841,11 @@ contains
      call MPI_ALLREDUCE(maxval(cyz(1:npfb)),maxphi(9),1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,ierror)
      call MPI_ALLREDUCE(maxval(czz(1:npfb)),maxphi(10),1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,ierror)          
 
+     !! Conformation tensor trace
+     maxtr = maxval(cxx(1:npfb)+cyy(1:npfb)+czz(1:npfb))
+     mintr = minval(cxx(1:npfb)+cyy(1:npfb)+czz(1:npfb))     
+     call MPI_ALLREDUCE(maxtr,maxphi(11),1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,ierror)
+     call MPI_ALLREDUCE(mintr,minphi(11),1,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,ierror)           
   
      call MPI_ALLREDUCE(minval(u(1:npfb)),minphi(1),1,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,ierror)
      call MPI_ALLREDUCE(minval(v(1:npfb)),minphi(2),1,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,ierror)               
@@ -1197,6 +1203,29 @@ contains
         end if   
      end if    
 
+     !! Identify the owner of particles in the halo
+     do k=1,2
+        if(iproc_R_UD(k).ge.0) then
+           do i=nrecstart(k),nrecstart(k)+inhalo_UD(k)-1
+              halo_owner(i) = iproc_R_UD(k)
+           end do
+        end if
+     end do
+     do k=1,2*nprocsY
+        if(iproc_R_LR(k).ge.0) then
+           do i=nrecstart(2+k),nrecstart(2+k)+inhalo_LR(k)-1
+              halo_owner(i) = iproc_R_LR(k)
+           end do
+        end if
+     end do
+     do k=1,2
+        if(iproc_R_FB(k).ge.0) then
+           do i=nrecstart(2+2*nprocsY+k),nrecstart(2+2*nprocsY+k)+inhalo_FB(k)-1
+              halo_owner(i) = iproc_R_FB(k)
+           end do
+        end if
+     end do
+     
     
      return
   end subroutine send_halo_sizes_nodes
@@ -1255,11 +1284,30 @@ contains
      !! Do MPI reduction
      call MPI_ALLREDUCE(phi_local,phi,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,ierror)              
      
+    
      !! Profiling
      segment_tend = omp_get_wtime()
      segment_time_local(1) = segment_time_local(1) + segment_tend - segment_tstart    
      return
   end subroutine global_reduce_max
+!! ------------------------------------------------------------------------------------------------  
+  subroutine global_reduce_maxint(phi)
+     !! Routine to perform MPI reductions. If not using mpi, it does nothing.
+     integer(ikind),intent(inout) :: phi
+     integer(ikind) :: phi_local
+     segment_tstart = omp_get_wtime()     
+     
+     !! Copy phi to local
+     phi_local = phi
+     
+     !! Do MPI reduction
+     call MPI_ALLREDUCE(phi_local,phi,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD,ierror)              
+     
+     !! Profiling
+     segment_tend = omp_get_wtime()
+     segment_time_local(1) = segment_time_local(1) + segment_tend - segment_tstart    
+     return
+  end subroutine global_reduce_maxint
 #endif
 !! ------------------------------------------------------------------------------------------------
 end module mpi_transfers

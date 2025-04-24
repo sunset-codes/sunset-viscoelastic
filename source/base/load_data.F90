@@ -73,7 +73,7 @@ contains
      
      !! Output frequency (in multiples of characteristic time)
      read(12,*)
-     read(12,*) dt_out,dt_out_stats
+     read(12,*) dt_out,dt_out_stats,dt_out_tracers
      read(12,*)
      dt_out = dt_out*Time_char
      dt_out_stats = dt_out_stats*Time_char

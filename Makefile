@@ -9,19 +9,17 @@
 # vpid       P.I.D control of the velocity (1) or don't (0)                            (default: 0)
 # pgrad      Body forces converted to pressure gradient (1) or not (0)                 (default: 0)
 # allout     If 3D, output the entire domain (1) or just a slice (0)                   (default: 1)
-# ceform     Direct integration (0), Cholesky (1), log-cholesky (2), log-conf (3)      (default: 3)
+# ceform     Direct integration (0), log-Cholesky (1), log-conf (2)                    (default: 1)
 # newt       Newtonian calculations (1) or not (0)                                     (default: 0)
 # fenep      FENE-P (1) or sPTT (0)                                                    (default: 1)
 # morder     m (order) value = 4,6,8,10                                                (default: 8)
 # mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
 # tarout     Compress files as they're written (1) or don't (0)                        (default: 0)
 # tracers    Include some Lagrangian tracer particles (1) or don't (0)                 (default: 0)
+# limtr      Enforce the FENE-P limit (1) or don't (0)                                 (default: 1)
 # -------------------------------------------------------------------------------------------------
 #
 # EXAMPLE USAGE:
-# make dim3=0 mpi=1 pgrad=0 spd=0
-#
-
 #
 # Choose compiler depending on whether mpi
 ifneq ($(mpi),0)
@@ -62,15 +60,12 @@ ifneq ($(newt),1)
 ifeq ($(ceform), 0)
 FFLAGS += -Ddi
 else
-ifeq ($(ceform), 1)
-FFLAGS += -Dch
-else
 ifeq ($(ceform), 2)
-FFLAGS += -Dchl
-else
 FFLAGS += -Dlc
+else
+FFLAGS += -Dchl
 endif
-endif
+
 endif
 
 # or Newtonian
@@ -86,6 +81,9 @@ endif
 # FENE-P?
 ifneq ($(fenep),0)
 FFLAGS += -Dfenep
+ifneq ($(limtr),0)
+FFLAGS += -Dlimtr
+endif
 endif
 
 # Tar output files
@@ -135,7 +133,7 @@ OBJ_FILES := obj/kind_parameters.o obj/common_parameter.o obj/common_vars.o
 OBJ_FILES += obj/rbfs.o obj/mirror_boundaries.o obj/derivatives.o 
 OBJ_FILES += obj/mpi_transfers.o obj/interpolation.o
 OBJ_FILES += obj/neighbours.o obj/output.o obj/statistics.o obj/tracer_particles.o
-OBJ_FILES += obj/turbulence.o obj/svdlib.o obj/mat2lib.o
+OBJ_FILES += obj/turbulence.o obj/svdlib.o obj/conf_transforms.o
 OBJ_FILES += obj/load_data.o obj/setup_domain.o obj/setup_flow.o
 OBJ_FILES += obj/labf.o obj/fd.o
 OBJ_FILES += obj/characteristic_boundaries.o obj/rhs.o
@@ -165,4 +163,5 @@ clean:
 	rm -vf ./paraview_files/LAYER*
 	rm -vf ./data_out/grilli*
 	rm -vf ./data_out/*.tar.gz
+	rm -vf ./data_out/tracer*
 

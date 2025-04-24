@@ -250,7 +250,7 @@ contains
      deflowdt = (eflow_n-eflow_nm1)/dt
     
      !! P, I and D factors..  
-     facA = one!*two*four     !one  !! Larger facA increases the speed of the response
+     facA = half*half*one!*two*four     !one  !! Larger facA increases the speed of the response
      facB = facA/0.1d0 !0.1   !!
      facC = facA*0.02d0 !0.02  !! Larger increases damping?!
          
@@ -335,13 +335,14 @@ contains
      !! This subroutine calculates mean and RMS values of conformation tensor components.
      integer(ikind) :: i
      real(rkind) :: tot_vol,dVi
-     real(rkind) :: tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr
+     real(rkind) :: tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr,tot_czz
     
    
      tot_vol = zero
      tot_cxx=zero;tot_cxy=zero;tot_cyy=zero
      tot_cxy2 = zero;tot_tr=zero
-     !$omp parallel do private(dVi) reduction(+:tot_vol,tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr)
+     tot_czz = zero
+     !$omp parallel do private(dVi) reduction(+:tot_vol,tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr,tot_czz)
      do i=1,npfb
         dVi = vol(i)
 #ifdef dim3
@@ -350,10 +351,12 @@ contains
         tot_vol = tot_vol + dVi  
         tot_cxx = tot_cxx + cxx(i)*dVi  !! Mean
         tot_cxy = tot_cxy + cxy(i)*dVi
-        tot_cyy = tot_cyy + cyy(i)*dVi         
+        tot_cyy = tot_cyy + cyy(i)*dVi
+        tot_czz = tot_czz + czz(i)*dVi        
+                 
         
         tot_cxy2 = tot_cxy2 +cxy(i)*cxy(i)*dVi !! cxy squared
-        tot_tr = tot_tr + (cxx(i)+cyy(i))*dVi
+        tot_tr = tot_tr + (cxx(i)+cyy(i)+czz(i))*dVi
         
      end do
      !$omp end parallel do
@@ -364,6 +367,7 @@ contains
      tot_cxx = tot_cxx*L_char**three
      tot_cxy = tot_cxy*L_char**three
      tot_cyy = tot_cyy*L_char**three 
+     tot_czz = tot_czz*L_char**three     
      tot_cxy2 = tot_cxy2*L_char**three       
      tot_tr = tot_tr*L_char**three  
 #else
@@ -371,6 +375,7 @@ contains
      tot_cxx = tot_cxx*L_char**two
      tot_cxy = tot_cxy*L_char**two
      tot_cyy = tot_cyy*L_char**two
+     tot_czz = tot_czz*L_char**two     
      tot_cxy2 = tot_cxy2*L_char**two               
      tot_tr = tot_tr*L_char**two
 #endif     
@@ -380,26 +385,29 @@ contains
      call global_reduce_sum(tot_cxx)
      call global_reduce_sum(tot_cxy)
      call global_reduce_sum(tot_cyy)
+     call global_reduce_sum(tot_czz)     
      call global_reduce_sum(tot_cxy2)          
      call global_reduce_sum(tot_tr)
      tot_cxx = tot_cxx/tot_vol
      tot_cxy = tot_cxy/tot_vol
      tot_cyy = tot_cyy/tot_vol
+     tot_czz = tot_czz/tot_vol     
      tot_cxy2 = sqrt(tot_cxy2/tot_vol)
      tot_tr = tot_tr/tot_vol
 
      if(iproc.eq.0)then
-        write(199,*) time/Time_char,tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr
+        write(199,*) time/Time_char,tot_cxx,tot_cxy,tot_cyy,tot_czz,tot_cxy2,tot_tr
         flush(199)        
      end if
 #else
      tot_cxx = tot_cxx/tot_vol
      tot_cxy = tot_cxy/tot_vol
      tot_cyy = tot_cyy/tot_vol
+     tot_czz = tot_czz/tot_vol     
      tot_cxy2 = sqrt(tot_cxy2/tot_vol)
      tot_tr = tot_tr/tot_vol     
      
-     write(199,*) time/Time_char,tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr
+     write(199,*) time/Time_char,tot_cxx,tot_cxy,tot_cyy,tot_czz,tot_cxy2,tot_tr
      flush(199)
 #endif
 

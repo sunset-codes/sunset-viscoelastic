@@ -46,10 +46,10 @@ program main
   allocate(cxx(np_max))
   allocate(cxy(np_max))
   allocate(cyy(np_max)) 
+  allocate(czz(np_max))
 #if numdims==3  
   allocate(cxz(np_max))
   allocate(cyz(np_max))
-  allocate(czz(np_max)) 
   cxz=0.0d0;cyz=0.0d0;czz=0.0d0
 #endif  
   
@@ -190,7 +190,7 @@ program main
               read(ifi,*,end=300) ro(i), &
                                   up(i),vp(i), &
                                   vort(i),Qcrit(i),alpha(i), &
-                                  cxx(i),cxy(i),cyy(i)
+                                  cxx(i),cxy(i),cyy(i),czz(i)
               processor(i) = iproc
               npp=npp+1
            enddo
@@ -344,6 +344,7 @@ program main
      enddo
      string3 = '    </DataArray>'
      write(ifo,202) string3    
+#endif
      
      !! Czz
      string1 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'Czz'//DQ// &
@@ -354,7 +355,6 @@ program main
      enddo
      string3 = '    </DataArray>'
      write(ifo,202) string3              
-#endif
 
      !! Processor
      string1 = '    <DataArray type='//DQ//'Int32'//DQ//' Name='//DQ//'processor'//DQ//' format='//DQ//'ascii'//DQ//'>'

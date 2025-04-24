@@ -33,7 +33,7 @@ contains
      real(rkind) :: cput,store1
      integer(ikind) :: i,j
      
-     allocate(maxphi(10),minphi(10))
+     allocate(maxphi(11),minphi(11))
      
     
      ts_end=omp_get_wtime()
@@ -80,16 +80,19 @@ contains
 
            write(6,*)"itime,time,dt=", itime,time,dt
            write(6,*) "npfb,np",npfb_global,np_global,"n_out real",time/dt_out
-           write(6,*) "Max |u|,|v|:",max(maxphi(1),abs(minphi(1))),max(maxphi(2),abs(minphi(2)))
-           write(6,*) "Max |w|    :",max(maxphi(3),abs(minphi(3)))
-           write(6,*) "max/min ro :",maxphi(4),minphi(4)
-           write(6,*) "max/min cxx:",maxphi(5),minphi(5)
-           write(6,*) "max/min cxy:",maxphi(6),minphi(6)
-           write(6,*) "max/min cyy:",maxphi(7),minphi(7)   
+           write(6,*) "Max |u|,|v|  :",max(maxphi(1),abs(minphi(1))),max(maxphi(2),abs(minphi(2)))
+#ifdef dim3           
+           write(6,*) "Max |w|      :",max(maxphi(3),abs(minphi(3)))
+#endif           
+           write(6,*) "max/min ro   :",maxphi(4),minphi(4)
+           write(6,*) "max/min cxx  :",maxphi(5),minphi(5)
+           write(6,*) "max/min cxy  :",maxphi(6),minphi(6)
+           write(6,*) "max/min cyy  :",maxphi(7),minphi(7)   
+           write(6,*) "max/min czz  :",maxphi(10),minphi(10)   
+           write(6,*) "max/min tr(c):",maxphi(11),minphi(11)           
 #ifdef dim3
            write(6,*) "max/min cxz:",maxphi(8),minphi(8)
            write(6,*) "max/min cyz:",maxphi(9),minphi(9)
-           write(6,*) "max/min czz:",maxphi(10),minphi(10)   
 #endif                              
            write(6,*) "# threads  :",n_threads_global,"spread across ",nprocs,"MPI tasks"
            write(6,*) "Wall clock run time:",t_run
@@ -110,7 +113,7 @@ contains
            write(6,291) "Waiting          :",100.0d0*stg(10)/stg(11),'%,',stg(10)/dble(scr_freq*nprocs),"seconds/step"
            write(6,291) "Other            :",100.0d0*store1/stg(11),'%,',store1/dble(scr_freq*nprocs),"seconds/step"
 #ifndef dim3
-           write(6,'(/,/,A)') "  "                             
+           write(6,'(/,A)') "  "                             
 #endif
 !           write(6,'(/,/,A)') "  "                             
             
@@ -300,7 +303,7 @@ contains
                        cxz(i),cyz(i),czz(i)      
     
 #else
-           write(20,*) tmpro,u(i),v(i),tmpVort,Qcrit(i),alpha_out(i),cxx(i),cxy(i),cyy(i)
+           write(20,*) tmpro,u(i),v(i),tmpVort,Qcrit(i),alpha_out(i),cxx(i),cxy(i),cyy(i),czz(i)
 !           write(20,*) tmpro,u(i),v(i),tmpVort,alpha_out(i),psixx(i),psixy(i),psiyy(i)
 #endif
         end do

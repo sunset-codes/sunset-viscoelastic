@@ -147,6 +147,7 @@ contains
      allocate(node_type(nm*npfb));node_type=0
      allocate(fd_parent(nm*npfb));fd_parent=0
      allocate(halo_periodic(nm*npfb));halo_periodic=0
+     allocate(halo_owner(nm*npfb));halo_owner=-1
          
      !! Load all nodes. Build FD stencils near boundaries on the fly.
      npfb_tmp = npfb
@@ -507,6 +508,11 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
      tmp_array_int(1:newsize)=halo_periodic(1:newsize)
      deallocate(halo_periodic);allocate(halo_periodic(newsize))
      halo_periodic = tmp_array_int
+     
+     !! Copy halo_owner
+     tmp_array_int(1:newsize)=halo_owner(1:newsize)
+     deallocate(halo_owner);allocate(halo_owner(newsize))
+     halo_owner = tmp_array_int     
 
      deallocate(tmp_array_real,tmp_array_int,tmp_array2_real)
      

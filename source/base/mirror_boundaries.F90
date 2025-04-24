@@ -318,10 +318,10 @@ contains
            psixy(j) = psixy(i) !! periodic wall, or periodic-periodic corner, or symmetric-symmetric corner
         endif
         psiyy(j) = psiyy(i)
+        psizz(j) = psizz(i)
 #ifdef dim3
         psixz(j) = psixz(i)  !! N.B. THIS NEEDS MODIFYING FOR SYMMETRIC CONDITIONS IN 3D
         psiyz(j) = psiyz(i)
-        psizz(j) = psizz(i)
 #endif        
 #else
         !! Components of C
@@ -332,10 +332,10 @@ contains
            cxy(j) = cxy(i)
         endif
         cyy(j) = cyy(i)      
+        czz(j) = czz(i)      
 #ifdef dim3
         cxz(j) = cxz(i) !! N.B. THIS NEEDS MODIFYING FOR SYMMETRIC CONDITIONS IN 3D
         cyz(j) = cyz(i)
-        czz(j) = czz(i)      
 #endif        
 #endif        
 #endif        

@@ -87,7 +87,7 @@ program datgen
 
      yl=2.0d0*pi
      xl=yl/1.0d0
-     dx0=yl/(100.0d0)
+     dx0=yl/(50.0d0)
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -109,7 +109,7 @@ case(4) !! Poiseuille flow
 
      yl=1.0d0
      xl=yl/1.0d0
-     dx0=yl/75.0d0
+     dx0=yl/50.0d0
      xbcond_L=1;xbcond_U=1;ybcond_L=0;ybcond_U=0
      
      nb_patches = 4
@@ -227,21 +227,21 @@ case(7) !! Grilli cylinders
 !! ------------------------------------------------------------------------------------------------
 case(8) !! Minimal unit cell of isometric cylinder array
 
-     SovD = 1.2d0!sqrt(pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
+     SovD = 1.5d0!sqrt(pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
      D_cyl = 1.0d0!/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=S_cyl ! box height
      xl=sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/75.0d0       !75
-     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
+     dx0=D_cyl/60.0d0!499.50
+     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
+     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
@@ -260,27 +260,32 @@ case(8) !! Minimal unit cell of isometric cylinder array
 
 
 
-     dxmin = dx0/1.3d0
+     dxmin = dx0/1.6d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin              
 !! ------------------------------------------------------------------------------------------------
 case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 degrees)
 
-     SovD = 1.0996d0!sqrt(pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
-     D_cyl = 1.0d0/(SovD-1.0d0)
+  !! Porosity 1/2 - sqrt(pi/sqrt(3))
+  !! Porosity 1/3 - sqrt(0.75*pi/sqrt(3))
+  !! Porosity 1/4 - sqrt(0.6667*pi/sqrt(3))   (2/3)
+  
+
+     SovD = 1.5d0!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
+     D_cyl = 1.0d0!1.0d0/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/400.5d0!499.50       !250
-     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
+     dx0=D_cyl/60.0d0!499.50       !250
+     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
+     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
@@ -309,7 +314,7 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
 !     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
 
 
-     dxmin = dx0/2.0d0  !! 2.0d0
+     dxmin = dx0/1.2d0  !! 2.0d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 !! ------------------------------------------------------------------------------------------------     

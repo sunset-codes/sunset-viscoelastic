@@ -16,6 +16,7 @@ module setup_flow
   use mpi_transfers
 #endif    
   use turbulence
+  use conf_transforms  
   implicit none
     
 contains
@@ -80,7 +81,36 @@ contains
      call reapply_mirror_bcs
 #ifdef mp
      call halo_exchanges_all
-#endif          
+#endif       
+        
+     !! Calculate the conformation tensor from its transforms   
+#ifndef di
+     !$omp parallel do 
+     do i=1,np
+     
+        !! Log-conformation transform
+#ifdef lc    
+#ifdef dim3     
+        call log_conf_c_from_psi(psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i) &
+                                 ,cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i))     
+#else
+        call log_conf_c_from_psi(psixx(i),psixy(i),psiyy(i),psizz(i),cxx(i),cxy(i),cyy(i),czz(i))     
+#endif   
+#endif                              
+        !! Cholesky transform
+#ifdef chl        
+#ifdef dim3             
+        call cholesky_c_from_psi(psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i) &
+                                 ,cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i),fenep_l2)     
+#else
+        call cholesky_c_from_psi(psixx(i),psixy(i),psiyy(i),psizz(i),cxx(i),cxy(i),cyy(i),czz(i),fenep_l2)     
+#endif   
+#endif
+      
+     end do
+     !$omp end parallel do    
+#endif     
+   
 
      !! Obtain velocity from momentum for mirrors
      !$omp parallel do
@@ -141,7 +171,6 @@ contains
 !! ------------------------------------------------------------------------------------------------
 !! ------------------------------------------------------------------------------------------------
   subroutine hardcode_initial_conditions
-     use mat2lib
      !! Temporary routine to generate initial conditions from some hard-coded functions.
      integer(ikind) :: i,j,k,ispec
      real(rkind) :: x,y,z,tmp,tmpro,Rmix_local
@@ -181,65 +210,38 @@ contains
         cxz(i) = zero
         cyz(i) = zero
         czz(i) = one
-        
-#ifdef lc
-        !! Decompose c to get psi
-#ifdef dim3        
 
-        call eigens(cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i),Lvec,Rmat)
+        !! Log-conformation transform
+#ifdef lc    
+#ifdef dim3     
+        call log_conf_psi_from_c(cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i), &
+                                 psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i))     
 #else
-        call eigens(cxx(i),cxy(i),cyy(i),Lvec,Rmat)
-#endif
-        RTmat = transpose(Rmat)
-        
-        !! Take log of eigenvalues
-        Lmat = zero
-        Lmat(1,1) = log(Lvec(1))
-        Lmat(2,2) = log(Lvec(2))
-#ifdef dim3
-        Lmat(3,3) = log(Lvec(3))
-#endif        
-     
-        !! Recompose to get psi
-        psimat = matmul(Rmat,matmul(Lmat,RTmat))
-        
-        !! Pass back to arrays
-        psixx(i) = psimat(1,1)
-        psixy(i) = psimat(1,2)
-        psiyy(i) = psimat(2,2)
-#ifdef dim3
-        psixz(i) = psimat(1,3)
-        psiyz(i) = psimat(2,3)
-        psizz(i) = psimat(3,3)
-#endif        
-#else   
-        !! Cholesky decomposition...
-        psixx(i) = sqrt(cxx(i))
-        psixy(i) = cxy(i)/(psixx(i))
-        psiyy(i) = (sqrt(cyy(i)-psixy(i)**two))
+        call log_conf_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i))     
+#endif   
+#endif                              
+        !! Cholesky transform
 #ifdef chl        
-        !! For log-cholesky
-        psixx(i) = log(psixx(i))
-        psiyy(i) = log(psiyy(i))
-#endif        
-
-#endif        
+#ifdef dim3     
+        call cholesky_psi_from_c(cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i), &
+                                 psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i),fenep_l2)     
+#else
+        call cholesky_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
+#endif   
+#endif       
      end do
      !$OMP END PARALLEL DO
-     
 
-     !! Store initial conformation tensor for mirrors+halos (saves some comms)
-     !$omp parallel do 
+     !! Put mirrors in now (Why necessary???)         
      do i=npfb+1,np
-        cxx(i) = one !+ 128.0d0*Wi*Wi*rp(i,2)**two
-        cxy(i) = zero !- 8.0d0*Wi*rp(i,2)
+        cxx(i) = one !+ 128.0d0*Wi*Wi*y*y
+        cxy(i) = zero !- 8.0d0*Wi*y
         cyy(i) = one
         cxz(i) = zero
         cyz(i) = zero
-        czz(i) = one        
-     end do
-     !$omp end parallel do
-    
+        czz(i) = one
+     end do         
+         
      
      !! Values on boundaries
      if(nb.ne.0)then
@@ -261,7 +263,6 @@ contains
   end subroutine hardcode_initial_conditions  
 !! ------------------------------------------------------------------------------------------------
   subroutine load_restart_file
-     use mat2lib
      !! Load initial conditions from a dump file
      integer(ikind) :: k,i,j
      real(rkind) :: tmp,tmpro
@@ -311,60 +312,37 @@ contains
      read(14,*) eflow_nm1,sum_eflow,driving_force
      read(14,*) emax_np1,emax_n,emax_nm1,dt
      read(14,*) !! Skip line
- 
+      
      !! Load the initial conditions
      do i=1,npfb
 #ifdef dim3
-        read(14,*) tmpro,u(i),v(i),w(i),tmp,tmp,cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i)
+        read(14,*) tmpro,u(i),v(i),w(i),tmp,tmp,tmp,cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i)
 #else
-        read(14,*) tmpro,u(i),v(i),tmp,tmp,cxx(i),cxy(i),cyy(i)
-        cxz(i)=zero;cyz(i)=zero;czz(i)=one
+        read(14,*) tmpro,u(i),v(i),tmp,tmp,tmp,cxx(i),cxy(i),cyy(i),czz(i)
+        cxz(i)=zero;cyz(i)=zero
 #endif        
         ro(i) = tmpro
         
-         
-#ifdef lc
-        !! Decompose c to get psi
-#ifdef dim3        
-
-        call eigens(cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i),Lvec,Rmat)
+        !! Matrix conversions as required...
+        !! Log-conformation transform
+#ifdef lc    
+#ifdef dim3     
+        call log_conf_psi_from_c(cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i), &
+                                 psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i))     
 #else
-        call eigens(cxx(i),cxy(i),cyy(i),Lvec,Rmat)
-#endif
-        RTmat = transpose(Rmat)
-        
-        !! Exponentiate eigenvalues
-        Lmat = zero
-        Lmat(1,1) = log(Lvec(1))
-        Lmat(2,2) = log(Lvec(2))
-#ifdef dim3
-        Lmat(3,3) = log(Lvec(3))
-#endif        
-     
-        !! Recompose to get psi
-        psimat = matmul(Rmat,matmul(Lmat,RTmat))
-        
-        !! Pass back to arrays
-        psixx(i) = psimat(1,1)
-        psixy(i) = psimat(1,2)
-        psiyy(i) = psimat(2,2)
-#ifdef dim3
-        psixz(i) = psimat(1,3)
-        psiyz(i) = psimat(2,3)
-        psizz(i) = psimat(3,3)
-#endif        
-#else   
-        !! Cholesky decomposition...
-        psixx(i) = sqrt(cxx(i))
-        psixy(i) = cxy(i)/(psixx(i))
-        psiyy(i) = (sqrt(cyy(i)-psixy(i)**two))
-#ifdef chl
-        psixx(i) = log(psixx(i))
-        psiyy(i) = log(psiyy(i))
-#endif        
-#endif            
-        
-        
+        call log_conf_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i))     
+#endif   
+#endif                              
+        !! Cholesky transform
+#ifdef chl        
+#ifdef dim3     
+        call cholesky_psi_from_c(cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i), &
+                                 psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i),fenep_l2)     
+#else
+        call cholesky_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
+#endif   
+#endif         
+ 
         
      end do    
      
@@ -372,9 +350,7 @@ contains
        
      close(14)
      
-
-  
      return
-  end subroutine load_restart_file
-!! ------------------------------------------------------------------------------------------------
+  end subroutine load_restart_file 
+!! ------------------------------------------------------------------------------------------------  
 end module setup_flow

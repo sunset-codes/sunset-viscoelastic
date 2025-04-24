@@ -20,7 +20,7 @@ module common_vars
   real(rkind) :: Time_char  !! build from L_char,U_char
   real(rkind), dimension(ithree) :: grav !! Gravity    
   real(rkind) :: rho_char
-  real(rkind) :: dt_out,dt_out_stats !! Time interval between outputs  
+  real(rkind) :: dt_out,dt_out_stats,dt_out_tracers !! Time interval between outputs  
   real(rkind) :: Re,Wi,Ma,beta,Sc,epsPTT,fenep_l2
   real(rkind) :: csq
   
@@ -132,7 +132,7 @@ module common_vars
   integer(ikind),dimension(:),allocatable :: nhalo_LR,nhalo_UD,inhalo_LR,inhalo_UD  !! Halo sizes, outgoing, incoming
   integer(ikind),dimension(:),allocatable :: nhalo_FB,inhalo_FB
   integer(ikind),dimension(:),allocatable :: nrecstart  !! Indexing for halos
-  integer(ikind),dimension(:),allocatable :: halo_periodic
+  integer(ikind),dimension(:),allocatable :: halo_periodic,halo_owner
   
   
           

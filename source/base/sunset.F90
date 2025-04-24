@@ -26,7 +26,7 @@ program sunset
   use tracer_particles
   implicit none
 
-  integer(ikind) :: n_out,m_out
+  integer(ikind) :: n_out,m_out,o_out
   real(rkind) :: segment_tstart_main,segment_tend_main
 
 #ifdef mp  
@@ -40,7 +40,8 @@ program sunset
 
   !! Adapt the stencils by reducing h (only if not restarting)
 #ifndef restart  
-  call adapt_stencils
+!  call adapt_stencils
+  call grow_stencils
 #endif  
 
   !! Shrink the halos to fit, and finalise building the domain
@@ -64,14 +65,11 @@ program sunset
 
   !! Set initial fields
   call initial_solution
-#ifdef restart
-     call set_tstep
-     dt = half*half*min(dt_cfl,dt_parabolic)
-#endif   
 
   !! Initialise time profiling and output counter...
   n_out = 0;ts_start = omp_get_wtime()
   m_out = 0  ! Stats output counter
+  o_out = 0 ! tracers output counter
 
         
   !! MAIN TIME LOOP ---------------------------------------------------
@@ -103,6 +101,7 @@ program sunset
      call output_to_screen
 
      !! Call routines to evaluate global statistics and adjust forcing terms if desired
+     call tracer_output(o_out)
      call statistics_control(m_out)
     
   end do
