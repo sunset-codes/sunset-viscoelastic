@@ -100,13 +100,13 @@ program main
      np_end = np_ini + np 
      if(dim_flag.eq.1) then 
         do i=np_ini,np_end
-           read(ifi,*,end=400) xp(i),yp(i),zp(i),h(i),dummy_real,node_type(i)
+           read(ifi,*,end=400) dummy_int,xp(i),yp(i),zp(i),h(i),dummy_real,node_type(i)
            processor(i) = iproc
            npp=npp+1
         enddo
      else
         do i=np_ini,np_end
-           read(ifi,*,end=400) xp(i),yp(i),h(i),dummy_real,node_type(i)
+           read(ifi,*,end=400) dummy_int,xp(i),yp(i),h(i),dummy_real,node_type(i)
            processor(i) = iproc
            npp=npp+1
         enddo

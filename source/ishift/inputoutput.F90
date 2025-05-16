@@ -9,7 +9,7 @@ module inputoutput
   implicit none
 
   real(rkind),dimension(:),allocatable :: x,y,xn,yn,ds  !! Properties for post-shift tidying
-  integer(ikind),dimension(:),allocatable :: nt  
+  integer(ikind),dimension(:),allocatable :: nt,gi  
   
   integer(ikind),dimension(:),allocatable :: nband,effective_nband 
   integer(ikind),dimension(:),allocatable :: nblock,effective_nblock 
@@ -28,7 +28,7 @@ contains
    subroutine shift_only
      !! Reads in boundary patches
      use boundaries
-     integer(ikind) i,j,ii,jj,npfb_tmp,k
+     integer(ikind) i,j,ii,jj,npfb_tmp,k,dummy_int
      real(rkind) :: ns,dummy,prox,rad,radmin,dx,dy,smag
      real(rkind),dimension(ithree) :: rij
      real(rkind),dimension(:,:),allocatable :: tmp_vec
@@ -54,7 +54,7 @@ contains
     
      do i=1,npfb_tmp
         ii = ii + 1
-        read(13,*) rp(ii,1:2),jj,rnorm(ii,1:2),dummy
+        read(13,*) dummy_int,rp(ii,1:2),jj,rnorm(ii,1:2),dummy
         h(ii) = dummy*hovs_local
         s(ii) = dummy
         node_type(ii) = jj
@@ -108,9 +108,12 @@ contains
      write(13,*) nb,npfb-4*nb,smax
      write(13,*) xmin,xmax,ymin,ymax
      write(13,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U
+     ii=0
      do i=1,npfb
         if(node_type(i).ge.0) then
-           write(13,*) rp(i,1),rp(i,2),node_type(i),rnorm(i,1),rnorm(i,2),s(i)     
+           ii = ii+1
+           write(13,*) ii,rp(i,1),rp(i,2),node_type(i),rnorm(i,1),rnorm(i,2),s(i)     
+           if(node_type(i).ge.0.and.node_type(i).le.2) ii=ii+4 !! Augment global index if boundary node
         end if
      end do
      close(13)                        
@@ -237,6 +240,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
      allocate(rp(4*npfb,ithree),rnorm(4*npfb,ithree),h(4*npfb),s(4*npfb));rp=0.0d0;rnorm=0.0d0
      allocate(node_type(4*npfb));node_type=0
      allocate(fd_parent(2*npfb));fd_parent=0
+     allocate(global_index(4*npfb));global_index=0
           
      !! Load all nodes. Build FD stencils near boundaries on the fly.
      npfb_tmp = npfb
@@ -244,7 +248,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
     
      do i=1,npfb_tmp
         ii = ii + 1
-        read(13,*) rp(ii,1:2),jj,rnorm(ii,1:2),dummy
+        read(13,*) global_index(ii),rp(ii,1:2),jj,rnorm(ii,1:2),dummy
         h(ii) = dummy*hovs_local
         s(ii) = dummy
         node_type(ii) = jj
@@ -253,6 +257,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
            nb = nb + 1
            do j=1,4  !! Make 4 additional nodes
               ii = ii + 1
+              global_index(ii) = k+j !! Global_index for near-boundary nodes
               rp(ii,:) = rp(k,:) + rnorm(k,:)*dble(j)*s(k)   !! Moving along an FD stencil
               rnorm(ii,:)=rnorm(k,:)          !! Copy normals
               h(ii)=h(k);s(ii)=s(k)          !! length-scales
@@ -319,10 +324,10 @@ write(6,*) "Shifting iteration",ll,"of ",kk
      
      !! Write out slice  
      do i=1,n
-        write(212,*) x(i),y(i),nt(i),xn(i),yn(i),ds(i)
+        write(212,*) gi(i),x(i),y(i),nt(i),xn(i),yn(i),ds(i)
      end do
      
-     deallocate(x,y,xn,yn,ds,nt)
+     deallocate(x,y,xn,yn,ds,nt,gi)
  
      close(212)
      
@@ -337,7 +342,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
      !! Number of nodes without FD stencils
      n = npfb - 4*nb
   
-     allocate(x(n),y(n),xn(n),yn(n),ds(n),nt(n))
+     allocate(x(n),y(n),xn(n),yn(n),ds(n),nt(n),gi(n))
      
      j=0
      do i=1,npfb      !! Loop over all nodes
@@ -349,6 +354,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
            xn(j) = rnorm(i,1);yn(j) = rnorm(i,2)
            ds(j) = s(i)
            nt(j) = node_type(i)
+           gi(j) = global_index(i)
         end if
      end do
      
@@ -644,7 +650,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
   subroutine shift_indices(istart,iend,nswap)
      integer(ikind), intent(in) :: istart,iend,nswap 
      real(rkind),dimension(:),allocatable :: x_tmp,y_tmp,xn_tmp,yn_tmp,ds_tmp
-     integer(ikind),dimension(:),allocatable :: nt_tmp
+     integer(ikind),dimension(:),allocatable :: nt_tmp,gi_tmp
      integer(ikind) :: band_size,shift_size,i_old,i_new,i
      
      !! Sizes
@@ -654,7 +660,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
      
      !! Make some space
      allocate(x_tmp(nswap),y_tmp(nswap),xn_tmp(nswap),yn_tmp(nswap))
-     allocate(ds_tmp(nswap),nt_tmp(nswap))
+     allocate(ds_tmp(nswap),nt_tmp(nswap),gi_tmp(nswap))
      
      write(6,*) "shift indices", istart,iend,nswap
      !! Temporary store of the final nswap elements
@@ -663,7 +669,8 @@ write(6,*) "Shifting iteration",ll,"of ",kk
      xn_tmp(1:nswap) = xn(iend-nswap+1:iend)
      yn_tmp(1:nswap) = yn(iend-nswap+1:iend)
      ds_tmp(1:nswap) = ds(iend-nswap+1:iend)
-     nt_tmp(1:nswap) = nt(iend-nswap+1:iend)       
+     nt_tmp(1:nswap) = nt(iend-nswap+1:iend)
+     gi_tmp(1:nswap) = gi(iend-nswap+1:iend)                   
      
      
      !! Shift
@@ -678,7 +685,8 @@ write(6,*) "Shifting iteration",ll,"of ",kk
         xn(i_new) = xn(i_old)
         yn(i_new) = yn(i_old)
         ds(i_new) = ds(i_old)
-        nt(i_new) = nt(i_old)                                                
+        nt(i_new) = nt(i_old)    
+        gi(i_new) = gi(i_old)                                            
      end do
      
      !! Copy temp back to start of band
@@ -687,9 +695,10 @@ write(6,*) "Shifting iteration",ll,"of ",kk
      xn(istart:istart+nswap-1) = xn_tmp(1:nswap)
      yn(istart:istart+nswap-1) = yn_tmp(1:nswap)
      ds(istart:istart+nswap-1) = ds_tmp(1:nswap)
-     nt(istart:istart+nswap-1) = nt_tmp(1:nswap)                         
+     nt(istart:istart+nswap-1) = nt_tmp(1:nswap)
+     gi(istart:istart+nswap-1) = gi_tmp(1:nswap)                                                       
      
-     deallocate(x_tmp,y_tmp,xn_tmp,yn_tmp,ds_tmp,nt_tmp)
+     deallocate(x_tmp,y_tmp,xn_tmp,yn_tmp,ds_tmp,nt_tmp,gi_tmp)
      
      return
   end subroutine shift_indices
@@ -731,7 +740,8 @@ end subroutine quicksort
      tmp = xn(j);xn(j)=xn(i);xn(i)=tmp
      tmp = yn(j);yn(j)=yn(i);yn(i)=tmp
      tmp = ds(j);ds(j)=ds(i);ds(i)=tmp
-     itmp = nt(j);nt(j)=nt(i);nt(i)=itmp                    
+     itmp = nt(j);nt(j)=nt(i);nt(i)=itmp  
+     itmp = gi(j);gi(j)=gi(i);gi(i)=itmp                  
      return
   end subroutine swap_nodes
 !! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -772,7 +782,8 @@ end subroutine quicksorty
      tmp = xn(j);xn(j)=xn(i);xn(i)=tmp
      tmp = yn(j);yn(j)=yn(i);yn(i)=tmp
      tmp = ds(j);ds(j)=ds(i);ds(i)=tmp
-     itmp = nt(j);nt(j)=nt(i);nt(i)=itmp                        
+     itmp = nt(j);nt(j)=nt(i);nt(i)=itmp    
+     itmp = gi(j);gi(j)=gi(i);gi(i)=itmp                    
      return
   end subroutine swap_nodesy
 !! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

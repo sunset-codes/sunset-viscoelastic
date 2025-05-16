@@ -164,4 +164,7 @@ clean:
 	rm -vf ./data_out/grilli*
 	rm -vf ./data_out/*.tar.gz
 	rm -vf ./data_out/tracer*
+	rm -vf ./restart/fields*
+	rm -vf ./restart/nodes*
+	rm -vf ./restart/*.o
 

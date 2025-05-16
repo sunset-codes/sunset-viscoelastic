@@ -442,9 +442,9 @@ contains
      do i=1,np_out_local
         
 #ifdef dim3
-        write(20,*) rp(i,1),rp(i,2),rp(i,3),s(i),h(i),node_type(i)    
+        write(20,*) global_index(i),rp(i,1),rp(i,2),rp(i,3),s(i),h(i),node_type(i)    
 #else
-        write(20,*) rp(i,1),rp(i,2),s(i),h(i),node_type(i)
+        write(20,*) global_index(i),rp(i,1),rp(i,2),s(i),h(i),node_type(i)
 #endif
      end do
 

@@ -251,8 +251,8 @@ contains
     
      !! P, I and D factors..  
      facA = half*half*one!*two*four     !one  !! Larger facA increases the speed of the response
-     facB = facA/0.1d0 !0.1   !!
-     facC = facA*0.02d0 !0.02  !! Larger increases damping?!
+     facB = facA/0.4d0 !0.1   !!
+     facC = facA*0.08d0 !0.02  !! Larger increases damping?!
          
      driving_force(1) = facA*eflow_n + facB*sum_eflow + facC*deflowdt
      !! Impose some upper and lower limits

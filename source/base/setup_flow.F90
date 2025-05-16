@@ -264,7 +264,7 @@ contains
 !! ------------------------------------------------------------------------------------------------
   subroutine load_restart_file
      !! Load initial conditions from a dump file
-     integer(ikind) :: k,i,j
+     integer(ikind) :: k,i,j,dummy_int
      real(rkind) :: tmp,tmpro
      character(70) :: fname,fname2  
      real(rkind),dimension(dims,dims) :: Rmat,RTmat,Lmat,psimat
@@ -283,14 +283,19 @@ contains
      !! Load the "smoothing length" from nodes file
      open(15,file=fname2)
      read(15,*) k
-     if(k.ne.npfb) write(6,*) "WARNING, expecting problem in restart. NODES FILE."
+     if(k.ne.npfb) write(6,*) "WARNING, expecting problem in restart. NODES FILE.",k,npfb
      !! Load the initial conditions
      do i=1,npfb
 #ifdef dim3
-        read(15,*) tmp,tmp,tmp,tmp,h(i),k
+        read(15,*) dummy_int,tmp,tmp,tmp,tmp,h(i),k
 #else
-        read(15,*) tmp,tmp,tmp,h(i),k
+        read(15,*) dummy_int,tmp,tmp,tmp,h(i),k
 #endif        
+        if(dummy_int.ne.global_index(i)) then
+           write(6,*) "ERROR: global index mismatch.",dummy_int,global_index(i)
+           write(6,*)
+           stop
+        end if
         if(k.ne.node_type(i)) then
            write(6,*) "ERROR: Problem in restart file. STOPPING."
 #ifdef mp
@@ -307,7 +312,7 @@ contains
      open(14,file=fname)
      read(14,*) !! skip line
      read(14,*) k
-     if(k.ne.npfb) write(6,*) "WARNING, expecting problem in restart. FIELDS FILE."
+     if(k.ne.npfb) write(6,*) "WARNING, expecting problem in restart. FIELDS FILE.",k,npfb
      !! load PID controller variables
      read(14,*) eflow_nm1,sum_eflow,driving_force
      read(14,*) emax_np1,emax_n,emax_nm1,dt
@@ -322,6 +327,13 @@ contains
         cxz(i)=zero;cyz(i)=zero
 #endif        
         ro(i) = tmpro
+ 
+        !! Add the pressure gradient back in if required
+#ifdef pgrad
+        ro(i) = tmpro - Ma*Ma*( (grav(1)+driving_force(1))*rp(i,1) &
+                                  +(grav(2)+driving_force(2))*rp(i,2) &
+                                  +(grav(3)+driving_force(3))*rp(i,3))
+#endif            
         
         !! Matrix conversions as required...
         !! Log-conformation transform

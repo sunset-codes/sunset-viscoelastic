@@ -444,11 +444,14 @@ contains
         !! Re-normalise errors for Cholesky-FENE-P, to account for possibility that f(r)*c_{ij}-->infty
 #ifdef chl
 #ifdef fenep
-        fr = (fenep_l2-two)/(fenep_l2-cxx(i)-cyy(i))
+#ifdef limtr
+        fr = (fenep_l2-three)/(fenep_l2-cxx(i)-cyy(i)-czz(i))
         fr = one/sqrt(fr)
         enrm_xx = enrm_xx*fr
         enrm_xy = enrm_xy*fr
         enrm_yy = enrm_yy*fr                
+        enrm_zz = enrm_zz*fr
+#endif        
 #endif
 #endif        
         

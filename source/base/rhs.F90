@@ -1273,7 +1273,9 @@ contains
      call calc_filtered_var(psixx)
      call calc_filtered_var(psixy)
      call calc_filtered_var(psiyy)     
+#ifdef fenep          
      call calc_filtered_var(psizz)                
+#endif     
 #ifdef chl
 #ifdef limtr
 !     !! Convert back to Cholesky components of fr*c_{ij}
@@ -1289,6 +1291,9 @@ contains
     
           
 #ifdef dim3
+#ifndef fenep
+     call calc_filtered_var(psizz)                
+#endif
      call calc_filtered_var(psixz)
      call calc_filtered_var(psiyz)
 #endif     

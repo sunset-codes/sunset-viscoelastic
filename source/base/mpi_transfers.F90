@@ -316,13 +316,13 @@ contains
      end if   
 
 
-     write(6,*) "new lists-S-LR",iproc,iproc_S_LR(:)
+!     write(6,*) "new lists-S-LR",iproc,iproc_S_LR(:)
      call MPI_BARRIER( MPI_COMM_WORLD, ierror)          
-     write(6,*) "new lists-R-LR",iproc,iproc_R_LR(:)     
+!     write(6,*) "new lists-R-LR",iproc,iproc_R_LR(:)     
      call MPI_BARRIER( MPI_COMM_WORLD, ierror)          
-     write(6,*) "new lists-S-UD",iproc,iproc_S_UD(:)
+!     write(6,*) "new lists-S-UD",iproc,iproc_S_UD(:)
      call MPI_BARRIER( MPI_COMM_WORLD, ierror)          
-     write(6,*) "new lists-R-UD",iproc,iproc_R_UD(:)     
+!     write(6,*) "new lists-R-UD",iproc,iproc_R_UD(:)     
      call MPI_BARRIER( MPI_COMM_WORLD, ierror)     
        
      
@@ -921,7 +921,7 @@ contains
               do i=1,nhalo_UD(k)
                  if(halo_essential(i).eq.1) nhalo_new = nhalo_new + 1
               end do
-              write(6,*) iproc,"Reduced halo_UD",k," from",nhalo_UD(k),"to",nhalo_new              
+!              write(6,*) iproc,"Reduced halo_UD",k," from",nhalo_UD(k),"to",nhalo_new              
               
               !! Build the new halo lists...
               allocate(halo_list_tmp(nhalo_new))
@@ -950,7 +950,7 @@ contains
               do i=1,nhalo_UD(k)
                  if(halo_essential(i).eq.1) nhalo_new = nhalo_new + 1
               end do
-              write(6,*) iproc,"Reduced halo_UD",k," from",nhalo_UD(k),"to",nhalo_new              
+!              write(6,*) iproc,"Reduced halo_UD",k," from",nhalo_UD(k),"to",nhalo_new              
               
               !! Build the new halo lists...
               allocate(halo_list_tmp(nhalo_new))
@@ -1006,7 +1006,7 @@ contains
               do i=1,nhalo_LR(k)
                  if(halo_essential(i).eq.1) nhalo_new = nhalo_new + 1
               end do
-              write(6,*) iproc,"Reduced halo_LR",k," from",nhalo_LR(k),"to",nhalo_new              
+!              write(6,*) iproc,"Reduced halo_LR",k," from",nhalo_LR(k),"to",nhalo_new              
               
               !! Build the new halo lists...
               allocate(halo_list_tmp(nhalo_new))
@@ -1035,7 +1035,7 @@ contains
               do i=1,nhalo_LR(k)
                  if(halo_essential(i).eq.1) nhalo_new = nhalo_new + 1
               end do
-              write(6,*) iproc,"Reduced halo_LR",k," from",nhalo_LR(k),"to",nhalo_new              
+!              write(6,*) iproc,"Reduced halo_LR",k," from",nhalo_LR(k),"to",nhalo_new              
               
               !! Build the new halo lists...
               allocate(halo_list_tmp(nhalo_new))
@@ -1107,8 +1107,8 @@ contains
      
      end do        
 
-     write(6,*) iproc,"UD-out",nhalo_UD(:)
-     write(6,*) iproc,"UD-in",inhalo_UD(:)
+!     write(6,*) iproc,"UD-out",nhalo_UD(:)
+!     write(6,*) iproc,"UD-in",inhalo_UD(:)
     
 
      !! LEFT-RIGHT
@@ -1129,8 +1129,8 @@ contains
      end do        
      
             
-     write(6,*) iproc,"LR-out",nhalo_LR(:)
-     write(6,*) iproc,"LR-in",inhalo_LR(:)
+!     write(6,*) iproc,"LR-out",nhalo_LR(:)
+!     write(6,*) iproc,"LR-in",inhalo_LR(:)
      
      !! FORWARD-BACK
      do k=1,2
@@ -1148,8 +1148,8 @@ contains
         end if
      end do
      
-     write(6,*) iproc,"FB-out",nhalo_FB(:)
-     write(6,*) iproc,"FB-in",inhalo_FB(:)
+!     write(6,*) iproc,"FB-out",nhalo_FB(:)
+!     write(6,*) iproc,"FB-in",inhalo_FB(:)
      
      
      !! Mark out any send & receive processors if halo has zero size

@@ -146,6 +146,7 @@ contains
      allocate(rp(nm*npfb,ithree),rnorm(nm*npfb,ithree),h(nm*npfb),s(nm*npfb));rp=zero;rnorm=zero
      allocate(node_type(nm*npfb));node_type=0
      allocate(fd_parent(nm*npfb));fd_parent=0
+     allocate(global_index(nm*npfb));global_index=0
      allocate(halo_periodic(nm*npfb));halo_periodic=0
      allocate(halo_owner(nm*npfb));halo_owner=-1
          
@@ -156,13 +157,13 @@ contains
      !! Skip particles left or below this block
      if(nl_ini.ne.1) then 
         do i=1,nl_ini-1
-           read(13,*) dummy,dummy,jj,dummy,dummy,dummy
+           read(13,*) dummy_int,dummy,dummy,jj,dummy,dummy,dummy
         end do
      end if
 #endif     
      do i=nl_ini,nl_end
         ii = ii + 1
-        read(13,*) rp(ii,1),rp(ii,2),jj,rnorm(ii,1),rnorm(ii,2),dummy
+        read(13,*) global_index(ii),rp(ii,1),rp(ii,2),jj,rnorm(ii,1),rnorm(ii,2),dummy
         h(ii) = dummy*hovs
         s(ii) = dummy
         node_type(ii) = jj
@@ -172,6 +173,7 @@ contains
            nb = nb + 1
            do j=1,4  !! Make 4 additional nodes
               ii = ii + 1
+              global_index(ii) = global_index(k) + j
               rp(ii,:) = rp(k,:) + rnorm(k,:)*dble(j)*s(k)   !! Moving along an FD stencil
               rnorm(ii,:)=rnorm(k,:)          !! Copy normals
               h(ii)=h(k);s(ii)=s(k)          !! length-scales
@@ -367,7 +369,7 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
      real(rkind) :: dz_local,L_domain_z_dimensionless
      real(rkind),dimension(:,:),allocatable :: rptmp,rnormtmp
      real(rkind),dimension(:),allocatable :: htmp,stmp
-     integer(ikind),dimension(:),allocatable :: node_typetmp,fd_parenttmp
+     integer(ikind),dimension(:),allocatable :: node_typetmp,fd_parenttmp,gi_tmp
      
      !! Set z spacing to match mean of x-y spacing.
      dz_local = zero
@@ -402,7 +404,7 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
      
      !! Temporary arrays
      allocate(rptmp(npfb,ithree),rnormtmp(npfb,ithree),htmp(npfb),stmp(npfb))
-     allocate(node_typetmp(npfb),fd_parenttmp(npfb))
+     allocate(node_typetmp(npfb),fd_parenttmp(npfb),gi_tmp(npfb))
      !$omp parallel do
      do i=1,npfb
         rptmp(i,:) = rp(i,:)
@@ -411,6 +413,7 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
         stmp(i) = s(i)
         node_typetmp(i) = node_type(i)
         fd_parenttmp(i) = fd_parent(i)
+        gi_tmp(i) = global_index(i)
      end do
      !$omp end parallel do
 
@@ -422,12 +425,13 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
      
      !! Deallocate and reallocate arrays
      nm = 10
-     deallocate(rp,rnorm,h,s,node_type,fd_parent)
+     deallocate(rp,rnorm,h,s,node_type,fd_parent,global_index)
      allocate(rp(nm*npfb,ithree),rnorm(nm*npfb,ithree),h(nm*npfb),s(nm*npfb));rp=zero
      allocate(node_type(nm*npfb));node_type=0
      allocate(fd_parent(nm*npfb));fd_parent=0
      allocate(zlayer_index_global(nm*npfb))
      allocate(ilayer_index(nm*npfb));ilayer_index=0
+     allocate(global_index(npfb));global_index=0
      
      !! Build layers
      k=0
@@ -444,12 +448,13 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
            zlayer_index_global(k) = iz + iprocZ*nz  !! z-layer within global stack
            ilayer_index(k) = i                      !! index within layer
            rp(k,3) = dble(iz + iprocZ*nz - 1)*dz
+           global_index(k) = gi_tmp(i) + (iz-1)*npfb_layer_global
         end do
      end do
         
         
      !! Deallocate temporary arrays
-     deallocate(rptmp,rnormtmp,htmp,stmp,fd_parenttmp,node_typetmp)    
+     deallocate(rptmp,rnormtmp,htmp,stmp,fd_parenttmp,node_typetmp,gi_tmp)    
      
   
      return

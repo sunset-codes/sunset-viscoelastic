@@ -54,12 +54,12 @@ program datgen
 !! ------------------------------------------------------------------------------------------------
   case(2) !! Cylinder in a doubly-periodic box
  
-     SovD = 1.5d0!sqrt(pi/2.0d0)
+     SovD = 2.0d0!sqrt(pi/2.0d0)
      D_cyl = 1.0d0
      h0=D_cyl/2.0d0      !cylinder radius
      yl=SovD*D_cyl ! box height
      xl=SovD*D_cyl ! channel length
-     dx0=D_cyl/300.0       !75
+     dx0=D_cyl/100.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -79,8 +79,9 @@ program datgen
         blob_coeffs(i,1) = h0;blob_rotation(i) = 0.0d0
      end do
 
-     dxmin = dx0/1.66667d0 !!2.0d0
-     dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     !! dx0/2.0d0, 1.5d0*dx0
+     dxmin = dx0/2.0d0 !!2.0d0
+     dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin      
 !! ------------------------------------------------------------------------------------------------
   case(3) !! Kolmogorov flow
@@ -227,13 +228,13 @@ case(7) !! Grilli cylinders
 !! ------------------------------------------------------------------------------------------------
 case(8) !! Minimal unit cell of isometric cylinder array
 
-     SovD = 1.5d0!sqrt(pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
+     SovD = sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
      D_cyl = 1.0d0!/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=S_cyl ! box height
      xl=sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/60.0d0!499.50
+     dx0=D_cyl/300.0d0!499.50
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -260,7 +261,7 @@ case(8) !! Minimal unit cell of isometric cylinder array
 
 
 
-     dxmin = dx0/1.6d0
+     dxmin = dx0/1.3333d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin              
 !! ------------------------------------------------------------------------------------------------
@@ -515,14 +516,14 @@ end select
   
   !!
   open(13,file='./IPART')
-  write(13,*) nb,npfb,dx0
+  write(13,*) nb,npfb,maxval(dxp(1:npfb))
   write(13,*) xb_min,xb_max,yb_min,yb_max
   write(13,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U
   do i=1,npfb
      if(node_type(i).ge.0.and.node_type(i).le.2) then
-        write(13,*) xp(i), yp(i),node_type(i),xnorm(i),ynorm(i),dxp(i)
+        write(13,*) i,xp(i), yp(i),node_type(i),xnorm(i),ynorm(i),dxp(i)
      else
-        write(13,*) xp(i), yp(i),999,0.0d0,0.0d0,dxp(i)
+        write(13,*) i,xp(i), yp(i),999,0.0d0,0.0d0,dxp(i)
      end if
   end do
   close(13)
@@ -689,6 +690,22 @@ end subroutine quicksort
      d2b_local = bdist
 
 
+     if(itest.eq.2) then
+        xhat = x - blob_centre(1,1)
+        yhat = y - blob_centre(1,2)
+     
+        if(abs(yhat).le.0.6) then
+           temp = 1.0 - abs(yhat)/0.6d0
+           d2b_local = d2b_local*(1.0d0 - 0.5d0*temp**2.0d0)
+        end if
+     
+!        temp = sqrt(xhat**2.0d0 + yhat**2.0d0)
+!        tmp2 = acos(xhat/temp)
+!        dxio = dx_in*(1.0d0 + 1.0*(abs(yhat)/temp)**2.0d0)
+     
+     end if
+
+
      if(itest.eq.6) then
         xhat = x - blob_centre(1,1)
         yhat = y - blob_centre(1,2)
@@ -754,6 +771,7 @@ end subroutine quicksort
      else     !! Far out: set to dxio
         dx_local = dxio
      end if  
+
 
 
       
