@@ -11,54 +11,27 @@ program redecomp
    implicit none
    integer :: nb,npfb,dummy_int,N0,N1,i,ii,j,k,Nout,globind,locind
    integer :: nprocsX,nprocsY,nprocsZ,iproc,iflag
-   double precision,dimension(:),allocatable :: x,y,xn,yn,s,h
+   double precision,dimension(:),allocatable :: x,y,xn,yn,s,h,z
    double precision :: dummy,xmax,xmin,ymax,ymin,hh
    integer,dimension(:),allocatable :: istart,iend,node_type,gi,li,npfb_local
    character(70) :: fname,fname2,tarcom
    double precision :: eflow_nm1,sum_eflow,driving_force(3)
-   double precision :: emax_np1,emax_n,emax_nm1,dt   
+   double precision :: emax_np1,emax_n,emax_nm1,dt,ztmp
    
    !! Fluid properties::
    double precision,dimension(:),allocatable :: ro,u,v,w,cxx,cxy,cyy,cxz,cyz,czz
 
    write(6,*) "What number output would you like to use?"
    read(5,*) Nout  
-   write(6,*) "Keep same number of processors? 1=YES"
-   read(5,*) iflag
-   if(iflag.eq.1) then
-      call system('cp ../data_out/nodes* .')         
-      if( Nout .lt. 10 ) then 
-           write(tarcom,'(A17,I1,A2)') 'cp ../data_out/*_',nout,' .'
-      else if( Nout .lt. 100 ) then 
-           write(tarcom,'(A17,I2,A2)') 'cp ../data_out/*_',nout,' .'
-      else if( Nout .lt. 1000 ) then
-           write(tarcom,'(A17,I3,A2)') 'cp ../data_out/*_',nout,' .'
-      else
-           write(tarcom,'(A17,I4,A2)') 'cp ../data_out/*_',nout,' .'
-      end if    
-      call system(tarcom)   
-      call system('sh fnm_strip.sh')
-      if( Nout .lt. 10 ) then 
-         call system('sh fnm_strip.sh')
-      else if( Nout .lt. 100 ) then 
-         call system('sh fnm_strip.sh')
-         call system('sh fnm_strip.sh')         
-      else if( Nout .lt. 1000 ) then
-         call system('sh fnm_strip.sh')
-         call system('sh fnm_strip.sh')
-         call system('sh fnm_strip.sh')                          
-      else
-         call system('sh fnm_strip.sh')
-         call system('sh fnm_strip.sh')
-         call system('sh fnm_strip.sh')                          
-         call system('sh fnm_strip.sh')                          
-      end if    
-   
-      stop
-   end if
+
    write(6,*) "How many processors was the previous simulation using?"
    read(5,*) N0
   
+   !! Load time.out, and check how many species fields we need, and how many processors we're reading from
+   open(unit=60,file='../data_out/time.out')
+   read(60,*) dummy,dummy_int,dummy_int,dummy_int,N0 
+   close(60)
+    
    
    !! Load IPART
    open(unit=70,file='../IPART',status='old')   
@@ -81,7 +54,7 @@ program redecomp
    end do
 
    !! Allocate space
-   allocate(x(npfb),y(npfb),h(npfb),s(npfb),xn(npfb),yn(npfb),node_type(npfb),gi(npfb))
+   allocate(x(npfb),y(npfb),z(npfb),h(npfb),s(npfb),xn(npfb),yn(npfb),node_type(npfb),gi(npfb))
    allocate(ro(npfb),u(npfb),v(npfb),w(npfb),cxx(npfb),cxy(npfb),cyy(npfb),cxz(npfb),cyz(npfb),czz(npfb))
    
    
@@ -160,7 +133,7 @@ program redecomp
 #ifndef dim3      
          read(80,*) globind,dummy,dummy,dummy,hh,dummy_int
 #else
-         read(80,*) globind,dummy,dummy,dummy,dummy,hh,dummy_int
+         read(80,*) globind,dummy,dummy,ztmp,dummy,hh,dummy_int
 #endif      
          !! What is the local index?
          locind = li(globind)
@@ -171,6 +144,7 @@ program redecomp
 #ifndef dim3
          read(90,*) ro(j),u(j),v(j),dummy,dummy,dummy,cxx(j),cxy(j),cyy(j),czz(j)        
 #else
+         z(j) = ztmp
          read(90,*) ro(j),u(j),v(j),w(j),dummy,dummy,dummy,cxx(j),cxy(j),cyy(j),cxz(j),cyz(j),czz(j)        
 #endif         
       end do         
@@ -201,13 +175,23 @@ program redecomp
    
       do i=istart(iproc),iend(iproc)
          ii=ii+1
+#ifndef dim3         
          write(80,*) gi(ii),x(ii),y(ii),s(ii),h(ii),node_type(ii)
          write(90,*) ro(ii),u(ii),v(ii),dummy,dummy,dummy,cxx(ii),cxy(ii),cyy(ii),czz(ii)                 
+#else
+         write(80,*) gi(ii),x(ii),y(ii),z(ii),s(ii),h(ii),node_type(ii)
+         write(90,*) ro(ii),u(ii),v(ii),w(i),dummy,dummy,dummy,cxx(ii),cxy(ii),cyy(ii),cxz(ii),cyz(ii),czz(ii)                 
+#endif         
          if(node_type(ii).ge.0.and.node_type(ii).le.2) then
             do j=1,4
                ii=ii+1
+#ifndef dim3
                write(80,*) gi(ii),x(ii),y(ii),s(ii),h(ii),node_type(ii)
                write(90,*) ro(ii),u(ii),v(ii),dummy,dummy,dummy,cxx(ii),cxy(ii),cyy(ii),czz(ii)                                
+#else
+               write(80,*) gi(ii),x(ii),y(ii),z(ii),s(ii),h(ii),node_type(ii)
+               write(90,*) ro(ii),u(ii),v(ii),w(ii),dummy,dummy,dummy,cxx(ii),cxy(ii),cyy(ii),cxz(ii),cyz(ii),czz(ii)                                
+#endif               
             end do
          end if
       
