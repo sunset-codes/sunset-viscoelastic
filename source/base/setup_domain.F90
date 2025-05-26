@@ -42,9 +42,9 @@ contains
      !$omp parallel  
      n_threads=omp_get_num_threads()
      !$omp end parallel
-     n_threads=1
-     call omp_set_num_threads(n_threads)
-     write(6,*) "nprocs,iproc,n_threads:",nprocs,iproc,n_threads  
+     n_threads = 1
+     call omp_set_num_threads(n_threads)  !! Hard-coded to single-threads if using MPI
+!     write(6,*) "nprocs,iproc,n_threads:",nprocs,iproc,n_threads  
 #else  
      !$omp parallel
      n_threads = omp_get_num_threads()
@@ -176,12 +176,13 @@ contains
               global_index(ii) = global_index(k) + j
               rp(ii,:) = rp(k,:) + rnorm(k,:)*dble(j)*s(k)   !! Moving along an FD stencil
               rnorm(ii,:)=rnorm(k,:)          !! Copy normals
-              h(ii)=h(k);s(ii)=s(k)          !! length-scales
+              h(ii)=h(k);s(ii)=s(k)  !! length-scales
               node_type(ii) = -j           !! and node type
               fd_parent(ii) = k            !! and lineage
               npfb = npfb + 1           
            end do
         end if
+
      end do
 
 
@@ -201,9 +202,9 @@ contains
 !write(6,*) "iproc",iproc,"YU,YD",YU_thisproc,YD_thisproc
      
     
-     write(6,*) "process",iproc,"npfb,nb",npfb,nb
+!     write(6,*) "process",iproc,"npfb,nb",npfb,nb
      call MPI_BARRIER( MPI_COMM_WORLD, ierror)     
-     write(6,*) iproc,nb,npfb     
+!     write(6,*) iproc,nb,npfb     
 #else
      write(6,*) nb,npfb     
 #endif     
@@ -248,7 +249,7 @@ contains
      allocate(internal_list(npfb-nb));internal_list=0    
      ii=0;jj=0
      do i=1,npfb
-        if(node_type(i).lt.0.or.node_type(i).eq.999) then
+        if(node_type(i).lt.0.or.node_type(i).eq.999.or.node_type(i).eq.998) then
            ii=ii+1
            internal_list(ii) = i
         else
@@ -278,6 +279,7 @@ contains
      
      !! Find neighbours (ready for stencil adaptation)
      call find_neighbours     
+     call order_neighbours
      
               
      !! Flag for outflow error scaling: if the resolution at the outflow is the smallest resolution, then
@@ -317,7 +319,7 @@ contains
 #endif
      !! Shrink arrays to fit number of nodes
      call reduce_arrays
-
+     
      deallocate(ij_link,ij_count)
    
 #ifdef mp     
@@ -356,8 +358,7 @@ contains
 !     call MPI_BARRIER( MPI_COMM_WORLD, ierror)     
 !     call MPI_Abort(MPI_COMM_WORLD, ii, ierror)
                            
-write(6,*) "sizes",iproc,npfb,np_nohalo,np   
-
+!write(6,*) "sizes",iproc,npfb,np_nohalo,np   
      call initialise_tracer_particles   
      call initialise_flux_points           
                  
@@ -386,6 +387,7 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
      dz = dz_local/dble(npfb)
 #endif     
 
+
      !! Set the dimensionless extent of the z-domain
      L_domain_z_dimensionless = L_domain_z/L_char
 
@@ -400,7 +402,7 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
         dz = L_domain_z_dimensionless/dble(ij_count_fd/2 + 2)
      end if
      
-     write(6,*) "iproc",iproc,"Z-domain number and spacing",nz_global,dz
+!     write(6,*) "iproc",iproc,"Z-domain number and spacing",nz_global,dz
      
      !! Temporary arrays
      allocate(rptmp(npfb,ithree),rnormtmp(npfb,ithree),htmp(npfb),stmp(npfb))
@@ -413,7 +415,7 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
         stmp(i) = s(i)
         node_typetmp(i) = node_type(i)
         fd_parenttmp(i) = fd_parent(i)
-        gi_tmp(i) = global_index(i)
+        gi_tmp(i) = global_index(i)        
      end do
      !$omp end parallel do
 
@@ -431,7 +433,7 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
      allocate(fd_parent(nm*npfb));fd_parent=0
      allocate(zlayer_index_global(nm*npfb))
      allocate(ilayer_index(nm*npfb));ilayer_index=0
-     allocate(global_index(npfb));global_index=0
+     allocate(global_index(npfb));global_index=0     
      
      !! Build layers
      k=0
@@ -448,7 +450,7 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
            zlayer_index_global(k) = iz + iprocZ*nz  !! z-layer within global stack
            ilayer_index(k) = i                      !! index within layer
            rp(k,3) = dble(iz + iprocZ*nz - 1)*dz
-           global_index(k) = gi_tmp(i) + (iz-1)*npfb_layer_global
+           global_index(k) = gi_tmp(i) + (iz-1)*npfb_layer_global           
         end do
      end do
         
@@ -490,7 +492,7 @@ write(6,*) "sizes",iproc,npfb,np_nohalo,np
      !! Copy h
      tmp_array_real(1:newsize)=h(1:newsize)
      deallocate(h);allocate(h(newsize))
-     h = tmp_array_real
+     h = tmp_array_real  
      
      !! Copy fd_parent
      tmp_array_int(1:newsize)=fd_parent(1:newsize)

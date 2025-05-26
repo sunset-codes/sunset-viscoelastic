@@ -25,7 +25,6 @@ module labf
   private
   public calc_labf_weights,adapt_stencils,calc_boundary_weights,calc_labf_sums, &
          filter_coefficients,grow_stencils
-  integer(ikind) :: nsize_large         
 
 !! Choice of ABF type:: 1=original, 2=Hermite polynomials, 3=Legendre polynomials
 !! ABFs 2 and 3 are multiplied by an RBF (Wab(qq) set in sphtools).
@@ -35,7 +34,7 @@ contains
   subroutine calc_labf_weights
      integer(ikind) :: i,j,k,ii
      real(rkind) :: rad,qq,x,y,xx,yy,xs,ys
-     real(rkind),dimension(dims) :: rij
+     real(rkind),dimension(2) :: rij
 
      !! Linear system to find ABF coefficients
      real(rkind),dimension(:,:),allocatable :: amatx,amaty,amatxx,amatxy,amatyy,amathyp
@@ -44,19 +43,18 @@ contains
      real(rkind) :: ff1,hh,testing
 
 
-     !! Set desired order::
-#if order==4
+     !! Set desired order of the filter (morder.ge.morder)
+#if morder==4
      k=4
-#elif order==6
+#elif morder==6
      k=6
-#elif order==8
+#elif morder==8
      k=8
-#elif order==10
+#elif morder==10
      k=10
 #endif
-     nsizeG=(k*k+3*k)/2   !!  5,9,14,20,27,35,44... for k=2,3,4,5,6,7,8...
-     nsize_large = nsizeG
-     
+     nsizeG=(k*k+3*k)/2   !!  5,9,14,20,27,35,44... for k=2,3,4,5,6,7,8...     
+          
      !! Reduce nplink now, to avoid allocating more memory than necessary
      nplink = maxval(ij_count(1:npfb))
 
@@ -70,14 +68,17 @@ contains
      allocate(bvecx(nsizeG),bvecy(nsizeG),bvecxx(nsizeG),bvecxy(nsizeG),bvecyy(nsizeG),bvechyp(nsizeG))
      allocate(gvec(nsizeG),xvec(nsizeG));gvec=zero;xvec=zero
 
-     !$OMP PARALLEL DO PRIVATE(i,nsize,amatx,k,j,rij,rad,qq,x,y,xx,yy, &
-     !$OMP ff1,gvec,xvec,i1,i2,amatxx,amaty,amatxy,amatyy,bvecx,bvecy,bvecxx,bvecxy,hh, &
-     !$OMP amathyp,bvechyp,bvecyy)
+     !! Loop over all internal particles and build weights
      do ii=1,npfb-nb
         i=internal_list(ii) 
+!        if(node_type(i).eq.-1) cycle !! Skip the first row, as this is done by 1D structure
+!        if(node_type(i).eq.-2) cycle !! Skip the second row, as this is done by 1D structure
         nsize = nsizeG
         amatx=zero
-        hh=h(i)
+        hh=h(i)  
+       
+        !! Build matrices
+        amatx = zero
         do k=1,ij_count(i)
            j = ij_link(k,i) 
            rij(:) = rp(i,1:2) - rp(j,1:2)
@@ -96,8 +97,8 @@ contains
            ff1 = Wab(qq)
            xx=x/hh/ss;yy=y/hh/ss  !! Legendre
 #elif ABF==4
-          ff1=Wab(qq)
-          xx=pi*x/hh/ss;yy=pi*y/hh/ss
+           ff1 = Wab(qq)
+           xx=pi*x/hh/ss;yy=pi*y/hh/ss !! Fourier
 #endif    
 
            !! Populate the ABF array
@@ -108,14 +109,14 @@ contains
            xvec(1:nsizeG) = monomials(x/hh,y/hh)
 
            !! Build the LHS - it is the same for all three operators
-           do i1=1,nsize
-              amaty(i1,:) = xvec(i1)*gvec(:)   !! Contribution to LHS for this interaction
+           do i1=1,nsizeG
+              amaty(i1,:) = xvec(i1)*gvec(1:nsizeG)   !! Contribution to LHS for this interaction
            end do           
            amatx(:,:) = amatx(:,:) + amaty(:,:)   
         end do   
 
         !! for rows 1,2,3 & 4, drop to 6th order
-#if order>=7
+#if morder>=7
         if(node_type(i).eq.998.or.node_type(i).lt.0)then 
            do i1=1,nsizeG
               amatx(i1,28:nsizeG)=zero        
@@ -125,34 +126,29 @@ contains
               amatx(i1,i1)=one
            end do
         end if 
-#endif
-         
-      
-        !! Copy LHS for hyperviscosity
-        amathyp = amatx
-
-        !! for rows 1 & 2, drop gradients and laplacian to 4th order
-#if order>=5              
-        if(node_type(i).eq.-1.or.node_type(i).eq.-2) then 
-            do i1=1,nsizeG
+#endif       
+#if morder>=5
+        if(node_type(i).eq.-1.or.node_type(i).eq.-2)then 
+           do i1=1,nsizeG
               amatx(i1,15:nsizeG)=zero        
            end do
            do i1=15,nsizeG
               amatx(i1,1:nsizeG)=zero
               amatx(i1,i1)=one
            end do
-        end if     
+        end if 
 #endif        
-
+          
         !! Copy remaining LHSs
+        amathyp = amatx
         amaty = amatx;amatxx=amatx;amatxy=amatx;amatyy=amatx 
      
         !! Build RHS for ddx and ddy
         bvecx = zero;bvecx(1) = one
         bvecy = zero;bvecy(2) = one  
     
-        !! Solve system for ddy coefficients
-        i1=0;i2=0         
+        !! Solve system for ddx coefficients
+        i1=0;i2=0;nsize=nsizeG
         call svd_solve(amatx,nsize,bvecx)               
         
         !! Solve system for ddy coefficients
@@ -176,52 +172,38 @@ contains
         i1=0;i2=0;nsize=nsizeG
         call svd_solve(amatyy,nsize,bvecyy)               
 
-        !! Solve system for Hyperviscosity (regular viscosity if order<4)
-#if order<=5
+        !! Solve system for Hyperviscosity
+#if morder<=5
         bvechyp(:)=zero;bvechyp(10)=-one;bvechyp(12)=-two;bvechyp(14)=-one
-        i1=0;i2=0;nsize=nsizeG 
-#elif order<=7
+#elif morder<=7
         bvechyp(:)=zero;bvechyp(21)=one;bvechyp(23)=3.0d0;bvechyp(25)=3.0d0;bvechyp(27)=one
-        i1=0;i2=0;nsize=nsizeG 
-#elif order<=9
+#elif morder<=9
         bvechyp(:)=zero;bvechyp(36)=-one;bvechyp(38)=-4.0d0;bvechyp(40)=-6.0d0;bvechyp(42)=-4.0d0;bvechyp(44)=-one
-        i1=0;i2=0;nsize=nsizeG    
-#elif order<=11      
+#elif morder<=11      
         bvechyp(:)=zero;bvechyp(55)=one;bvechyp(57)=5.0d0;bvechyp(59)=10.0d0;bvechyp(61)=10.0d0
-        bvechyp(63)=5.0d0;bvechyp(65)=one
-        i1=0;i2=0;nsize=nsizeG                             
+        bvechyp(63)=5.0d0;bvechyp(65)=one      
 #endif
-
-
-#if order>=7
+#if morder>=7
         if(node_type(i).eq.998.or.node_type(i).lt.0)then !! for 1,2,3,4, drop to 6th order
            bvechyp(:)=zero;bvechyp(21)=one;bvechyp(23)=3.0d0;bvechyp(25)=3.0d0;bvechyp(27)=one
-           i1=0;i2=0;nsize=nsizeG 
         end if 
-#endif    
-#if order>=5
-        if(node_type(i).eq.-1)then !! for rows 1, drop to 4th order
-!           if(node_type(fd_parent(i)).eq.2.or.node_type(fd_parent(i)).eq.1) then !! but only for in/out
-              do i1=1,nsizeG
-                 amathyp(i1,15:nsizeG)=zero        
-              end do
-              do i1=15,nsizeG
-                 amathyp(i1,1:nsizeG)=zero
-                 amathyp(i1,i1)=one
-              end do
-              bvechyp(:)=zero;bvechyp(10)=-one;bvechyp(12)=-two;bvechyp(14)=-one
-!if(node_type(fd_parent(i)).eq.0) then
-!              bvechyp(10) = -one!rnorm(i-1,1)
-!              bvechyp(12) = zero
-!              bvechyp(14) = -one!rnorm(i-1,2)
-!end if
-
-              i1=0;i2=0;nsize=nsizeG 
-!           end if
+#endif     
+#if morder>=5
+        if(node_type(i).eq.-1)then !! for 1,drop to 4th order
+           do i1=1,nsizeG
+              amathyp(i1,15:nsizeG)=zero        
+           end do
+           do i1=15,nsizeG
+              amathyp(i1,1:nsizeG)=zero
+              amathyp(i1,i1)=one
+           end do
+           bvechyp(:)=zero;bvechyp(10)=-one;bvechyp(12)=-two;bvechyp(14)=-one                   
         end if 
-#endif    
+#endif
+        i1=0;i2=0;nsize=nsizeG 
         call svd_solve(amathyp,nsize,bvechyp)               
-
+     
+        
         !! Another loop of neighbours to calculate interparticle weights
         do k=1,ij_count(i)
            j = ij_link(k,i) 
@@ -241,8 +223,8 @@ contains
            ff1 = Wab(qq)
            xx=x/hh/ss;yy=y/hh/ss  !! Legendre
 #elif ABF==4
-          ff1=Wab(qq)
-          xx=pi*x/hh/ss;yy=pi*y/hh/ss
+           ff1=Wab(qq)
+           xx=pi*x/hh/ss;yy=pi*y/hh/ss !! FOURIER
 #endif           
            !! Populate the ABF array        
            gvec(1:nsizeG) = abfs(rad,xx,yy)
@@ -253,13 +235,13 @@ contains
            ij_w_grad(1,k,i) = dot_product(bvecx,gvec)/hh
            ij_w_grad(2,k,i) = dot_product(bvecy,gvec)/hh
            ij_w_lap(k,i) = dot_product(bvecxx+bvecyy,gvec)/hh/hh
-           ij_w_hyp(k,i) = dot_product(bvechyp,gvec) 
+           ij_w_hyp(k,i) = dot_product(bvechyp,gvec)            
            
-        end do             
-        
+        end do                  
 
      end do
-     !$OMP END PARALLEL DO
+
+
      deallocate(amatx,amaty,amatxx,amatxy,amatyy,amathyp)
      deallocate(bvecx,bvecy,bvecxx,bvecxy,bvecyy,bvechyp,gvec,xvec)   
      
@@ -281,14 +263,12 @@ contains
 
      !$OMP PARALLEL DO PRIVATE(k,j)
      do i=1,npfb
+        !! Sum the weights
         do k=1,ij_count(i)
            j = ij_link(k,i) 
-
-           !! Sum the weights
+           ij_w_hyp_sum(i) = ij_w_hyp_sum(i) + ij_w_hyp(k,i)  
            ij_w_grad_sum(:,i) = ij_w_grad_sum(:,i) + ij_w_grad(:,k,i)
            ij_w_lap_sum(i) = ij_w_lap_sum(i) + ij_w_lap(k,i)
-           ij_w_hyp_sum(i) = ij_w_hyp_sum(i) + ij_w_hyp(k,i)  
-
         end do
 
         !! Scale gradients by the domain length-scale
@@ -305,7 +285,7 @@ contains
      !! Second derivatives on boundary
      if(nb.ne.0) then
 
-        allocate(ij_wb_grad2_sum(dims,nb));ij_wb_grad2_sum=zero     
+        allocate(ij_wb_grad2_sum(ithree,nb));ij_wb_grad2_sum=zero     
      
         !$omp parallel do private(k,j)
         do jj=1,nb     
@@ -333,7 +313,7 @@ contains
   subroutine calc_node_volumes
      integer(ikind) :: i,j,k,ii
      real(rkind) :: rad,x,y,ff1,hh
-     real(rkind),dimension(dims) :: rij
+     real(rkind),dimension(2) :: rij
   
      !! Array for node volumes
      allocate(vol(npfb));vol(:)=zero
@@ -390,8 +370,8 @@ contains
      !!
      !! NODE   | grad (N)  | grad (T)  | LAP        | FILT
      !!  i0    |   FD      | 1DLABFM   | FD+1DLABFM | FD+1DLABFM
-     !!  i1    |   FD      | 1DLABFM   | FD+1DLABFM | LABFM m=4
-     !!  i2    | LABFM m=4 | LABFM m=4 | LABFM m=4  | FD+1DLABFM
+     !!  i1    |   FD      | 1DLABFM   | FD+1DLABFM | FD+1DLABFM (LABFM m=4)
+     !!  i2    |   FD      | 1DLABFM   | FD+1DLABFM | FD+1DLABFM
      !!  i3    | LABFM m=6 | LABFM m=6 | LABFM m=6  | LABFM m=6
      !!  i4    | LABFM m=6 | LABFM m=6 | LABFM m=6  | LABFM m=6
      !! other  | LABFM m=8 | LABFM m=8 | LABFM m=8  | LABFM m=8    
@@ -400,8 +380,8 @@ contains
      integer(ikind) :: i,j,k,nsize,nsizeG,i1,i2,is,ie,irow,ii,jj,kk
      integer(ikind) :: im1,im2,ip1,ip2
      real(rkind) :: rad,qq,xt,yt,ff1,xn,yn,tmp_n,tmp_t,dx2,dx4,tmp1,x,y,tmp2,dx
-     real(rkind) :: tmp_nn,tmp_tt,tmp_nt,grads
-     real(rkind),dimension(dims) :: rij
+     real(rkind) :: tmp_nn,tmp_tt,tmp_nt,grads,hh
+     real(rkind),dimension(2) :: rij
      real(rkind),dimension(:,:),allocatable :: amatt,amattt,amatthyp
      real(rkind),dimension(:),allocatable :: gvec,bvect,bvectt,bvecthyp,xvec
      real(rkind),dimension(:),allocatable :: ooRcurve
@@ -414,7 +394,7 @@ contains
    
      
      !! Space for boundary weights for grad2. N.B. they are indexed only over [1..nb]
-     allocate(ij_wb_grad2(dims,nplink,nb));ij_wb_grad2=zero
+     allocate(ij_wb_grad2(ithree,nplink,nb));ij_wb_grad2=zero
 
      !! Preface: remove neighbours from the inflow/outflow boundary nodes, to save costs later
      allocate(ijlink_tmp(nplink))
@@ -447,6 +427,8 @@ contains
      !! Loop boundary nodes
      !! TO DO: re-arrange so computationally faster (fewer ifs) but harder to read...
      !! Not crucial, as this is preprocessing!
+
+     !! BOUNDARY: Normal operators --------------------------------------------
      do jj=1,nb
         i=boundary_list(jj)
         dx = s(i)
@@ -480,17 +462,20 @@ contains
 !              if(node_type(j).eq.-2)  ij_w_hyp(k,i) = -6.0d0/dx4
 !              if(node_type(j).eq.-3)  ij_w_hyp(k,i) =  4.0d0/dx4
 !              if(node_type(j).eq.-4)  ij_w_hyp(k,i) = -one/dx4     !! made negative (need coeff -1)...   
+
+              !! Actually, we don't filter on boundary normals at all!
            end if
            end if
         end do
      end do
 
 
-     !! First row normal derivatives
+     !! FIRST ROW: Normal operators -------------------------------------------
      do jj=1,nb   !! inefficient at the moment: loop all nodes, cycle those not in correct row...
         i=boundary_list(jj)+1
         dx = s(i)     
-        ij_w_grad(:,:,i) = zero;ij_w_lap(:,i) = zero!;ij_w_hyp(:,i)=zero      
+        ij_w_grad(:,:,i) = zero;ij_w_lap(:,i) = zero
+!        ij_w_hyp(:,i)=zero      
         do k=1,ij_count(i)
            j=ij_link(k,i)   
            if(j.gt.npfb) cycle !! Eliminate halos and ghosts from search (entire FD stencil in one processor)              
@@ -516,14 +501,28 @@ contains
         end do 
      end do       
      
-     !! Second row normal filter
+     !! SECOND ROW: Normal operators ------------------------------------------
      do jj=1,nb   !! inefficient at the moment: loop all nodes, cycle those not in correct row...
         i=boundary_list(jj)+2
         dx = s(i)     
-        ij_w_hyp(:,i)=zero      
+        ij_w_hyp(:,i)=zero
+        ij_w_grad(:,:,i) = zero
+        ij_w_lap(:,i) = zero                    
         do k=1,ij_count(i)
            j=ij_link(k,i)   
            if(j.gt.npfb) cycle !! Eliminate halos and ghosts from search (entire FD stencil in one processor)         
+
+           if(j.eq.fd_parent(i))                                   ij_w_grad(1,k,i) =  one/12.0d0/dx   !! FIRST DERIV
+           if(node_type(j).eq.-1.and.fd_parent(j).eq.fd_parent(i)) ij_w_grad(1,k,i) = -8.0d0/12.0d0/dx
+           if(j.eq.i)                                              ij_w_grad(1,k,i) =  zero/12.0d0/dx
+           if(node_type(j).eq.-3.and.fd_parent(j).eq.fd_parent(i)) ij_w_grad(1,k,i) =  8.0d0/12.0d0/dx
+           if(node_type(j).eq.-4.and.fd_parent(j).eq.fd_parent(i)) ij_w_grad(1,k,i) = -one/12.0d0/dx
+
+           if(j.eq.fd_parent(i))                                   ij_w_lap(k,i) = -one/12.0d0/dx2   !! 2ND DERIV
+           if(node_type(j).eq.-1.and.fd_parent(j).eq.fd_parent(i)) ij_w_lap(k,i) =  16.0d0/12.0d0/dx2
+           if(j.eq.i)                                              ij_w_lap(k,i) =  zero/12.0d0/dx2
+           if(node_type(j).eq.-3.and.fd_parent(j).eq.fd_parent(i)) ij_w_lap(k,i) =  16.0d0/12.0d0/dx2
+           if(node_type(j).eq.-4.and.fd_parent(j).eq.fd_parent(i)) ij_w_lap(k,i) = -one/12.0d0/dx2
 
            if(j.eq.fd_parent(i))                                   ij_w_hyp(k,i) = -one   !! 4th DERIV
            if(node_type(j).eq.-1.and.fd_parent(j).eq.fd_parent(i)) ij_w_hyp(k,i) =  4.0d0
@@ -544,13 +543,14 @@ contains
      allocate(amatt(nsizeG,nsizeG),amattt(nsizeG,nsizeG),amatthyp(nsizeG,nsizeG))
      allocate(bvect(nsizeG),bvectt(nsizeG),bvecthyp(nsizeG),xvec(nsizeG),gvec(nsizeG))
      
-     !! Boundaries only, set gradient, grad2 and hyp
+     !! BOUNDARY: Transverse operators ----------------------------------------
      do jj=1,nb
         i=boundary_list(jj)
         amatt=zero;amattt=zero;bvect=zero;bvectt=zero;xvec = zero;gvec = zero
         amatthyp=zero;bvecthyp=zero
         xt=-rnorm(i,2);yt=rnorm(i,1)  !! unit tangent vector
         xn=rnorm(i,1);yn=rnorm(i,2)  !! unit normal vector
+        hh=h(i)
         do k=1,ij_count(i)
            j=ij_link(k,i)                   
 
@@ -562,10 +562,10 @@ contains
               y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
               if(i.eq.j) x=zero !! avoid NaN in above line         
            
-              xvec(1:nsizeG) = monomials1D(x/h(i))
+              xvec(1:nsizeG) = monomials1D(x/hh)
               
-              ff1 = fac(abs(x/h(i)))
-              x = x/h(i)
+              ff1 = fac(abs(x/hh))
+              x = x/hh
            
               gvec(1:nsizeG) = abfs1D(x,ff1)
                       
@@ -601,15 +601,15 @@ contains
               y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
               if(i.eq.j) x=zero !! avoid NaN in above line              
               
-              ff1 = fac(abs(x/h(i)))
-              x = x/h(i)
+              ff1 = fac(abs(x/hh))
+              x = x/hh
            
               gvec(1:nsizeG) = abfs1D(x,ff1)
                             
 
               !! Weights for grad,grad2 and hyp
-              ij_w_grad(2,k,i) = dot_product(bvect,gvec)/h(i)              
-              ij_wb_grad2(2,k,jj) = dot_product(bvectt,gvec)/h(i)/h(i) 
+              ij_w_grad(2,k,i) = dot_product(bvect,gvec)/hh             
+              ij_wb_grad2(2,k,jj) = dot_product(bvectt,gvec)/hh/hh 
               ij_w_hyp(k,i) = ij_w_hyp(k,i) + dot_product(bvecthyp,gvec)                            
            end if    
            
@@ -618,180 +618,205 @@ contains
      end do         
      
      
-     !! First rows: set gradients and laplacians
-     do i=1,npfb
-        if(node_type(i).eq.-1) then
-        
-        
-           !! Find boundary parent, and evaluate gradient of resolution in boundary-tangential direction:
-           grads = zero
-           ii=fd_parent(i)           
-           do k=1,ij_count(ii)
-              j=ij_link(k,ii)
-              
-              grads = grads + (s(j)-s(ii))*ij_w_grad(2,k,ii)
-           end do
+     !! FIRST ROW: Transverse operators ---------------------------------------
+     do jj=1,nb
+        i=boundary_list(jj)+1
+        hh=h(i)                
+        !! Find boundary parent, and evaluate gradient of resolution in boundary-tangential direction:
+        grads = zero
+        ii=fd_parent(i)          
+        do k=1,ij_count(ii)
+           j=ij_link(k,ii)
+            
+           grads = grads + (s(j)-s(ii))*ij_w_grad(2,k,ii)
+        end do
            
-           !! Convert the gradient of s into the angle by which the tangent vector is rotated.
-           grads = -atan(grads)
+        !! Convert the gradient of s into the angle by which the tangent vector is rotated.
+        grads = -atan(grads)
                    
-           amatt=zero;bvect=zero;xvec = zero;gvec = zero
-           amatthyp=zero;bvecthyp=zero     
-           amattt=zero;bvectt=zero
-           xt=-rnorm(i,2);yt=rnorm(i,1)  !! unit tangent vector
-           xn=rnorm(i,1);yn=rnorm(i,2)  !! unit normal vector
+        amatt=zero;bvect=zero;xvec = zero;gvec = zero
+        amatthyp=zero;bvecthyp=zero     
+        amattt=zero;bvectt=zero
+        xt=-rnorm(i,2);yt=rnorm(i,1)  !! unit tangent vector
+        xn=rnorm(i,1);yn=rnorm(i,2)  !! unit normal vector
            
-           !! Rotate tangent vector to account for resolution gradient
-           xt = cos(grads)*(-rnorm(i,2)) - sin(grads)*rnorm(i,1)
-           yt = sin(grads)*(-rnorm(i,2)) + cos(grads)*rnorm(i,1)
+        !! Rotate tangent vector to account for resolution gradient
+        xt = cos(grads)*(-rnorm(i,2)) - sin(grads)*rnorm(i,1)
+        yt = sin(grads)*(-rnorm(i,2)) + cos(grads)*rnorm(i,1)
            
-           do k=1,ij_count(i)
-              j=ij_link(k,i)                   
+        do k=1,ij_count(i)
+           j=ij_link(k,i)                   
 
-              ii=node_type(j)
-              if(ii.eq.node_type(i))then !! only look through nodes on the same "layer"
+           ii=node_type(j)
+           if(ii.eq.node_type(i))then !! only look through nodes on the same "layer"
            
-                 rij = rp(i,1:2)-rp(j,1:2)  !! ij-vector
-                 x = -dot_product(rij(1:2),(/xt,yt/)) !! relative coord of j (to i) along tangent
-                 y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
-                 if(i.eq.j) x=zero !! avoid NaN in above line         
+              rij = rp(i,1:2)-rp(j,1:2)  !! ij-vector
+              x = -dot_product(rij(1:2),(/xt,yt/)) !! relative coord of j (to i) along tangent
+              y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
+              if(i.eq.j) x=zero !! avoid NaN in above line         
            
-                 xvec(1:nsizeG) = monomials1D(x/h(i))
+              xvec(1:nsizeG) = monomials1D(x/hh)
                
-                 ff1 = fac(abs(x/h(i)))
-                 x = x/h(i)
-           
-                 gvec(1:nsizeG) = abfs1D(x,ff1)
-                      
-                 do i1=1,nsizeG
-                    do i2=1,nsizeG
-                       amatt(i1,i2) = amatt(i1,i2) + xvec(i1)*gvec(i2)
-                    end do
-                 end do            
-              end if        
-           end do
-           amattt = amatt;amatthyp = amatt
+              ff1 = fac(abs(x/hh))
+              x = x/hh
+        
+              gvec(1:nsizeG) = abfs1D(x,ff1)
+                    
+              do i1=1,nsizeG
+                 do i2=1,nsizeG
+                    amatt(i1,i2) = amatt(i1,i2) + xvec(i1)*gvec(i2)
+                 end do
+              end do            
+           end if        
+        end do
+        amattt = amatt;amatthyp = amatt
 
-           !! Solve system for transverse deriv   
-           bvect(:)=zero;bvect(1)=one;i1=0;i2=0;nsize=nsizeG
-           call svd_solve(amatt,nsize,bvect)  
+        !! Solve system for transverse deriv   
+        bvect(:)=zero;bvect(1)=one;i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amatt,nsize,bvect)  
            
-           !! Solve system for transverse 2nd deriv   
-           bvectt(:)=zero;bvectt(2)=one;i1=0;i2=0;nsize=nsizeG
-           call svd_solve(amattt,nsize,bvectt)           
+        !! Solve system for transverse 2nd deriv   
+        bvectt(:)=zero;bvectt(2)=one;i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amattt,nsize,bvectt)           
            
-           !! Solve system for transverse hyperviscous filter
-           bvecthyp(:)=zero;bvecthyp(6)=one;i1=0;i2=0;nsize=nsizeG
-           call svd_solve(amatthyp,nsize,bvecthyp)                                         
+        !! Solve system for transverse hyperviscous filter
+        bvecthyp(:)=zero;bvecthyp(6)=one;i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amatthyp,nsize,bvecthyp)                                         
 
-           do k=1,ij_count(i)
-              j=ij_link(k,i)                   
+        do k=1,ij_count(i)
+           j=ij_link(k,i)                   
 
-              !! Transverse derivatives...
-              ii=node_type(j)
-              if(ii.eq.node_type(i))then !! only look through nodes on the same "layer"
-                 rij = rp(i,1:2)-rp(j,1:2)  !! ij-vector
-                 x = -dot_product(rij(1:2),(/xt,yt/)) !! relative coord of j (to i) along tangent
-                 y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
-                 if(i.eq.j) x=zero !! avoid NaN in above line              
+           !! Transverse derivatives...
+           ii=node_type(j)
+           if(ii.eq.node_type(i))then !! only look through nodes on the same "layer"
+              rij = rp(i,1:2)-rp(j,1:2)  !! ij-vector
+              x = -dot_product(rij(1:2),(/xt,yt/)) !! relative coord of j (to i) along tangent
+              y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
+              if(i.eq.j) x=zero !! avoid NaN in above line              
               
-                 ff1 = fac(abs(x/h(i)))
-                 x = x/h(i)
+              ff1 = fac(abs(x/hh))
+              x = x/hh
            
-                 gvec(1:nsizeG) = abfs1D(x,ff1)
+              gvec(1:nsizeG) = abfs1D(x,ff1)
               
-                 !! Gradient and hyperviscous weights
-                 ij_w_grad(2,k,i) = dot_product(bvect,gvec)/h(i)
-                 ij_w_lap(k,i) = ij_w_lap(k,i) + dot_product(bvectt,gvec)/h(i)/h(i)
-!                 ij_w_hyp(k,i) = ij_w_hyp(k,i) + dot_product(bvecthyp,gvec)                                          
-              
-              end if    
+              !! Gradient and hyperviscous weights
+              ij_w_grad(2,k,i) = dot_product(bvect,gvec)/hh
+              ij_w_lap(k,i) = ij_w_lap(k,i) + dot_product(bvectt,gvec)/hh/hh
+!              ij_w_hyp(k,i) = ij_w_hyp(k,i) + dot_product(bvecthyp,gvec)  
+           end if             
+        end do
+
+        !! Loop over all neighbours and rotate transverse derivative to be aligned with boundary tangent
+        do k=1,ij_count(i)
+           j=ij_link(k,i)           
+           ij_w_grad(2,k,i) = (one/cos(grads))*ij_w_grad(2,k,i) - tan(grads)*ij_w_grad(1,k,i)
+        end do
            
-           end do
-           
-           !! Loop over all neighbours and rotate transverse derivative to be aligned with boundary tangent
-           do k=1,ij_count(i)
-              j=ij_link(k,i)
-              
-              ij_w_grad(2,k,i) = (one/cos(grads))*ij_w_grad(2,k,i) - tan(grads)*ij_w_grad(1,k,i)
-           end do
-           
-        end if
      end do
      
-     !! Second rows: filter only
-     do i=1,npfb
-        if(node_type(i).eq.-2) then
-        
+     !! SECOND ROW: Transverse operators ----------------------------------------
+     do jj=1,nb
+        i=boundary_list(jj)+2
+        hh=h(i)
+
+        !! Find boundary parent, and evaluate gradient of resolution in boundary-tangential direction:
+        grads = zero
+        ii=fd_parent(i)           
+        do k=1,ij_count(ii)
+           j=ij_link(k,ii)
+              
+           grads = grads + (s(j)-s(ii))*ij_w_grad(2,k,ii)
+        end do
+           
+        !! Convert the gradient of s into the angle by which the tangent vector is rotated.
+        grads = -atan(grads)
                    
-           amatt=zero;xvec = zero;gvec = zero
-           bvecthyp=zero     
-           xt=-rnorm(i,2);yt=rnorm(i,1)  !! unit tangent vector
-           xn=rnorm(i,1);yn=rnorm(i,2)  !! unit normal vector
+        amatt=zero;bvect=zero;xvec = zero;gvec = zero
+        amatthyp=zero;bvecthyp=zero     
+        amattt=zero;bvectt=zero
+        xt=-rnorm(i,2);yt=rnorm(i,1)  !! unit tangent vector
+        xn=rnorm(i,1);yn=rnorm(i,2)  !! unit normal vector
            
-           !! Rotate tangent vector to account for resolution gradient
-           xt = cos(grads)*(-rnorm(i,2)) - sin(grads)*rnorm(i,1)
-           yt = sin(grads)*(-rnorm(i,2)) + cos(grads)*rnorm(i,1)
-           
-           do k=1,ij_count(i)
-              j=ij_link(k,i)                   
+        !! Rotate tangent vector to account for resolution gradient
+        xt = cos(grads)*(-rnorm(i,2)) - sin(grads)*rnorm(i,1)
+        yt = sin(grads)*(-rnorm(i,2)) + cos(grads)*rnorm(i,1)
+                                     
+        do k=1,ij_count(i)
+           j=ij_link(k,i)                   
 
-              ii=node_type(j)
-              if(ii.eq.node_type(i))then !! only look through nodes on the same "layer"
+           ii=node_type(j)
+           if(ii.eq.node_type(i))then !! only look through nodes on the same "layer"
            
-                 rij = rp(i,1:2)-rp(j,1:2)  !! ij-vector
-                 x = -dot_product(rij(1:2),(/xt,yt/)) !! relative coord of j (to i) along tangent
-                 y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
-                 if(i.eq.j) x=zero !! avoid NaN in above line         
+              rij = rp(i,1:2)-rp(j,1:2)  !! ij-vector
+              x = -dot_product(rij(1:2),(/xt,yt/)) !! relative coord of j (to i) along tangent
+              y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
+              if(i.eq.j) x=zero !! avoid NaN in above line         
            
-                 xvec(1:nsizeG) = monomials1D(x/h(i))
+              xvec(1:nsizeG) = monomials1D(x/hh)
                
-                 ff1 = fac(abs(x/h(i)))
-                 x = x/h(i)
+              ff1 = fac(abs(x/hh))
+              x = x/hh
            
-                 gvec(1:nsizeG) = abfs1D(x,ff1)
+              gvec(1:nsizeG) = abfs1D(x,ff1)
                       
-                 do i1=1,nsizeG
-                    do i2=1,nsizeG
-                       amatt(i1,i2) = amatt(i1,i2) + xvec(i1)*gvec(i2)
-                    end do
-                 end do            
-              end if        
-           end do
-
-           !! Solve system for transverse hyperviscous filter
-           bvecthyp(:)=zero;bvecthyp(6)=one;i1=0;i2=0;nsize=nsizeG
-           call svd_solve(amatt,nsize,bvecthyp)                                         
-
-           do k=1,ij_count(i)
-              j=ij_link(k,i)                   
-
-              !! Transverse derivatives...
-              ii=node_type(j)
-              if(ii.eq.node_type(i))then !! only look through nodes on the same "layer"
-                 rij = rp(i,1:2)-rp(j,1:2)  !! ij-vector
-                 x = -dot_product(rij(1:2),(/xt,yt/)) !! relative coord of j (to i) along tangent
-                 y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
-                 if(i.eq.j) x=zero !! avoid NaN in above line              
-              
-                 ff1 = fac(abs(x/h(i)))
-                 x = x/h(i)
+              do i1=1,nsizeG
+                 do i2=1,nsizeG
+                    amatt(i1,i2) = amatt(i1,i2) + xvec(i1)*gvec(i2)
+                 end do
+              end do            
+           end if        
+        end do
+        amattt = amatt
+        amatthyp =amatt
+                     
+        !! Solve system for transverse deriv   
+        bvect(:)=zero;bvect(1)=one;i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amatt,nsize,bvect)  
            
-                 gvec(1:nsizeG) = abfs1D(x,ff1)
-              
-                 !! Gradient and hyperviscous weights
-                 ij_w_hyp(k,i) = ij_w_hyp(k,i) + dot_product(bvecthyp,gvec)                                          
-              
-              end if    
+        !! Solve system for transverse 2nd deriv   
+        bvectt(:)=zero;bvectt(2)=one;i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amattt,nsize,bvectt)           
            
-           end do
-                      
-        end if
-     end do     
-    
+        !! Solve system for transverse hyperviscous filter
+        bvecthyp(:)=zero;bvecthyp(6)=one;i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amatthyp,nsize,bvecthyp)              
+
+        do k=1,ij_count(i)
+           j=ij_link(k,i)                   
+
+           !! Transverse derivatives...
+           ii=node_type(j)
+           if(ii.eq.node_type(i))then !! only look through nodes on the same "layer"
+              rij = rp(i,1:2)-rp(j,1:2)  !! ij-vector
+              x = -dot_product(rij(1:2),(/xt,yt/)) !! relative coord of j (to i) along tangent
+              y = -dot_product(rij(1:2),(/xn,yn/)) !! relative coord of j (to i) along normal
+              if(i.eq.j) x=zero !! avoid NaN in above line              
+              
+              ff1 = fac(abs(x/hh))
+              x = x/hh
+           
+              gvec(1:nsizeG) = abfs1D(x,ff1)
+              
+              !! Gradient and hyperviscous weights
+              ij_w_grad(2,k,i) = dot_product(bvect,gvec)/hh
+              ij_w_lap(k,i) = ij_w_lap(k,i) + dot_product(bvectt,gvec)/hh/hh                               
+              ij_w_hyp(k,i) = ij_w_hyp(k,i) + dot_product(bvecthyp,gvec)                                                       
+           end if               
+        end do
+
+        !! Loop over all neighbours and rotate transverse derivative to be aligned with boundary tangent
+        do k=1,ij_count(i)
+           j=ij_link(k,i)           
+           ij_w_grad(2,k,i) = (one/cos(grads))*ij_w_grad(2,k,i) - tan(grads)*ij_w_grad(1,k,i)
+        end do
+                                 
+
+     end do       
        
      !! Clear 1D labfm vectors and matrices       
      deallocate(bvect,bvectt,gvec,xvec,amatt,amattt)
+     
+     !! ROTATIONS AND ADJUSTMENTS ---------------------------------------------
      
      !! Wall boundaries: find local radius of curvature
      !! N.B.: find 1/radius, as it is only used as denominator, so we are wary of instances when R->infinity
@@ -822,15 +847,20 @@ contains
         end if
      end do         
           
-     !! First row, add divergence term to Laplacian
+     !! Add divergence term to Laplacian for first and second rows
      do jj=1,nb
         i=boundary_list(jj) + 1
         if(node_type(i-1).eq.0) then
            ij_w_lap(:,i) = ij_w_lap(:,i) + ij_w_grad(1,:,i)*ooRcurve(jj)/(one+ooRcurve(jj)*s(i))
         end if
+        i=boundary_list(jj) + 2
+        if(node_type(i-2).eq.0) then
+           ij_w_lap(:,i) = ij_w_lap(:,i) + ij_w_grad(1,:,i)*ooRcurve(jj)/(one+two*ooRcurve(jj)*s(i))
+        end if
      end do     
           
      !! Wall boundary: map grad2 and laplacian onto orthog. boundary oriented coords.
+     !! N.B. Eqns are solved in bound frame on walls, so no need to rotate first derivatives
      do jj=1,nb  
         i=boundary_list(jj)
         if(node_type(i).eq.0)then
@@ -842,17 +872,23 @@ contains
         end if                      
      end do
 
-     !! First row: map gradients onto x-y frame
-     do jj=1,npfb-nb
-        i = internal_list(jj)
-        if(node_type(i).eq.-1) then  !! For first row
-           xn = rnorm(i,1);yn=rnorm(i,2)
-           Jinv(1,1)=xn;Jinv(1,2)=-yn;Jinv(2,1)=yn;Jinv(2,2)=xn   !! Jacobian for normal-tangent to x-y
-           do k=1,ij_count(i)             
-              grad_tn = ij_w_grad(:,k,i)      !! Store weights in normal-tangent FoR             
-              ij_w_grad(:,k,i) = matmul(Jinv,grad_tn) !! First derivative weights in x-y FoR
-           end do
-        end if
+     !! First and Second rows: Map first derivatives onto x-y frame
+     do jj=1,nb
+        i=boundary_list(jj)
+        xn = rnorm(i,1);yn=rnorm(i,2)
+        Jinv(1,1)=xn;Jinv(1,2)=-yn;Jinv(2,1)=yn;Jinv(2,2)=xn   !! Jacobian for normal-tangent to x-y
+            
+        i = boundary_list(jj) + 1
+        do k=1,ij_count(i)             
+           grad_tn = ij_w_grad(:,k,i)      !! Store weights in normal-tangent FoR             
+           ij_w_grad(:,k,i) = matmul(Jinv,grad_tn) !! First derivative weights in x-y FoR
+        end do
+
+        i = boundary_list(jj)+2
+        do k=1,ij_count(i)             
+           grad_tn = ij_w_grad(:,k,i)      !! Store weights in normal-tangent FoR             
+           ij_w_grad(:,k,i) = matmul(Jinv,grad_tn) !! First derivative weights in x-y FoR
+        end do
      end do
 
      write(6,*) "finished boundary weights"
@@ -886,14 +922,14 @@ contains
      cxvec(1) = ff1*Legendre1(z)
      cxvec(2) = ff1*Legendre2(z)
      cxvec(3) = ff1*Legendre3(z)
-     cxvec(4) = ff1*Legendre4(z)     
-#elif ABF==4   
-     cxvec(1) = ff1*Hermite1(z)   !! For now, use Hermite in the 1D version if using Fourier ABFs in 2D.
+     cxvec(4) = ff1*Legendre4(z) 
+#elif ABF==4
+     cxvec(1) = ff1*Hermite1(z)
      cxvec(2) = ff1*Hermite2(z)
      cxvec(3) = ff1*oosqrt2*Hermite3(z)
      cxvec(4) = ff1*Hermite4(z)
      cxvec(5) = ff1*Hermite5(z)               
-     cxvec(6) = ff1*Hermite6(z)      
+     cxvec(6) = ff1*Hermite6(z)     
 #endif     
   end function abfs1D
 !! ------------------------------------------------------------------------------------------------  
@@ -908,24 +944,24 @@ contains
      !! lengths to other layers, and builds new stencils.
      integer(ikind) :: i,j,k,ii,jj,nk,jjj
      real(rkind) :: rad,qq,x,y,xx,yy,hchecksum,hchecksumL,hchecksumX,hchecksumY
-     real(rkind),dimension(dims) :: rij
+     real(rkind),dimension(2) :: rij
      real(rkind),dimension(:,:),allocatable :: amat,mmat
      real(rkind),dimension(:),allocatable :: bvecL,bvecX,bvecY,gvec,xvec
-     integer(ikind) :: i1,i2,nsize,nsizeG,n_to_reduce,full_j_count_i
+     integer(ikind) :: i1,i2,nsize,nsizeG,full_j_count_i
      real(rkind) :: ff1,hh,reduction_factor,res_tol,amp_tol,sumcheck
      logical :: reduce_h
      integer(ikind),dimension(:),allocatable :: full_j_link_i
-     real(rkind),dimension(dims) :: grad_s
+     real(rkind),dimension(ithree) :: grad_s
      real(rkind) :: grad_s_mag,hfactor,radmax
      real(rkind),dimension(:),allocatable :: neighbourcountreal
  
-#if order==4
+#if morder==4
      k=4
-#elif order==6
+#elif morder==6
      k=6
-#elif order==8
+#elif morder==8
      k=8
-#elif order==10
+#elif morder==10
      k=10
 #endif
      nsizeG=(k*k+3*k)/2   !!  5,9,14,20,27,35,44... for k=2,3,4,5,6,7,8...
@@ -945,21 +981,22 @@ contains
 
      !! Set parameters of h-reduction
      reduction_factor = 0.99
-#if order==4
+#if morder==4
      res_tol = 1.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
-#elif order==6
+#elif morder==6
      res_tol = 5.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
-#elif order==8
+#elif morder==8
 #if ABF==2
      res_tol = 4.0d-2*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order    !3.0d-2
 #elif ABF==4
      res_tol = 4.0d-5*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order
 #endif
-#elif order==10     
+#elif morder==10     
      res_tol = 1.0d+0*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 10th order
 #endif     
      nk = 32   !! How many wavenumbers between 1 and Nyquist to check... ! 16
      amp_tol = 1.0001d0   !! Maximum allowable amplification
+
    
      sumcheck = zero
 !     !$OMP PARALLEL DO PRIVATE(nsize,amat,k,j,rij,rad,qq,x,y,xx,yy, &
@@ -1008,9 +1045,10 @@ contains
 #elif ABF==3
               rad = sqrt(dot_product(rij,rij));qq  = rad/hh;ff1=Wab(qq) !! Weighting function
               xx=x/hh/ss;yy=y/hh/ss  !! Legendre  
-#elif ABF==4
-          ff1=Wab(qq)
-          xx=pi*x/hh/ss;yy=pi*y/hh/ss 
+#elif ABF==4           
+              rad = sqrt(dot_product(rij,rij));qq  = rad/hh;ff1=Wab(qq) !! Weighting function
+              xx=pi*x/hh/ss;yy=pi*y/hh/ss  !! FOURIER                  
+               
 #endif     
               !! Populate the ABF array
               gvec(1:nsizeG) = abfs(rad,xx,yy)
@@ -1077,10 +1115,10 @@ contains
                     xx=x/hh;yy=y/hh    !! Hermite          
 #elif ABF==3
                     rad = sqrt(dot_product(rij,rij));qq  = rad/hh;ff1=Wab(qq) !! Weighting function
-                    xx=x/hh/ss;yy=y/hh/ss  !! Legendre
-#elif ABF==4
-          ff1=Wab(qq)
-          xx=pi*x/hh/ss;yy=pi*y/hh/ss   
+                    xx=x/hh/ss;yy=y/hh/ss  !! Legendre   
+#elif ABF==4           
+                    rad = sqrt(dot_product(rij,rij));qq  = rad/hh;ff1=Wab(qq) !! Weighting function
+                    xx=pi*x/hh/ss;yy=pi*y/hh/ss  !! FOURIER                       
 #endif     
                     !! Populate the ABF array
                     gvec(1:nsizeG) = abfs(rad,xx,yy)
@@ -1131,7 +1169,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 !hchecksum = 2.0*res_tol/hh
            !! Check the h-reduction criteria
     
-!#if order==4
+!#if morder==4
 !           hchecksum = two*res_tol/hh
 !#endif    
            if(hchecksum.ge.res_tol/hh)then   !! breakout of do-while
@@ -1205,7 +1243,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      
      !! The remainder of this subroutine is just for analysis...
      qq = zero
-!     !$OMP PARALLEL DO REDUCTION(+:qq)
+     !$OMP PARALLEL DO REDUCTION(+:qq)
      do i=1,npfb
         if(node_type(i).eq.999)then
            qq = qq + neighbourcountreal(i)**2
@@ -1213,11 +1251,8 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
            qq = qq + dble(ij_count(i))**two
         end if           
      end do
-!     !$OMP END PARALLEL DO
+     !$OMP END PARALLEL DO
      qq = sqrt(qq/npfb)   
-
- 
-    
      
      !! Output to screen
      write(6,*) "iproc",iproc,"ij_count mean,min:",qq,floor(minval(neighbourcountreal(1:npfb)))
@@ -1226,7 +1261,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      deallocate(full_j_link_i,neighbourcountreal)
 
      return
-  end subroutine adapt_stencils 
+  end subroutine adapt_stencils   
 !! ------------------------------------------------------------------------------------------------  
   subroutine grow_stencils
      !! This subroutine refines the stencil sizes. We start with a small stencil, and gradually 
@@ -1236,25 +1271,25 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      !! lengths to other layers, and builds new stencils.
      integer(ikind) :: i,j,k,ii,jj,nk,jjj
      real(rkind) :: rad,qq,x,y,xx,yy,hchecksum,hchecksumL,hchecksumX,hchecksumY,hmax_local
-     real(rkind),dimension(dims) :: rij
+     real(rkind),dimension(2) :: rij
      real(rkind),dimension(:,:),allocatable :: amat,mmat
      real(rkind),dimension(:),allocatable :: bvecL,bvecX,bvecY,gvec,xvec
-     integer(ikind) :: i1,i2,nsize,nsizeG,n_to_reduce,full_j_count_i
+     integer(ikind) :: i1,i2,nsize,nsizeG,full_j_count_i
      real(rkind) :: ff1,hh,reduction_factor,res_tol,amp_tol,sumcheck
-     logical :: reduce_h
+     logical :: increase_h
      logical, dimension(4) :: check_flags
      integer(ikind),dimension(:),allocatable :: full_j_link_i
-     real(rkind),dimension(dims) :: grad_s
+     real(rkind),dimension(ithree) :: grad_s
      real(rkind) :: grad_s_mag,hfactor,radmax
-     real(rkind),dimension(:),allocatable :: neighbourcountreal
+
  
-#if order==4
+#if morder==4
      k=4
-#elif order==6
+#elif morder==6
      k=6
-#elif order==8
+#elif morder==8
      k=8
-#elif order==10
+#elif morder==10
      k=10
 #endif
      nsizeG=(k*k+3*k)/2   !!  5,9,14,20,27,35,44... for k=2,3,4,5,6,7,8...
@@ -1270,21 +1305,20 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
     
      !! Temporary neighbour lists...
      allocate(full_j_link_i(nplink));full_j_link_i=0
-     allocate(neighbourcountreal(npfb));neighbourcountreal=zero
 
      !! Set parameters of h-reduction
      reduction_factor = 1.01
-#if order==4
-     res_tol = 1.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
-#elif order==6
+#if morder==4
+     res_tol = 1.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 4th order
+#elif morder==6
      res_tol = 5.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
-#elif order==8
+#elif morder==8
 #if ABF==2
      res_tol = 3.0d-2*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order    !3.0d-2
 #elif ABF==4
      res_tol = 4.0d-5*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order
 #endif
-#elif order==10     
+#elif morder==10     
      res_tol = 1.0d+0*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 10th order
 #endif     
      nk = 32   !! How many wavenumbers between 1 and Nyquist to check... ! 16
@@ -1293,21 +1327,21 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      sumcheck = zero
 !     !$OMP PARALLEL DO PRIVATE(nsize,amat,k,j,rij,rad,qq,x,y,xx,yy, &
 !     !$OMP ff1,gvec,xvec,i1,i2,bvecL,bvecX,bvecY,hh,full_j_count_i,full_j_link_i, &
-!     !$OMP hchecksum,reduce_h,ii,mmat,hchecksumL,hchecksumX,hchecksumY) &
+!     !$OMP hchecksum,increase_h,ii,mmat,hchecksumL,hchecksumX,hchecksumY) &
 !     !$omp reduction(+:sumcheck)
      do i=1,npfb_layer
         ii=0
-        reduce_h=.true.
-        if(node_type(i).le.2) reduce_h=.false. !! Don't reduce stencil for  nodes near or on boundaries        
-        if(node_type(i).eq.998) reduce_h=.false.
+        increase_h=.true.
+        if(node_type(i).le.2) increase_h=.false. !! Don't increase stencil for  nodes near or on boundaries        
+        if(node_type(i).eq.998) increase_h=.false.
 
         !! Store the original h, and then start at 0.6*h
-        if(reduce_h) then
+        if(increase_h) then
            hmax_local = h(i)
-           h(i) = h(i)*0.6d0
+           h(i) = 0.6d0*h(i)
         end if           
-        do while (reduce_h)
-           !! Reduce h 
+        do while (increase_h)
+           !! increase h 
            hh=h(i)*reduction_factor 
            
            !! Build temporary neighbour lists
@@ -1478,8 +1512,8 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 !write(6,*) i,i1,"stopping because of max stencil limit",ii
            end if
 
-           if(hchecksum.le.res_tol/hh)then   !! break out of do-while(reduce_h) loop
-              reduce_h=.false.
+           if(hchecksum.le.res_tol/hh)then   !! break out of do-while(increase_h) loop
+              increase_h=.false.
               !! Copy temp neighbour lists to main neighbour lists              
               h(i) = hh
               ij_count(i)=0
@@ -1492,17 +1526,13 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 !write(6,*) i,"stopping due to residual",ii,hh,hchecksum,res_tol/hh 
            else  !! continue reducing h, and set h(i)
               h(i) = hh
-              ii = ii + 1         !! Counter for number of times reduced
+              ii = ii + 1         !! Counter for number of times increased
            end if
                 
                  
                 
-        end do !! <---- end of reduce_h while loop
+        end do !! <---- end of increase_h while loop
         
-       
-        
-        !! Temporary: store size in neighbourcountreal(i)
-        neighbourcountreal(i) = dble(ij_count(i))
      end do  !! <---- end of loop over all particles
 !     !$OMP END PARALLEL DO    
      deallocate(amat,mmat,bvecL,bvecX,bvecY,gvec,xvec)      
@@ -1516,9 +1546,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
            ii = i+(j-1)*npfb_layer  !! i in the j-th layer
            !! Copy h
            h(ii) = hh
-            
-           !! Store count in w for diagnostics        
-           neighbourcountreal(ii) = dble(ij_count(i))           
+           
         end do    
      end do
      !$omp end parallel do     
@@ -1558,32 +1586,27 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      qq = zero
 !     !$OMP PARALLEL DO REDUCTION(+:qq)
      do i=1,npfb
-        if(node_type(i).eq.999)then
-           qq = qq + neighbourcountreal(i)**2
-        else
-           qq = qq + dble(ij_count(i))**two
-        end if           
+        qq = qq + dble(ij_count(i))
      end do
 !     !$OMP END PARALLEL DO
-     qq = sqrt(qq/npfb)   
+     qq = qq/npfb
 
     
      
      !! Output to screen
-     write(6,*) "iproc",iproc,"ij_count mean,min:",qq,floor(minval(neighbourcountreal(1:npfb)))
+     write(6,*) "iproc",iproc,"ij_count mean,min:",qq,minval(ij_count(1:npfb))
                
      !! Deallocation
-     deallocate(full_j_link_i,neighbourcountreal)
-
+     deallocate(full_j_link_i)
      return
-  end subroutine grow_stencils     
+  end subroutine grow_stencils  
 !! ------------------------------------------------------------------------------------------------  
   subroutine filter_coefficients
      !! Determine filter coefficients for hyperviscosity a priori, requiring
      !! 2/3 damping at wavenumbers 2/3 of Nyquist...
      integer(ikind) :: i,j,k,ii
      real(rkind) :: fji,lsum,x,y,tmp,lscal
-     real(rkind),dimension(dims) :: rij
+     real(rkind),dimension(2) :: rij
 
      !! Allocate the coefficients
      allocate(filter_coeff(npfb))
@@ -1597,7 +1620,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
         lscal = 2.0*h(i)*sqrt(pi/dble(ij_count(i)))
       
         !! Set the target wavenumber (2/3 of Nyquist)
-        tmp = (two/3.0d0)*pi/lscal !1.5
+        tmp = (two/three)*pi/lscal !1.5
         
         !! Calculate hyperviscosity operator of a signal at this wavenumber
         lsum = zero
@@ -1609,13 +1632,13 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
         end do
         
         !! Set the filter coefficient (2/3 will result in A=1/3 at target wavenumber)
-        filter_coeff(i) = (two/3.0d0)/lsum   !2/3
+        filter_coeff(i) = (two/three)/lsum   !2/3
 
         !! Reduce the filter coefficient near boundaries        
         if(node_type(i).lt.0) then
            if(node_type(fd_parent(i)).eq.0) then !! Walls only
               if(node_type(i).eq.-1) filter_coeff(i) = filter_coeff(i)*oosqrt2!*half!*half
-              if(node_type(i).eq.-2) filter_coeff(i) = filter_coeff(i)*half!*oosqrt2
+              if(node_type(i).eq.-2) filter_coeff(i) = filter_coeff(i)*half !half
               if(node_type(i).eq.-3) filter_coeff(i) = filter_coeff(i)*oosqrt2!*half
               if(node_type(i).eq.-4.or.node_type(i).eq.998) filter_coeff(i) = filter_coeff(i)*oosqrt2!*half 
            end if
@@ -1652,6 +1675,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
                 
      end do
      !$omp end parallel do
+         
      
      !! Pre-scale filter weights
      !$omp parallel do private(k)
@@ -1665,8 +1689,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      !$omp end parallel do
     
      !! Deallocate coefficients
-     deallocate(filter_coeff,fd_parent)
-    
+     deallocate(filter_coeff,fd_parent)   
      return
   end subroutine filter_coefficients
 !! ------------------------------------------------------------------------------------------------  
@@ -1674,18 +1697,18 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 !! ------------------------------------------------------------------------------------------------
   function monomials(x,y) result(cxvec)
      real(rkind),intent(in) :: x,y
-#if order==4
+#if morder==4
      real(rkind),dimension(14) :: cxvec
-#elif order==6
+#elif morder==6
      real(rkind),dimension(27) :: cxvec
-#elif order==8
+#elif morder==8
      real(rkind),dimension(44) :: cxvec
-#elif order==10
+#elif morder==10
      real(rkind),dimension(65) :: cxvec
 #endif     
      real(rkind) :: x2,y2,x3,y3,x4,y4,x5,y5,x6,y6,x7,y7,x8,y8,x9,y9,x10,y10
  
-#if order>=2
+#if morder>=2
      x2=x*x;y2=y*y
      cxvec(1) = x
      cxvec(2)=y
@@ -1693,14 +1716,14 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      cxvec(4)=x*y
      cxvec(5)=half*y2
 #endif 
-#if order>=3
+#if morder>=3
      x3=x2*x;y3=y2*y 
      cxvec(6) = (one/6.0)*x3
      cxvec(7) = half*x2*y
      cxvec(8) = half*x*y2
      cxvec(9) = (one/6.0)*y3
 #endif
-#if order>=4
+#if morder>=4
      x4=x3*x;y4=y3*y
      cxvec(10) = (one/24.0)*x4
      cxvec(11)=(one/6.0)*x3*y
@@ -1708,7 +1731,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      cxvec(13)=(one/6.0)*x*y3
      cxvec(14)=(one/24.0)*y4
 #endif
-#if order>=5
+#if morder>=5
      x5=x4*x;y5=y4*y         
      cxvec(15) = (one/120.0)*x5
      cxvec(16)=(one/24.0)*x4*y
@@ -1717,7 +1740,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      cxvec(19)=(one/24.0)*x*y4
      cxvec(20)=(one/120.0)*y5
 #endif
-#if order>=6
+#if morder>=6
      x6=x5*x;y6=y5*y         
      cxvec(21)= (one/720.0)*x6
      cxvec(22)=(one/120.0)*x5*y
@@ -1727,7 +1750,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      cxvec(26)=(one/120.0)*x*y5
      cxvec(27)=(one/720.0)*y6
 #endif
-#if order>=7
+#if morder>=7
      x7=x6*x;y7=y6*y         
      cxvec(28) = (one/5040.0)*x7
      cxvec(29)=(one/720.0)*x6*y
@@ -1738,7 +1761,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      cxvec(34)=(one/720.0)*x*y6
      cxvec(35)=(one/5040.0)*y7
 #endif
-#if order>=8
+#if morder>=8
      x8=x7*x;y8=y7*y         
      cxvec(36) = (one/40320.0)*x8
      cxvec(37)=(one/5040.0)*x7*y
@@ -1750,7 +1773,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      cxvec(43)=(one/5040.0)*x*y7
      cxvec(44) = (one/40320.0)*y8
 #endif
-#if order>=9
+#if morder>=9
      x9=x8*x;y9=y8*y
      cxvec(45) = (one/362880.0)*x9
      cxvec(46)=(one/40320.0)*x8*y
@@ -1763,7 +1786,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      cxvec(53)=(one/40320.0)*x*y8
      cxvec(54) = (one/362880.0)*y9
 #endif
-#if order>=10
+#if morder>=10
      x10=x9*x;y10=y9*y
      cxvec(55)=(one/3628800.0)*x10
      cxvec(56)=(one/362880.0)*x9*y
@@ -1787,13 +1810,13 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
   function abfs(dummy,x,y) result(ggvec)         !! TEN
      real(rkind),intent(in) :: x,y,ff1,dummy
      real(rkind) :: xx,yy
-#if order==4
+#if morder==4
      real(rkind),dimension(14) :: ggvec
-#elif order==6
+#elif morder==6
      real(rkind),dimension(27) :: ggvec
-#elif order==8
+#elif morder==8
      real(rkind),dimension(44) :: ggvec
-#elif order==10
+#elif morder==10
      real(rkind),dimension(65) :: ggvec
 #endif
      real(rkind) :: rad3,rad2,r15,r13,r11,r9,r7,r5
@@ -1801,7 +1824,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 
      !! Scale xx and yy (Probablists to physicists)
      
-#if order>=2
+#if morder>=2
      x2=x*x;y2=y*y 
      rad2 = max(rad*rad,epsilon(rad));rad3=max(rad*rad*rad,epsilon(rad))
      ggvec(1) = x/max(rad,epsilon(rad)) 
@@ -1810,7 +1833,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(4) = -x*y/rad3
      ggvec(5) = x2/rad3
 #endif
-#if order>=3
+#if morder>=3
      x3=x2*x;y3=y2*y
      r5 = rad3*rad2
      ggvec(6) = -3.0*y2*x/r5                 
@@ -1818,7 +1841,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(8) = (2.0*x*y2 - x3)/r5
      ggvec(9) = -3.0*x2*y/r5
 #endif
-#if order>=4
+#if morder>=4
      x4=x3*x;y4=y3*y
      r7 = r5*rad2
      ggvec(10) = (12.0*x2*y2-3.0*y4)/r7                
@@ -1827,7 +1850,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(13) = (9.0*x3*y-6.0*x*y3)/r7
      ggvec(14) = (12.0*x2*y2-3.0*x4)/r7
 #endif
-#if order>=5
+#if morder>=5
      x5=x4*x;y5=y4*y
      r9 = r7*rad2
      ggvec(15) = (45.0*x*y4 - 60.0*x3*y2)/r9                    
@@ -1837,7 +1860,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(19) = (9.0*x5 - 72.0*x3*y2 + 24.0*x*y4)/r9
      ggvec(20) = (45.0*x4*y - 60.0*x2*y3)/r9
 #endif
-#if order>=6
+#if morder>=6
      x6=x5*x;y6=y5*y
      r11 = r9*rad2
      ggvec(21) = (360.0*x4*y2 - 540.0*x2*y4 + 45.0*y6)/r11                  
@@ -1848,7 +1871,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(26) = (600.0*x3*y3 - 225.0*x5*y - 120.0*x*y5)/r11
      ggvec(27) = (360.0*x2*y4 - 540.0*x4*y2 + 45.0*x6)/r11
 #endif
-#if order>=7
+#if morder>=7
      x7=x6*x;y7=y6*y
      r13 = r11*rad2
      ggvec(28) = (6300.0*x3*y4 - 2520.0*x5*y2 - 1575.0*x*y6)/r13               
@@ -1860,7 +1883,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(34) = (720.0*x*y6 - 225.0*x7 + 4050.0*x5*y2 - 5400.0*x3*y4)/r13
      ggvec(35) = (6300.0*x4*y3 - 2520.0*x2*y5 - 1575.0*x6*y)/r13
 #endif
-#if order>=8
+#if morder>=8
      x8=x7*x;y8=y7*y
      r15 = r13*rad2
      ggvec(36) = (20160.0*x6*y2 - 75600.0*x4*y4+37800.0*x2*y6-1575.0*y8)/r15        
@@ -1884,38 +1907,38 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 !! ------------------------------------------------------------------------------------------------
   function abfs(dummy,x,y) result(ggvec)         !! TEN
      real(rkind),intent(in) :: x,y,dummy
-#if order==4
+#if morder==4
      real(rkind),dimension(14) :: ggvec
-#elif order==6
+#elif morder==6
      real(rkind),dimension(27) :: ggvec
-#elif order==8
+#elif morder==8
      real(rkind),dimension(44) :: ggvec
-#elif order==10
+#elif morder==10
      real(rkind),dimension(65) :: ggvec
 #endif
      !! Scale xx and yy (Probablists to physicists)
      
-#if order>=2
+#if morder>=2
      ggvec(1) = Hermite1(x)
      ggvec(2) = Hermite1(y)
      ggvec(3) = Hermite2(x)
      ggvec(4) = Hermite1(x)*Hermite1(y)
      ggvec(5) = Hermite2(y)
 #endif
-#if order>=3
+#if morder>=3
      ggvec(6) = Hermite3(x)
      ggvec(7) = Hermite2(x)*Hermite1(y)
      ggvec(8) = Hermite1(x)*Hermite2(y)
      ggvec(9) = Hermite3(y)
 #endif
-#if order>=4
+#if morder>=4
      ggvec(10) = Hermite4(x)
      ggvec(11) = Hermite3(x)*Hermite1(y)
      ggvec(12) = Hermite2(x)*Hermite2(y)
      ggvec(13) = Hermite1(x)*Hermite3(y)
      ggvec(14) = Hermite4(y)
 #endif
-#if order>=5
+#if morder>=5
      ggvec(15) = Hermite5(x)
      ggvec(16) = Hermite4(x)*Hermite1(y)
      ggvec(17) = Hermite3(x)*Hermite2(y)
@@ -1923,7 +1946,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(19) = Hermite1(x)*Hermite4(y)
      ggvec(20) = Hermite5(y)
 #endif
-#if order>=6
+#if morder>=6
      ggvec(21) = Hermite6(x)
      ggvec(22) = Hermite5(x)*Hermite1(y)
      ggvec(23) = Hermite4(x)*Hermite2(y)
@@ -1932,7 +1955,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(26) = Hermite1(x)*Hermite5(y)
      ggvec(27) = Hermite6(y)
 #endif
-#if order>=7
+#if morder>=7
      ggvec(28) = Hermite7(x)
      ggvec(29) = Hermite6(x)*Hermite1(y)
      ggvec(30) = Hermite5(x)*Hermite2(y)
@@ -1942,7 +1965,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(34) = Hermite1(x)*Hermite6(y)
      ggvec(35) = Hermite7(y)
 #endif
-#if order>=8
+#if morder>=8
      ggvec(36) = Hermite8(x)
      ggvec(37) = Hermite7(x)*Hermite1(y)
      ggvec(38) = Hermite6(x)*Hermite2(y)
@@ -1953,7 +1976,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(43) = Hermite1(x)*Hermite7(y)
      ggvec(44) = Hermite8(y)
 #endif
-#if order>=9
+#if morder>=9
      ggvec(45) = Hermite9(x)
      ggvec(46) = Hermite8(x)*Hermite1(y)
      ggvec(47) = Hermite7(x)*Hermite2(y)
@@ -1965,7 +1988,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(53) = Hermite1(x)*Hermite8(y)
      ggvec(54)= Hermite9(y)
 #endif
-#if order>=10
+#if morder>=10
      ggvec(55) = Hermite10(x)
      ggvec(56) = Hermite9(x)*Hermite1(y)
      ggvec(57) = Hermite8(x)*Hermite2(y)
@@ -1985,37 +2008,37 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 !! ------------------------------------------------------------------------------------------------
   function abfs(dummy,x,y) result(ggvec)         !! TEN
      real(rkind),intent(in) :: x,y,dummy
-#if order==4
+#if morder==4
      real(rkind),dimension(14) :: ggvec
-#elif order==6
+#elif morder==6
      real(rkind),dimension(27) :: ggvec
-#elif order==8
+#elif morder==8
      real(rkind),dimension(44) :: ggvec
-#elif order==10
+#elif morder==10
      real(rkind),dimension(65) :: ggvec
 #endif
      
-#if order>=2
+#if morder>=2
      ggvec(1) = Legendre1(x)
      ggvec(2) = Legendre1(y)
      ggvec(3) = Legendre2(x)
      ggvec(4) = Legendre1(x)*Legendre1(y)
      ggvec(5) = Legendre2(y)
 #endif
-#if order>=3
+#if morder>=3
      ggvec(6) = Legendre3(x)
      ggvec(7) = Legendre2(x)*Legendre1(y)
      ggvec(8) = Legendre1(x)*Legendre2(y)
      ggvec(9) = Legendre3(y)
 #endif
-#if order>=4
+#if morder>=4
      ggvec(10) = Legendre4(x)
      ggvec(11) = Legendre3(x)*Legendre1(y)
      ggvec(12) = Legendre2(x)*Legendre2(y)
      ggvec(13) = Legendre1(x)*Legendre3(y)
      ggvec(14) = Legendre4(y)
 #endif
-#if order>=5
+#if morder>=5
      ggvec(15) = Legendre5(x)
      ggvec(16) = Legendre4(x)*Legendre1(y)
      ggvec(17) = Legendre3(x)*Legendre2(y)
@@ -2023,7 +2046,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(19) = Legendre1(x)*Legendre4(y)
      ggvec(20) = Legendre5(y)
 #endif
-#if order>=6
+#if morder>=6
      ggvec(21) = Legendre6(x)
      ggvec(22) = Legendre5(x)*Legendre1(y)
      ggvec(23) = Legendre4(x)*Legendre2(y)
@@ -2032,7 +2055,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(26) = Legendre1(x)*Legendre5(y)
      ggvec(27) = Legendre6(y)
 #endif
-#if order>=7
+#if morder>=7
      ggvec(28) = Legendre7(x)
      ggvec(29) = Legendre6(x)*Legendre1(y)
      ggvec(30) = Legendre5(x)*Legendre2(y)
@@ -2042,7 +2065,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(34) = Legendre1(x)*Legendre6(y)
      ggvec(35) = Legendre7(y)
 #endif
-#if order>=8
+#if morder>=8
      ggvec(36) = Legendre8(x)
      ggvec(37) = Legendre7(x)*Legendre1(y)
      ggvec(38) = Legendre6(x)*Legendre2(y)
@@ -2053,7 +2076,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(43) = Legendre1(x)*Legendre7(y)
      ggvec(44) = Legendre8(y)
 #endif
-#if order>=9
+#if morder>=9
      ggvec(45) = Legendre9(x)
      ggvec(46) = Legendre8(x)*Legendre1(y)
      ggvec(47) = Legendre7(x)*Legendre2(y)
@@ -2065,7 +2088,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(53) = Legendre1(x)*Legendre8(y)
      ggvec(54)= Legendre9(y)
 #endif
-#if order>=10
+#if morder>=10
      ggvec(55) = Legendre10(x)
      ggvec(56) = Legendre9(x)*Legendre1(y)
      ggvec(57) = Legendre8(x)*Legendre2(y)
@@ -2079,42 +2102,42 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(65)= Legendre10(y)
 #endif
 !! ------------------------------------------------------------------------------------------------
-!! Fourier ABFs
-!!
 #elif ABF==4
-    function abfs(dummy,x,y) result(ggvec)         
+!! FOURIER ABFs, courtesy of Henry Broadley
+!! ------------------------------------------------------------------------------------------------
+  function abfs(dummy,x,y) result(ggvec)         
      real(rkind),intent(in) :: x,y,dummy
-#if order==4
+#if morder==4
      real(rkind),dimension(14) :: ggvec
-#elif order==6
+#elif morder==6
      real(rkind),dimension(27) :: ggvec
-#elif order==8
+#elif morder==8
      real(rkind),dimension(44) :: ggvec
-#elif order==10
+#elif morder==10
      real(rkind),dimension(65) :: ggvec
 #endif
      
-#if order>=2
+#if morder>=2
      ggvec(1) = sin(x)
      ggvec(2) = sin(y)
      ggvec(3) = cos(x)
      ggvec(4) = sin(x)*sin(y)
      ggvec(5) = cos(y)
 #endif
-#if order>=3
+#if morder>=3
      ggvec(6) = sin(2.0*x)
      ggvec(7) = cos(x)*sin(y)
      ggvec(8) = sin(x)*cos(y)
      ggvec(9) = sin(2.0*y)
 #endif
-#if order>=4
+#if morder>=4
      ggvec(10) = cos(2.0*x)
      ggvec(11) = sin(2.0*x)*sin(y)
      ggvec(12) = cos(x)*cos(y)
      ggvec(13) = sin(x)*sin(2.0*y)
      ggvec(14) = cos(2.0*y)
 #endif
-#if order>=5
+#if morder>=5
      ggvec(15) = sin(3.0*x)
      ggvec(16) = cos(2.0*x)*sin(y)
      ggvec(17) = sin(2.0*x)*cos(1.0*y)
@@ -2122,7 +2145,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(19) = sin(x)*cos(2.0*y)
      ggvec(20) = sin(3.0*y)
 #endif
-#if order>=6
+#if morder>=6
      ggvec(21) = cos(3.0*x)
      ggvec(22) = sin(3.0*x)*sin(y)
      ggvec(23) = cos(2.0*x)*cos(1.0*y)
@@ -2131,7 +2154,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(26) = sin(x)*sin(3.0*y)
      ggvec(27) = cos(3.0*y)
 #endif
-#if order>=7
+#if morder>=7
      ggvec(28) = sin(4.0*x)
      ggvec(29) = cos(3.0*x)*sin(y)
      ggvec(30) = sin(3.0*x)*cos(1.0*y)
@@ -2141,7 +2164,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(34) = sin(x)*cos(3.0*y)
      ggvec(35) = sin(4.0*y)
 #endif
-#if order>=8
+#if morder>=8
      ggvec(36) = cos(4.0*x)
      ggvec(37) = sin(4.0*x)*sin(y)
      ggvec(38) = cos(3.0*x)*cos(1.0*y)
@@ -2152,7 +2175,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(43) = sin(x)*sin(4.0*y)
      ggvec(44) = cos(4.0*y)
 #endif
-#if order>=9
+#if morder>=9
      ggvec(45) = sin(5.0*x)
      ggvec(46) = cos(4.0*x)*sin(y)
      ggvec(47) = sin(4.0*x)*cos(y)
@@ -2162,9 +2185,9 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      ggvec(51) = sin(2.0*x)*cos(3.0*y)
      ggvec(52) = cos(x)*sin(4.0*y)
      ggvec(53) = sin(x)*cos(4.0*y)
-     ggvec(54) = sin(5.0*y)
+     ggvec(54)= sin(5.0*y)
 #endif
-#if order>=10
+#if morder>=10
      ggvec(55) = cos(5.0*x)
      ggvec(56) = sin(5.0*x)*sin(y)
      ggvec(57) = cos(4.0*x)*cos(y)
@@ -2318,4 +2341,5 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      Lres = 3.90625d-3*(46189.0d0*z4*z4*z2 - 109395.0d0*z4*z4 + 90090.0d0*z4*z2 &
           - 30030.0d0*z4 + 3465.0d0*z2 - 63.0d0)
   end function Legendre10
+!! ------------------------------------------------------------------------------------------------  
 end module labf

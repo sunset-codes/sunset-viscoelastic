@@ -32,8 +32,8 @@ contains
   subroutine find_neighbours
     !! This subroutine does some allocation, then calls routines to put nodes in
     !! cells, reorder them, and look through cells to build neighbour lists..
-    integer nct_temp,n_count
-     
+    integer(ikind) :: nct_temp,n_count
+
     !! Build cells and create cell linked-lists     
     if(.not.allocated(ic_count))then
        call cell_generator
@@ -64,7 +64,8 @@ contains
     deallocate(nc)
     deallocate(ip)
     deallocate(cellpart)
-    
+             
+        
     write(6,*) iproc,"neighbours found"
 
   end subroutine find_neighbours
@@ -233,7 +234,8 @@ contains
           !! Add any neighbours in cell jc to neighbour list of particle i
           call neighbour_node_cell(i,rpi,jc)
    
-       end do
+       end do      
+       
     end do
     !$omp end parallel do
   end subroutine neighboring_list_parallel
@@ -282,15 +284,14 @@ contains
        rij2 = zero
        do k=1,ij_count(i)
           j=ij_link(k,i)
-!          rij = rp(i,:) - rp(j,:)
-!          rij2(k) = dot_product(rij,rij)
-          rij2(k) = dble(j)
+          rij = rp(i,:) - rp(j,:)
+          rij2(k) = dot_product(rij,rij)
+!          rij2(k) = dble(j)
        end do
        
        !! Now sort by value of rij2
        call quicksort_neighbours(i,rij2,1,ij_count(i))       
-    
-    
+        
     end do
     !$omp end parallel do
     
@@ -326,5 +327,5 @@ contains
     if (j+1.lt.last)  call quicksort_neighbours(ii,a, j+1, last)
     
   end subroutine quicksort_neighbours
-!! ------------------------------------------------------------------------------------------------  
+!! ------------------------------------------------------------------------------------------------    
 end module neighbours

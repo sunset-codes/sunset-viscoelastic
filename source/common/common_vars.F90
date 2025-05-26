@@ -82,13 +82,13 @@ module common_vars
   real(rkind) :: mean_int_energy0 
   
   !! Neighbour numbers and lists
-  integer(ikind),dimension(:),allocatable :: ij_count,ij_count_ABF1,ij_count_ABF2
-  integer(ikind),dimension(:,:),allocatable :: ij_link,ij_link_ABF1,ij_link_ABF2
+  integer(ikind),dimension(:),allocatable :: ij_count
+  integer(ikind),dimension(:,:),allocatable :: ij_link
   integer(ikind),dimension(:,:),allocatable :: ij_link_fd
 
   !! LABFM weightings for derivative operators
-  real(rkind),dimension(:,:,:),allocatable :: ij_w_grad,ij_wb_grad2,ij_w_grad_ABF1,ij_w_grad_ABF2
-  real(rkind),dimension(:,:),allocatable :: ij_w_hyp,ij_w_lap,ij_w_hyp_ABF1,ij_w_hyp_ABF2,ij_w_lap_ABF1,ij_w_lap_ABF2
+  real(rkind),dimension(:,:,:),allocatable :: ij_w_grad,ij_wb_grad2
+  real(rkind),dimension(:,:),allocatable :: ij_w_hyp,ij_w_lap
   real(rkind),dimension(:,:),allocatable :: ij_w_grad_sum,ij_wb_grad2_sum
   real(rkind),dimension(:),allocatable :: ij_w_hyp_sum,ij_w_lap_sum
   

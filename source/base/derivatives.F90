@@ -18,6 +18,8 @@ module derivatives
   use common_vars
   use omp_lib
   implicit none
+  
+  real(rkind) :: segment_dtstart,segment_dtend
 
 contains
 !! ------------------------------------------------------------------------------------------------
@@ -26,10 +28,10 @@ contains
     real(rkind),dimension(:),intent(in) :: phi
     real(rkind),dimension(:,:),intent(inout) :: gradphi
     integer :: i,j,k
-    real(rkind),dimension(ithree) :: gradtmp
-    real(rkind) :: gradztmp
+    real(rkind),dimension(3) :: gradtmp
+    real(rkind) :: gradztmp   
     
-    segment_tstart = omp_get_wtime()     
+    segment_dtstart = omp_get_wtime()     
     
     !$OMP PARALLEL DO PRIVATE(j,k,gradtmp)
     do i=1,npfb
@@ -38,7 +40,7 @@ contains
           j = ij_link(k,i) 
           gradtmp(1:2) = gradtmp(1:2) + phi(j)*ij_w_grad(:,k,i)                      
           
-       end do
+       end do   
        gradphi(i,1:2) = gradtmp(1:2) - phi(i)*ij_w_grad_sum(:,i)                           
     end do
     !$OMP END PARALLEL DO
@@ -57,67 +59,16 @@ contains
     !$OMP END PARALLEL DO
 #else
     !! Or set to zero if 2D simulations
-    gradphi(:,3) = zero       
+    gradphi(:,3) = zero    
 #endif    
 
 
     !! Profiling
-    segment_tend = omp_get_wtime()
-    segment_time_local(4) = segment_time_local(4) + segment_tend - segment_tstart
+    segment_dtend = omp_get_wtime()
+    segment_time_local(5) = segment_time_local(5) + segment_dtend - segment_dtstart
 
     return
   end subroutine calc_gradient
-!! ------------------------------------------------------------------------------------------------  
-  subroutine calc_gradient_only(dim,phi,gradphi)
-    !! Calculate the gradient of scalar phi, but only evaluate one component, specified by "dim"
-    integer(ikind),intent(in) :: dim
-    real(rkind),dimension(:),intent(in) :: phi
-    real(rkind),dimension(:,:),intent(inout) :: gradphi
-    integer :: i,j,k
-    real(rkind),dimension(ithree) :: gradtmp
-    real(rkind) :: gradztmp
-    
-    segment_tstart = omp_get_wtime()     
-    
-    if(dim.le.2) then    
-       !$OMP PARALLEL DO PRIVATE(j,k,gradtmp)
-       do i=1,npfb
-          gradtmp=zero
-          do k=1,ij_count(i)
-             j = ij_link(k,i) 
-             gradtmp(dim) = gradtmp(dim) + phi(j)*ij_w_grad(dim,k,i)                      
-          
-          end do
-          gradphi(i,dim) = gradtmp(dim) - phi(i)*ij_w_grad_sum(dim,i)                           
-       end do
-       !$OMP END PARALLEL DO
-    else
-     
-#ifdef dim3       
-       !! Finite differences along z
-       !$OMP PARALLEL DO PRIVATE(j,k,gradztmp)
-       do i=1,npfb
-          gradztmp=zero
-          do k=1,ij_count_fd
-             j = ij_link_fd(k,i) 
-             gradztmp = gradztmp + phi(j)*ij_fd_grad(k)
-          end do
-          gradphi(i,3) = gradztmp
-       end do
-       !$OMP END PARALLEL DO
-#else
-       !! Or set to zero if 2D simulations
-       gradphi(:,3) = zero    
-#endif    
-    end if
-
-
-    !! Profiling
-    segment_tend = omp_get_wtime()
-    segment_time_local(4) = segment_time_local(4) + segment_tend - segment_tstart
-
-    return
-  end subroutine calc_gradient_only  
 !! ------------------------------------------------------------------------------------------------
   subroutine calc_laplacian(phi,lapphi)
     !! Calculate the Laplacian of a scalar phi
@@ -126,8 +77,9 @@ contains
     integer i,j,k
     real(rkind) :: lap_tmp
     
+    segment_dtstart = omp_get_wtime() 
     
-    segment_tstart = omp_get_wtime()         
+      
 
     !$OMP PARALLEL DO PRIVATE(j,k,lap_tmp)
     do i=1,npfb
@@ -158,8 +110,8 @@ contains
   
 
     !! Profiling
-    segment_tend = omp_get_wtime()
-    segment_time_local(5) = segment_time_local(5) + segment_tend - segment_tstart
+    segment_dtend = omp_get_wtime()
+    segment_time_local(6) = segment_time_local(6) + segment_dtend - segment_dtstart
     return
   end subroutine calc_laplacian
 !! ------------------------------------------------------------------------------------------------
@@ -173,11 +125,11 @@ contains
     real(rkind),dimension(:),intent(in) :: phi1,phi2
 #endif
     real(rkind),dimension(:),intent(inout) :: divphi
-    integer :: i,j,k
+    integer :: i,j,k,jj
 !    real(rkind),dimension(2) :: fji
-    real(rkind) :: divtmp
+    real(rkind) :: divtmp,xn,yn,dudn,dvdn
     
-    segment_tstart = omp_get_wtime()         
+    segment_dtstart = omp_get_wtime()         
     
     !$OMP PARALLEL DO PRIVATE(j,k,divtmp)
     do i=1,npfb
@@ -203,10 +155,36 @@ contains
     end do
     !$OMP END PARALLEL DO  
 #endif   
+  
+    !! Different formulation for walls due to coordinate rotation
+    if(nb.ne.0) then
+       !$omp parallel do private(i,j,k,xn,yn,dudn,dvdn)
+       do jj=1,nb
+          i=boundary_list(jj)
+          if(node_type(i).eq.0)then  !! in bound norm coords for walls
+             xn=rnorm(i,1);yn=rnorm(i,2)
+             
+             !! Calculate gradients of u and v
+             dudn = zero;dvdn=zero
+             do k=1,ij_count(i)
+                j=ij_link(k,i)
+                dudn = dudn + (phi1(j)-phi1(i))*ij_w_grad(1,k,i)  
+                dvdn = dvdn + (phi2(j)-phi2(i))*ij_w_grad(1,k,i)
+             end do
+
+             divphi(i) = xn*dudn + yn*dvdn
+
+          end if
+       end do
+       !$omp end parallel do
+
+       !! No need to add dw/dz as we know this is zero on walls.
+    end if
+
     
     !! Profiling
-    segment_tend = omp_get_wtime()
-    segment_time_local(4) = segment_time_local(4) + segment_tend - segment_tstart
+    segment_dtend = omp_get_wtime()
+    segment_time_local(5) = segment_time_local(5) + segment_dtend - segment_dtstart
     return
   end subroutine calc_divergence
 !! ------------------------------------------------------------------------------------------------  
@@ -215,9 +193,9 @@ contains
     real(rkind),dimension(:),intent(in) :: phi
     real(rkind),dimension(:,:),intent(inout) :: g2phi
     integer i,j,k,ii
-    real(rkind),dimension(ithree) :: g2_tmp
+    real(rkind),dimension(3) :: g2_tmp
     
-    segment_tstart = omp_get_wtime()         
+    segment_dtstart = omp_get_wtime()         
 
     !! d2/dx2, d2/dy2
     !$OMP PARALLEL DO PRIVATE(i,j,k,g2_tmp)
@@ -253,8 +231,8 @@ contains
 #endif      
 
     !! Profiling
-    segment_tend = omp_get_wtime()
-    segment_time_local(5) = segment_time_local(5) + segment_tend - segment_tstart
+    segment_dtend = omp_get_wtime()
+    segment_time_local(6) = segment_time_local(6) + segment_dtend - segment_dtstart
 
     return
   end subroutine calc_grad2bound
@@ -264,9 +242,9 @@ contains
     real(rkind),dimension(:),intent(in) :: phi1,phi2,phi3
     real(rkind),dimension(:,:),intent(inout) :: g2phi
     integer i,j,k,ii
-    real(rkind),dimension(ithree) :: g2_tmp
+    real(rkind),dimension(3) :: g2_tmp
 
-    segment_tstart = omp_get_wtime()         
+    segment_dtstart = omp_get_wtime()         
 
     !$OMP PARALLEL DO PRIVATE(i,j,k,g2_tmp)
     do ii=1,nb
@@ -285,8 +263,8 @@ contains
     !$OMP END PARALLEL DO
 
     !! Profiling
-    segment_tend = omp_get_wtime()
-    segment_time_local(5) = segment_time_local(5) + segment_tend - segment_tstart
+    segment_dtend = omp_get_wtime()
+    segment_time_local(6) = segment_time_local(6) + segment_dtend - segment_dtstart
 
     return
   end subroutine calc_grad2vecbound  
@@ -297,9 +275,9 @@ contains
     real(rkind),dimension(:,:),intent(in) :: gradphi
     real(rkind),dimension(:,:),intent(inout) :: g2phi
     integer i,j,k,ii
-    real(rkind),dimension(ithree) :: g2_tmp
+    real(rkind),dimension(2) :: g2_tmp
 
-    segment_tstart = omp_get_wtime()         
+    segment_dtstart = omp_get_wtime()         
 
     !$OMP PARALLEL DO PRIVATE(i,j,k,g2_tmp)
     do ii=1,nb
@@ -319,8 +297,8 @@ contains
     !$OMP END PARALLEL DO
 
     !! Profiling
-    segment_tend = omp_get_wtime()
-    segment_time_local(5) = segment_time_local(5) + segment_tend - segment_tstart
+    segment_dtend = omp_get_wtime()
+    segment_time_local(6) = segment_time_local(6) + segment_dtend - segment_dtstart
 
     return
   end subroutine calc_grad2crossbound 
@@ -332,7 +310,7 @@ contains
     integer i,j,k,ii
     real(rkind) :: lap_tmp   
     
-    segment_tstart = omp_get_wtime()         
+    segment_dtstart = omp_get_wtime()         
 
     !$OMP PARALLEL DO PRIVATE(i,j,k,lap_tmp)
     do ii=1,npfb-nb
@@ -374,8 +352,8 @@ contains
 #endif    
 
     !! Profiling
-    segment_tend = omp_get_wtime()
-    segment_time_local(5) = segment_time_local(5) + segment_tend - segment_tstart    
+    segment_dtend = omp_get_wtime()
+    segment_time_local(6) = segment_time_local(6) + segment_dtend - segment_dtstart    
     return
   end subroutine calc_laplacian_transverse_only_on_bound      
 !! ------------------------------------------------------------------------------------------------ 
@@ -385,8 +363,8 @@ contains
     real(rkind),dimension(:),allocatable :: filtphi
     integer i,j,k
     real(rkind) :: hyp_tmp
-    
-    segment_tstart = omp_get_wtime()             
+
+    segment_dtstart=omp_get_wtime()
 
     !! Allocate temporary store
     allocate(filtphi(npfb))
@@ -398,8 +376,8 @@ contains
        do k=1,ij_count(i)
           j = ij_link(k,i) 
           hyp_tmp = hyp_tmp + phi(j)*ij_w_hyp(k,i)
-       end do
-       filtphi(i) = phi(i) + (hyp_tmp - phi(i)*ij_w_hyp_sum(i))
+       end do       
+       filtphi(i) = phi(i) + (hyp_tmp - phi(i)*ij_w_hyp_sum(i))          
     end do
     !$OMP END PARALLEL DO
 
@@ -427,12 +405,62 @@ contains
 #endif
 
     deallocate(filtphi)
-
+    
     !! Profiling
-    segment_tend = omp_get_wtime()
-    segment_time_local(3) = segment_time_local(3) + segment_tend - segment_tstart    
+    segment_dtend = omp_get_wtime()
+    segment_time_local(7) = segment_time_local(7) + segment_dtend - segment_dtstart     
 
     return
-  end subroutine calc_filtered_var     
+  end subroutine calc_filtered_var   
+!! ------------------------------------------------------------------------------------------------  
+  subroutine calc_gradient_only(dim,phi,gradphi)
+    !! Calculate the gradient of scalar phi, but only evaluate one component, specified by "dim"
+    integer(ikind),intent(in) :: dim
+    real(rkind),dimension(:),intent(in) :: phi
+    real(rkind),dimension(:,:),intent(inout) :: gradphi
+    integer :: i,j,k
+    real(rkind),dimension(ithree) :: gradtmp
+    real(rkind) :: gradztmp
+    
+    segment_dtstart = omp_get_wtime() 
+    
+    if(dim.le.2) then    
+       !$OMP PARALLEL DO PRIVATE(j,k,gradtmp)
+       do i=1,npfb
+          gradtmp=zero
+          do k=1,ij_count(i)
+             j = ij_link(k,i) 
+             gradtmp(dim) = gradtmp(dim) + phi(j)*ij_w_grad(dim,k,i)                      
+          
+          end do
+          gradphi(i,dim) = gradtmp(dim) - phi(i)*ij_w_grad_sum(dim,i)                           
+       end do
+       !$OMP END PARALLEL DO
+    else
+     
+#ifdef dim3       
+       !! Finite differences along z
+       !$OMP PARALLEL DO PRIVATE(j,k,gradztmp)
+       do i=1,npfb
+          gradztmp=zero
+          do k=1,ij_count_fd
+             j = ij_link_fd(k,i) 
+             gradztmp = gradztmp + phi(j)*ij_fd_grad(k)
+          end do
+          gradphi(i,3) = gradztmp
+       end do
+       !$OMP END PARALLEL DO
+#else
+       !! Or set to zero if 2D simulations
+       gradphi(:,3) = zero    
+#endif    
+    end if
+
+
+    !! Profiling
+    segment_dtend = omp_get_wtime()
+    segment_time_local(5) = segment_time_local(5) + segment_dtend - segment_dtstart
+    return
+  end subroutine calc_gradient_only  
 !! ------------------------------------------------------------------------------------------------     
 end module derivatives

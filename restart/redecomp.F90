@@ -16,22 +16,19 @@ program redecomp
    integer,dimension(:),allocatable :: istart,iend,node_type,gi,li,npfb_local
    character(70) :: fname,fname2,tarcom
    double precision :: eflow_nm1,sum_eflow,driving_force(3)
-   double precision :: emax_np1,emax_n,emax_nm1,dt,ztmp
+   double precision :: emax_np1,emax_n,emax_nm1,dt,ztmp  
    
    !! Fluid properties::
    double precision,dimension(:),allocatable :: ro,u,v,w,cxx,cxy,cyy,cxz,cyz,czz
 
    write(6,*) "What number output would you like to use?"
    read(5,*) Nout  
-
-   write(6,*) "How many processors was the previous simulation using?"
-   read(5,*) N0
-  
+   
    !! Load time.out, and check how many species fields we need, and how many processors we're reading from
    open(unit=60,file='../data_out/time.out')
    read(60,*) dummy,dummy_int,dummy_int,dummy_int,N0 
    close(60)
-    
+  
    
    !! Load IPART
    open(unit=70,file='../IPART',status='old')   
@@ -61,7 +58,7 @@ program redecomp
    !! Load main IPART data
    ii=0
    do i=1,npfb-4*nb
-      ii=ii+1
+      ii=ii+1      
       read(70,*) gi(ii),x(ii),y(ii),node_type(ii),xn(ii),yn(ii),s(ii)
       if(node_type(ii).ge.0.and.node_type(ii).le.2) then
          k=ii
@@ -147,6 +144,8 @@ program redecomp
          z(j) = ztmp
          read(90,*) ro(j),u(j),v(j),w(j),dummy,dummy,dummy,cxx(j),cxy(j),cyy(j),cxz(j),cyz(j),czz(j)        
 #endif         
+
+
       end do         
       close(80)
       close(90)
@@ -197,8 +196,6 @@ program redecomp
       
       
       end do
-   
-   
    
    end do
 

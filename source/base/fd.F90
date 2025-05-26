@@ -251,7 +251,7 @@ contains
      ij_fd_grad2(:) = ij_fd_grad2(:)/L_char/L_char
 
      write(6,*) "iproc",iproc,"FD system built"    
-                                                                                                                
+                                                                                                               
      return
   end subroutine calc_fd_weights
 !! ------------------------------------------------------------------------------------------------

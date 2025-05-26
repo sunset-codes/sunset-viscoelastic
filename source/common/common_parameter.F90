@@ -41,12 +41,21 @@ module common_parameter
   integer(ikind), parameter :: ithree = 3 !! Note, there are lots of arrays which are sized "ithree" even 
   !!for two dimensional flows.
 
-  !! hovs values need changing depending on desired order
-  !!  4: 2.1 & 2.1
-  !!  6,8: 2.7 & 2.4
-  !!  10:  3.1 & 2.4
-  real(rkind), parameter :: hovs = 2.7d0   !! stencil scale over discretisation scale (h/s)
-  real(rkind), parameter :: hovs_bound = 2.4d0 !! as above, reduced near bounds for stability
+  !! Initial stencil sizes
+#if morder==4
+  real(rkind), parameter :: hovs = 1.8d0   
+  real(rkind), parameter :: hovs_bound = 2.1d0 
+#elif morder==6
+  real(rkind), parameter :: hovs = 2.4d0   
+  real(rkind), parameter :: hovs_bound = 2.4d0 
+#elif morder==10
+  real(rkind), parameter :: hovs = 3.1d0   
+  real(rkind), parameter :: hovs_bound = 2.4d0 
+#else
+  real(rkind), parameter :: hovs = 2.7d0   !! order=8 is the default
+  real(rkind), parameter :: hovs_bound = 2.4d0 
+#endif  
+
   real(rkind), parameter :: ss = 2.0d0       !! Stencil size (radius, in multiples of h)
   
   !! Boundary condition constants -----------------------------------------------------------------
@@ -83,17 +92,16 @@ module common_parameter
   real(rkind), parameter :: pid_k=0.9d0      !! kappa coefficient !0.9 
   
   !! Finite difference stencil sizes
-#define FDORDER 8              
   !! Size of Stencil
-#if FDORDER==4
+#if morder==4
   integer(ikind),parameter :: ij_count_fd = 5
-#elif FDORDER==6
+#elif morder==6
   integer(ikind),parameter :: ij_count_fd = 7
-#elif FDORDER==8
+#elif morder==8
   integer(ikind),parameter :: ij_count_fd = 9
-#elif FDORDER==10
+#elif morder==10
   integer(ikind),parameter :: ij_count_fd = 11
-#elif FDORDER==12
+#elif morder==12
   integer(ikind),parameter :: ij_count_fd = 13
 #endif      
   

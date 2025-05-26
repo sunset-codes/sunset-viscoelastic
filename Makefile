@@ -36,15 +36,15 @@ FFLAGS := -fopenmp -fbounds-check -ffpe-trap=zero -O3 -Wall -g -J./obj -I./obj -
 
 # Order of the numerical scheme (even, from 4 to 10, default 8)
 ifeq ($(morder),4)
-FFLAGS += -Dorder=$(morder)
+FFLAGS += -Dmorder=$(morder)
 else
 ifeq ($(morder),6)
-FFLAGS += -Dorder=$(morder)
+FFLAGS += -Dmorder=$(morder)
 else
 ifeq ($(morder),10)
-FFLAGS += -Dorder=$(morder)
+FFLAGS += -Dmorder=$(morder)
 else
-FFLAGS += -Dorder=8
+FFLAGS += -Dmorder=8
 endif
 endif
 endif
