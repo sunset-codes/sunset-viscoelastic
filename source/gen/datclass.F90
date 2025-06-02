@@ -54,7 +54,7 @@ program datgen
 !! ------------------------------------------------------------------------------------------------
   case(2) !! Cylinder in a doubly-periodic box
  
-     SovD = 1.3d0!sqrt(pi/2.0d0)
+     SovD = 2.0d0!sqrt(pi/2.0d0)
      D_cyl = 1.0d0
      h0=D_cyl/2.0d0      !cylinder radius
      yl=SovD*D_cyl ! box height
@@ -80,7 +80,7 @@ program datgen
      end do
 
      !! dx0/2.0d0, 1.5d0*dx0
-     dxmin = dx0/2.0d0 !!2.0d0
+     dxmin = dx0/1.2d0 !!2.0d0
      dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin      
 !! ------------------------------------------------------------------------------------------------
@@ -227,22 +227,23 @@ case(7) !! Grilli cylinders
 
 !! ------------------------------------------------------------------------------------------------
 case(8) !! Minimal unit cell of isometric cylinder array
+    !! SECONDARY ORIENTATION
 
-     SovD = sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
+     SovD = 2.0d0!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
      D_cyl = 1.0d0!/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=S_cyl ! box height
      xl=sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/300.0d0!499.50
-     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
+     dx0=D_cyl/60.0d0!499.50
+     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
+     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
@@ -261,32 +262,33 @@ case(8) !! Minimal unit cell of isometric cylinder array
 
 
 
-     dxmin = dx0/1.3333d0
+     dxmin = dx0/1.2d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin              
 !! ------------------------------------------------------------------------------------------------
 case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 degrees)
 
+   !! PRINCIPAL ORIENTATION
   !! Porosity 1/2 - sqrt(pi/sqrt(3))
   !! Porosity 1/3 - sqrt(0.75*pi/sqrt(3))
   !! Porosity 1/4 - sqrt(0.6667*pi/sqrt(3))   (2/3)
   
 
-     SovD = 1.5d0!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
+     SovD = 2.0d0!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
      D_cyl = 1.0d0!1.0d0/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/60.0d0!499.50       !250
-     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
+     dx0=D_cyl/200.0d0!499.50       !250
+     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
+     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
@@ -315,8 +317,8 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
 !     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
 
 
-     dxmin = dx0/1.2d0  !! 2.0d0
-     dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     dxmin = dx0/2.0d0  !! 2.0d0
+     dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 !! ------------------------------------------------------------------------------------------------     
 end select
@@ -533,6 +535,12 @@ end select
   deallocate(b_node,b_edge)
   deallocate(b_type)
      ! end boundary
+
+
+
+  !! Calls to ishift are now within gen2D
+  call system("./../decomp/shifting")
+  call system("rm IPART")
 
      write(*,*) 'END of DATCLASS'
 200  stop

@@ -241,7 +241,8 @@ contains
      !! If we want to P.I.D. control over the velocity
 #ifdef vpid     
      !! New error     
-     eflow_n = one - tot_vel!*1.1831 !! Targetting a volumetric flux of one
+!     eflow_n = one - tot_vel!*1.1831 !! Targetting a volumetric flux of one
+     eflow_n = one - tot_u(1)*tot_vol/(L_domain_y*L_domain_x)!*1.1831 !! Targetting a volumetric flux of one     
           
      !! Integral term
      sum_eflow = sum_eflow + eflow_n*dt
@@ -266,7 +267,7 @@ contains
 #endif
       
 #ifdef mp
-     if(iproc.eq.0)then  !! time, |u|, mean u, mean v, mean w, force
+     if(iproc.eq.0)then  !! time, |u|, mean u, mean v, mean w,  force
         write(195,*) time/Time_char,tot_vel,tot_u,vol_flux,driving_force(1)
         flush(195)
      end if
