@@ -274,13 +274,13 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
   !! Porosity 1/4 - sqrt(0.6667*pi/sqrt(3))   (2/3)
   
 
-     SovD = 2.0d0!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
+     SovD = sqrt(pi/sqrt(3.0d0))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
      D_cyl = 1.0d0!1.0d0/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/200.0d0!499.50       !250
+     dx0=D_cyl/60.0d0!499.50       !250
      xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
@@ -317,7 +317,7 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
 !     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
 
 
-     dxmin = dx0/2.0d0  !! 2.0d0
+     dxmin = dx0/1.2d0  !! 2.0d0
      dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 !! ------------------------------------------------------------------------------------------------     
@@ -518,7 +518,7 @@ end select
   
   !!
   open(13,file='./IPART')
-  write(13,*) nb,npfb,maxval(dxp(1:npfb))
+  write(13,*) nb,npfb,maxval(dxp(1:npfb)),minval(dxp(1:npfb))
   write(13,*) xb_min,xb_max,yb_min,yb_max
   write(13,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U
   do i=1,npfb

@@ -36,7 +36,7 @@ contains
 
      !! STEP 1: Load IPART (some params, plus list of nodes + boundary normals)
      open(13,file='IPART')
-     read(13,*) nb,npfb,dummy      !! dummy is largest s(i) in domain...
+     read(13,*) nb,npfb,dummy,smin      !! dummy is largest s(i) in domain...
      read(13,*) xmin,xmax,ymin,ymax
      read(13,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U
      !! For the purposes of shifting, ybcond=3 (no-slip) is the same as ybcond=2 (symmetry)
@@ -105,7 +105,7 @@ contains
      
      !! Write new file to ../gen/IPART
      open(unit=13,file='../../IPART_nodecomp')
-     write(13,*) nb,npfb-4*nb,smax
+     write(13,*) nb,npfb-4*nb,smax,smin
      write(13,*) xmin,xmax,ymin,ymax
      write(13,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U
      ii=0
@@ -228,7 +228,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
 
      !! STEP 1: Load IPART (some params, plus list of nodes + boundary normals)
      open(13,file='../../IPART_nodecomp')
-     read(13,*) nb,npfb,dummy      !! dummy is largest s(i) in domain...
+     read(13,*) nb,npfb,dummy,smin      !! dummy is largest s(i) in domain...
      read(13,*) xmin,xmax,ymin,ymax
      read(13,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U    
      !! For the purposes of shifting, ybcond=3 (no-slip) is the same as ybcond=2 (symmetry)
@@ -282,7 +282,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
      
      n= npfb - 4*nb
      open(212,file='../../IPART')
-     write(212,*) nb,n*nprocsZ,smax
+     write(212,*) nb,n*nprocsZ,smax,smin
      write(212,*) xmin,xmax,ymin,ymax
      write(212,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U
      write(212,*) nprocsX,nprocsY,nprocsZ

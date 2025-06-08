@@ -136,7 +136,8 @@ OBJ_FILES += obj/neighbours.o obj/output.o obj/statistics.o obj/tracer_particles
 OBJ_FILES += obj/turbulence.o obj/svdlib.o obj/conf_transforms.o
 OBJ_FILES += obj/load_data.o obj/setup_domain.o obj/setup_flow.o
 OBJ_FILES += obj/labf.o obj/fd.o
-OBJ_FILES += obj/characteristic_boundaries.o obj/rhs.o
+OBJ_FILES += obj/characteristic_boundaries.o 
+OBJ_FILES += obj/rhs.o obj/rhs_di.o obj/rhs_lc.o
 OBJ_FILES += obj/step.o
 OBJ_FILES += $(foreach sdir,$(SRC_DIR),$(patsubst $(sdir)/%.F90,obj/%.o,$(wildcard $(sdir)/*.F90)))
 

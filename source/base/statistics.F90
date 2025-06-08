@@ -94,7 +94,7 @@ contains
 !        call check_load_balance
 
         !! Evaluate L2 error norms for Poiseuille flow
-!        call poiseuille_l2norm
+        call poiseuille_l2norm
         
         !! Evaluate L2 error norms for Kolmogorov flow
 !        call kolmogorov_l2norm
@@ -241,7 +241,7 @@ contains
      !! If we want to P.I.D. control over the velocity
 #ifdef vpid     
      !! New error     
-!     eflow_n = one - tot_vel!*1.1831 !! Targetting a volumetric flux of one
+!     eflow_n = one - vol_flux!*1.1831 !! Targetting a volumetric flux of one
      eflow_n = one - tot_u(1)*tot_vol/(L_domain_y*L_domain_x)!*1.1831 !! Targetting a volumetric flux of one     
           
      !! Integral term
@@ -251,7 +251,7 @@ contains
      deflowdt = (eflow_n-eflow_nm1)/dt
     
      !! P, I and D factors..  
-     facA = half*half*one!*two*four     !one  !! Larger facA increases the speed of the response
+     facA = half*half*one*two*four     !one  !! Larger facA increases the speed of the response
      facB = facA/0.4d0 !0.1   !!
      facC = facA*0.08d0 !0.02  !! Larger increases damping?!
          
