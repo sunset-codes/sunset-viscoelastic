@@ -36,7 +36,7 @@ contains
 #endif    
      real(rkind) :: Jxx,Jxy,Jyy,Jzz,fq
 
-#ifdef limtr
+#ifdef fenep
      !! Cholesky decomposition of fr*c if enforcing FENE-P limit
      Jxx = exp(two*psi_xx)
      Jxy = exp(psi_xx)*psi_xy
@@ -48,6 +48,7 @@ contains
      c_yy = Jyy*fq
      c_zz = Jzz*fq
 #else    
+     !! Cholesky decomposition of c if using sPTT
      c_xx = exp(psi_xx)**two
      c_xy = exp(psi_xx)*psi_xy
      c_yy = psi_xy**two + exp(psi_yy)**two
@@ -79,7 +80,7 @@ contains
      real(rkind) :: Jxx,Jxy,Jyy,Jzz,fr
 
    
-#ifdef limtr 
+#ifdef fenep 
      fr = (fenep_l2-three)/(fenep_l2 - (c_xx+c_yy+c_zz))
      Jxx = c_xx*fr
      Jxy = c_xy*fr

@@ -16,7 +16,6 @@
 # mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
 # tarout     Compress files as they're written (1) or don't (0)                        (default: 0)
 # tracers    Include some Lagrangian tracer particles (1) or don't (0)                 (default: 0)
-# limtr      Enforce the FENE-P limit (1) or don't (0)                                 (default: 1)
 # -------------------------------------------------------------------------------------------------
 #
 # EXAMPLE USAGE:
@@ -81,9 +80,6 @@ endif
 # FENE-P?
 ifneq ($(fenep),0)
 FFLAGS += -Dfenep
-ifneq ($(limtr),0)
-FFLAGS += -Dlimtr
-endif
 endif
 
 # Tar output files

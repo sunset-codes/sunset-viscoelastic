@@ -32,7 +32,7 @@ module rhs
   real(rkind),dimension(:,:),allocatable :: gradro,gradp  !! Velocity gradients defined in common, as used elsewhere too
   real(rkind),dimension(:),allocatable :: lapu,lapv,lapw,fenepf
   real(rkind),dimension(:,:),allocatable :: gradpsixx,gradpsixy,gradpsiyy
-  real(rkind),dimension(:,:),allocatable :: gradpsixz,gradpsiyz,gradpsizz,gradfenepf    
+  real(rkind),dimension(:,:),allocatable :: gradpsixz,gradpsiyz,gradpsizz    
    
   real(rkind) :: dundn,dutdn,dutdt,dpdn
   real(rkind) :: xn,yn,un,ut
@@ -202,11 +202,10 @@ contains
 #endif     
 #ifdef fenep
      !! Calculate the FENE-P non-linearity function
-     allocate(fenepf(np),gradfenepf(npfb,ithree));
+     allocate(fenepf(np));
      do i=1,np
         fenepf(i) = (fenep_l2-three)/(fenep_l2-(cxx(i)+cyy(i)+czz(i)))
      end do
-     call calc_gradient(fenepf,gradfenepf)
 #endif
 #endif
         
@@ -238,27 +237,18 @@ contains
         !! add polymeric term
 
         !! Calculate gradc from gradpsi
+        !! NOTE, if FENE-P, psi holds the cholesky decomposition of f(tr(c))*c, and so
+        !! the div.c we calculate here is actually div.tau. For sPTT, div.c=div.tau.
         gradcxx(1) = two*exp(two*psixx(i))*gradpsixx(i,1)
         gradcxy(1) = exp(psixx(i))*gradpsixy(i,1) + psixy(i)*exp(psixx(i))*gradpsixx(i,1)
         gradcxy(2) = exp(psixx(i))*gradpsixy(i,2) + psixy(i)*exp(psixx(i))*gradpsixx(i,2)   
         gradcyy(2) = two*psixy(i)*gradpsixy(i,2) + two*exp(two*psiyy(i))*gradpsiyy(i,2)
-#ifdef fenep
-        !! For FENE-P it is a little more complex. Here we use the quotient rule...
-        f1 = fenepf(i)
-        f_visc_u = f_visc_u + coef_polymeric*(gradcxx(1)*f1 + cxx(i)*gradfenepf(i,1) &
-                                             +gradcxy(2)*f1 + cxy(i)*gradfenepf(i,2) &
-                                             +gradcxz(3)*f1 + cxz(i)*gradfenepf(i,3))
-        f_visc_v = f_visc_v + coef_polymeric*(gradcxy(1)*f1 + cxy(i)*gradfenepf(i,1) &
-                                             +gradcyy(2)*f1 + cyy(i)*gradfenepf(i,2) &
-                                             +gradcyz(3)*f1 + cyz(i)*gradfenepf(i,3))
-        f_visc_w = f_visc_w + coef_polymeric*(gradcxz(1)*f1 + cxz(i)*gradfenepf(i,1) &
-                                             +gradcyz(2)*f1 + cyz(i)*gradfenepf(i,2) &
-                                             +gradczz(3)*f1 + czz(i)*gradfenepf(i,3))
-#else        
+!        gradczz(3)= two*exp(two*psizz(i))*gradpsizz(i,3)
+      
         f_visc_u = f_visc_u + coef_polymeric*(gradcxx(1) + gradcxy(2) + gradcxz(3))
         f_visc_v = f_visc_v + coef_polymeric*(gradcxy(1) + gradcyy(2) + gradcyz(3))
         f_visc_w = f_visc_w + coef_polymeric*(gradcxz(1) + gradcyz(2) + gradczz(3))
-#endif  
+
 #endif
 
         !! Body force
@@ -341,28 +331,17 @@ contains
 #ifndef newt              
               !! add polymeric term
               !! Calculate gradc from gradpsi
+              !! NOTE, if FENE-P, psi holds the cholesky decomposition of f(tr(c))*c, and so
+              !! the div.c we calculate here is actually div.tau. For sPTT, div.c=div.tau.              
               gradcxx(1) = two*exp(two*psixx(i))*gradpsixx(i,1)
               gradcxy(1) = exp(psixx(i))*gradpsixy(i,1) + psixy(i)*exp(psixx(i))*gradpsixx(i,1)
               gradcxy(2) = exp(psixx(i))*gradpsixy(i,2) + psixy(i)*exp(psixx(i))*gradpsixx(i,2)   
-              gradcyy(2) = two*psixy(i)*gradpsixy(i,2) + two*exp(two*psiyy(i))*gradpsiyy(i,2)              
-#ifdef fenep
-              !! For FENE-P it is a little more complex. Here we use the quotient rule...
-              f1 = fenepf(i)
-              !f2 = f1*f1
-              f_visc_u = f_visc_u + coef_polymeric*(gradcxx(1)*f1 + cxx(i)*gradfenepf(i,1) &
-                                                   +gradcxy(2)*f1 + cxy(i)*gradfenepf(i,2) &
-                                                   +gradcxz(3)*f1 + cxz(i)*gradfenepf(i,3))
-              f_visc_v = f_visc_v + coef_polymeric*(gradcxy(1)*f1 + cxy(i)*gradfenepf(i,1) &
-                                                   +gradcyy(2)*f1 + cyy(i)*gradfenepf(i,2) &
-                                                   +gradcyz(3)*f1 + cyz(i)*gradfenepf(i,3))
-              f_visc_w = f_visc_w + coef_polymeric*(gradcxz(1)*f1 + cxz(i)*gradfenepf(i,1) &
-                                                   +gradcyz(2)*f1 + cyz(i)*gradfenepf(i,2) &
-                                                   +gradczz(3)*f1 + czz(i)*gradfenepf(i,3))
-#else        
+              gradcyy(2) = two*psixy(i)*gradpsixy(i,2) + two*exp(two*psiyy(i))*gradpsiyy(i,2)
+!             gradczz(3)= two*exp(two*psizz(i))*gradpsizz(i,3)                            
+     
               f_visc_u = f_visc_u + coef_polymeric*(gradcxx(1) + gradcxy(2) + gradcxz(3))
               f_visc_v = f_visc_v + coef_polymeric*(gradcxy(1) + gradcyy(2) + gradcyz(3))
               f_visc_w = f_visc_w + coef_polymeric*(gradcxz(1) + gradcyz(2) + gradczz(3))
-#endif 
 #endif            
             
               !! Body force
@@ -388,11 +367,7 @@ contains
          
      !! Deallocate any stores no longer required
      deallocate(lapu,lapv,lapw)
-#ifndef newt
-#ifdef fenep
-     deallocate(gradfenepf)
-#endif    
-#endif 
+
 
      return
   end subroutine calc_rhs_rovel
@@ -461,7 +436,6 @@ contains
 #ifdef fenep
         !! Modified formulation, because we're evolving Cholesky components of J=fr*c
         fr = fenepf(i)
-#ifdef limtr        
         srctmp = two*gradu_local(1)*cxx(i) + two*gradu_local(2)*cxy(i) &
                + two*gradv_local(1)*cxy(i) + two*gradv_local(2)*cyy(i) &
                - (fr*cxx(i)+fr*cyy(i)+fr*czz(i)-three)/lambda &
@@ -470,12 +444,7 @@ contains
         sxy = -(fr/lambda)*(fr*cxy(i)) + Mdiff*fr*lapcxy(i)     + fr*cxy(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))  
         syy = -(fr/lambda)*(fr*cyy(i)-one) + Mdiff*fr*lapcyy(i) + fr*cyy(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))    
         szz = -(fr/lambda)*(fr*czz(i)-one) + Mdiff*fr*lapczz(i) + fr*czz(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))
-#else        
-        sxx = -(one/lambda)*(fr*cxx(i)-one) + Mdiff*lapcxx(i)
-        sxy = -(one/lambda)*(fr*cxy(i)) + Mdiff*lapcxy(i)    
-        syy = -(one/lambda)*(fr*cyy(i)-one) + Mdiff*lapcyy(i)
-        szz = -(one/lambda)*(fr*czz(i)-one) + Mdiff*lapczz(i)
-#endif
+
 #else        
         fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)))/lambda !! scalar function
         sxx = fr*(cxx(i) - one) + Mdiff*lapcxx(i)
@@ -562,7 +531,6 @@ contains
 
 #ifdef fenep
            fr = fenepf(i)
-#ifdef limtr           
            srctmp = two*gradu_local(1)*cxx(i) + two*gradu_local(2)*cxy(i) &
                   + two*gradv_local(1)*cxy(i) + two*gradv_local(2)*cyy(i) &
                   - (fr*cxx(i)+fr*cyy(i)+fr*czz(i)-three)/lambda &
@@ -571,12 +539,7 @@ contains
            sxy = -(fr/lambda)*(fr*cxy(i)) + Mdiff*fr*lapcxy(i)     + fr*cxy(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))  
            syy = -(fr/lambda)*(fr*cyy(i)-one) + Mdiff*fr*lapcyy(i) + fr*cyy(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i)) 
            szz = -(fr/lambda)*(fr*czz(i)-one) + Mdiff*fr*lapczz(i) + fr*czz(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i)) 
-#else           
-           sxx = -(one/lambda)*(fr*cxx(i)-one) + Mdiff*lapcxx(i)
-           sxy = -(one/lambda)*(fr*cxy(i)) + Mdiff*lapcxy(i)    
-           syy = -(one/lambda)*(fr*cyy(i)-one) + Mdiff*lapcyy(i)     
-           szz = -(one/lambda)*(fr*czz(i)-one) + Mdiff*lapczz(i)      
-#endif
+
 #else        
            fr = -(one - epsPTT*two + epsPTT*(cxx(i)+cyy(i)))/lambda !! scalar function
            sxx = fr*(cxx(i) - one) + Mdiff*lapcxx(i)
@@ -699,7 +662,7 @@ contains
 #ifndef newt
 
 
-#ifdef limtr
+#ifdef fenep
 !     !! For Cholesky & FENE-P, we should converge to the Cholesky-components of c to filter
      do i=1,np
         fr = (exp(two*psixx(i)) + psixy(i)**two + exp(two*psiyy(i))+exp(two*psizz(i))) !<- trace of J
@@ -720,7 +683,7 @@ contains
      call calc_filtered_var(psizz)                
 #endif     
 
-#ifdef limtr
+#ifdef fenep
 !     !! Convert back to Cholesky components of fr*c_{ij}
      do i=1,npfb
         fr = (fenep_l2-three)/(fenep_l2 - (exp(two*psixx(i)) + psixy(i)**two + exp(two*psiyy(i))+exp(two*psizz(i))))
