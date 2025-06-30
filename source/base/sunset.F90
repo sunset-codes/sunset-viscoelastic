@@ -40,8 +40,8 @@ program sunset
 
   !! Adapt the stencils by reducing h (only if not restarting)
 #ifndef restart  
-!  call adapt_stencils
-  call grow_stencils
+  call adapt_stencils
+!  call grow_stencils
 #endif  
 
   !! Shrink the halos to fit, and finalise building the domain
