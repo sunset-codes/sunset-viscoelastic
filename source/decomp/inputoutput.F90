@@ -116,7 +116,9 @@ contains
            if(node_type(i).ge.0.and.node_type(i).le.2) ii=ii+4 !! Augment global index if boundary node
         end if
      end do
-     close(13)                        
+     close(13)    
+     
+     call write_to_vtk                    
    
       return
    end subroutine shift_only
@@ -787,4 +789,167 @@ end subroutine quicksorty
      return
   end subroutine swap_nodesy
 !! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!! ------------------------------------------------------------------------------------------------
+  subroutine write_to_vtk
+     integer :: n,i,ii,iii
+     character chartemp*40, name_orig*40
+     character name_vtu*40, name_vtu2*12, name_vtu3*9
+     character np_string3*3, np_string4*4, np_string5*5
+     character ispec_string1*2,ispec_string2*3
+     character np_string6*6, np_string7*7, np_string8*8
+     character supp*4,supp3*3,supp2*2,supp1*1
+     character string1*100,string2*100,string3*100,string4*100
+     character chartemp2*100
+     character proc5*5
+     CHARACTER(LEN=1)  :: DQ
+      
+     integer :: ifo
+      
+     integer :: dummy_int
+     real :: dummy_real
+  
+     write(6,*) "Hi!"
+  
+     DQ=CHAR(34)
+
+     !! Outpul unit        
+     ifo = 123
+
+     name_vtu ='../../paraview_files/disc0.vtu'
+     open(ifo,file=name_vtu,status='unknown')
+              
+                                                                     
+201  format(a40)
+202  format(a100)
+203  format(a25,i7,a17,i7,a2)
+211  format(a21)
+!     % OUTPUT TO FILE IN VTU FORMAT 
+     if(npfb.lt.1000)then       
+        write(np_string3,'(i3.3)') npfb
+        string4 = '  <Piece NumberOfPoints='//DQ//np_string3//DQ//' NumberOfCells='//DQ//np_string3//DQ//'>'
+     elseif(npfb.lt.10000)then       
+        write(np_string4,'(i4.4)') npfb
+        string4 = '  <Piece NumberOfPoints='//DQ//np_string4//DQ//' NumberOfCells='//DQ//np_string4//DQ//'>'
+     elseif(npfb.lt.100000)then       
+        write(np_string5,'(i5.5)') npfb
+        string4 = '  <Piece NumberOfPoints='//DQ//np_string5//DQ//' NumberOfCells='//DQ//np_string5//DQ//'>'
+     elseif(npfb.lt.1000000)then       
+        write(np_string6,'(i6.6)') npfb
+        string4 = '  <Piece NumberOfPoints='//DQ//np_string6//DQ//' NumberOfCells='//DQ//np_string6//DQ//'>'
+     elseif(npfb.lt.10000000)then       
+        write(np_string7,'(i7.7)') npfb
+        string4 = '  <Piece NumberOfPoints='//DQ//np_string7//DQ//' NumberOfCells='//DQ//np_string7//DQ//'>'
+     elseif(npfb.lt.100000000)then       
+        write(np_string8,'(i8.8)') npfb
+        string4 = '  <Piece NumberOfPoints='//DQ//np_string8//DQ//' NumberOfCells='//DQ//np_string8//DQ//'>'
+     else
+        write(6,*) 'Too many particles for np_string'
+        stop  
+     endif
+ 
+     string1 = '<?xml version='//DQ//'1.0'//DQ//'?>'
+     string2 = '<VTKFile type= '//DQ//'UnstructuredGrid'//DQ//'  version= '//DQ//'0.1'//DQ//&
+               '  byte_order= '//DQ//'BigEndian'//DQ//'>'
+     string3 = ' <UnstructuredGrid>'
+     write(ifo,211)string1
+     write(ifo,202)string2
+     write(ifo,202)string3
+     write(ifo,202)string4
+              
+     !! Start of point data
+     string1 = '   <PointData Scalars='//DQ//'s'//DQ//' Vectors='//DQ//'Velocity'//DQ//'>'
+     write(ifo,202)string1
+
+
+
+     string2 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'s'//DQ//' format='//DQ//'ascii'//DQ//'>'
+     !! Resolution (actualy s, though array is h)
+     write(ifo,202)string2
+     do ii=1,npfb
+        write(ifo,*)s(ii)        
+     enddo
+     string3 = '    </DataArray>'
+     write(ifo,202)string3
+    
+     !! Node-type
+     string1 = '    <DataArray type='//DQ//'Int32'//DQ//' Name='//DQ//'node_type'//DQ//' format='//DQ//'ascii'//DQ//'>'
+     write(ifo,202)string1
+     do ii=1,npfb
+        write(ifo,*)node_type(ii)
+     enddo
+     string3 = '    </DataArray>'
+     write(ifo,202) string3
+           
+     !! Vector velocity
+     string1 = '    <DataArray type='//DQ//'Float32'//DQ//' Name='//DQ//'Velocity'//DQ// &
+               ' NumberOfComponents='//DQ//'3'//DQ//' format='//DQ//'ascii'//DQ//'>'
+     write(ifo,202) string1
+     do ii=1,np
+        write(ifo,*)0.0d0,0.0d0,0.0d0
+     enddo
+     string3 = '    </DataArray>'
+     write(ifo,202) string3
+     
+
+     !! End of point data
+     string4 = '   </PointData>'
+     write(ifo,202) string4
+              
+     !! Finally, particle positions!!
+     string2 = '   <Points>'
+     string1 = '    <DataArray type='//DQ//'Float32'//DQ//' NumberOfComponents='//DQ//'3'//DQ// &
+               ' format='//DQ//'ascii'//DQ//'>'
+     write(ifo,202) string2
+     write(ifo,202) string1
+     do ii=1,npfb
+        write(ifo,*)rp(ii,1),rp(ii,2),0.0d0
+     enddo
+     string3 = '    </DataArray>'
+     string2 = '   </Points>'
+     write(ifo,202) string3
+     write(ifo,202) string2
+
+     !! WRITE CELL DATA. CELL IS OF TYPE VERTEX.          
+     string2 = '   <Cells>'
+     string1 = '    <DataArray type='//DQ//'Int32'//DQ//' Name='//DQ//'connectivity'//DQ//' format='//DQ//'ascii'//DQ//'>'
+     write(ifo,202) string2
+     write(ifo,202) string1
+     do ii=1,npfb
+        write(ifo,*)ii-1
+     enddo
+     string3 = '    </DataArray>'
+     write(ifo,202) string3
+       
+     string1 = '    <DataArray type='//DQ//'Int32'//DQ//' Name='//DQ//'offsets'//DQ//' format='//DQ//'ascii'//DQ//'>'
+     write(ifo,202) string1
+     do ii=1,npfb
+        write(ifo,*)ii
+     enddo
+     string3 = '    </DataArray>'
+     write(ifo,202) string3
+             
+     string1 = '    <DataArray type='//DQ//'Int32'//DQ//' Name='//DQ//'types'//DQ//' format='//DQ//'ascii'//DQ//'>'
+     write(ifo,202) string1
+     do ii=1,npfb
+        write(ifo,*)1
+     enddo
+     string3 = '    </DataArray>'
+     write(ifo,202) string3
+        
+     !! Final bits      
+     string1 = '   </Cells>' 
+     string2 = '  </Piece>'
+     string3 = ' </UnstructuredGrid>'
+     string4 = '</VTKFile>'
+     write(ifo,202) string1
+     write(ifo,202) string2
+     write(ifo,202) string3
+     write(ifo,202) string4
+     close(24)
+
+
+
+      return
+   end subroutine write_to_vtk
+!! ------------------------------------------------------------------------------------------------
 end module inputoutput

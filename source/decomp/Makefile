@@ -9,6 +9,10 @@ MAKE=gmake
 FC=gfortran
 
 FCFLAGS=-W -O3 -m64 -g -fbounds-check -fopenmp
+ifeq ($(shifting),1)
+FCFLAGS += -Dshft
+endif
+
 FCA = -m64 -fopenmp
 
 VPATH =../common  
@@ -18,13 +22,31 @@ OBJS += neighbours.o boundaries.o
 OBJS += inputoutput.o 
 OBJS += main.o
 
-default: decomp
+ifeq ($(shifting),1)
+default: shifting
 
-decomp: $(OBJS)
+shifting: $(OBJS)
 	$(FC) $(FCA) -o $@ $(OBJS)
+	rm *.o
 
 %.o: %.F90
 	$(FC) $(FCFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o *.mod decomp fort*
+	rm -f *.o *.mod decomp shifting fort*
+	
+else
+default: decomp
+
+decomp: $(OBJS)
+	$(FC) $(FCA) -o $@ $(OBJS)
+	rm *.o
+
+%.o: %.F90
+	$(FC) $(FCFLAGS) -c -o $@ $<
+
+clean:
+	rm -f *.o *.mod decomp shifting fort*
+endif	
+	
+

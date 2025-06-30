@@ -10,7 +10,7 @@
 0.0d0 5.0d2
 
 !! Output period (in multiples of L_char/U_char), stats output period, tracers output period
-1.0d0 2.5d-4 1.0d-1
+1.0d-3 2.5d-4 1.0d-1
 
 !! Gravity vector (grav)
 8.0d0 0.0d0 0.0d0
@@ -22,19 +22,19 @@
 1.0d0
 
 !! Viscosity ratio (beta)
-1.0d-1
+0.5d0
 
 !! sPTT non-linearity
-1.0d-3
+1.0d-30
 
 !! FENE-P maximum extensibility
 1.0d30
 
 !! Dimensionless polymeric diffusion coefficient number
-1.0d-50
+1.0d-5
 
 !! Mach number
-0.01d0
+0.1d0
 
 !! INFLOWS type (non-reflecting (0), hard (1), inout (2)) and velocity control (fixed (0), variable (1))
 0 0

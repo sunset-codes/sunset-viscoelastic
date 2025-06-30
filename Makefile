@@ -11,7 +11,7 @@
 # allout     If 3D, output the entire domain (1) or just a slice (0)                   (default: 1)
 # ceform     Direct integration (0), log-Cholesky (1), log-conf (2)                    (default: 1)
 # newt       Newtonian calculations (1) or not (0)                                     (default: 0)
-# fenep      FENE-P (1) or sPTT (0)                                                    (default: 1)
+# fenep      FENE-P (1) or sPTT (0)                                                    (default: 0)
 # morder     m (order) value = 4,6,8,10                                                (default: 8)
 # mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
 # tarout     Compress files as they're written (1) or don't (0)                        (default: 0)
@@ -78,7 +78,7 @@ FFLAGS += -Dmp
 endif
 
 # FENE-P?
-ifneq ($(fenep),0)
+ifeq ($(fenep),1)
 FFLAGS += -Dfenep
 endif
 
@@ -158,6 +158,7 @@ clean:
 	rm -vf ./data_out/time.out
 	rm -vf ./data_out/statistics/*.out
 	rm -vf ./paraview_files/LAYER*
+	rm -vf ./paraview_files/disc0.vtu	
 	rm -vf ./data_out/grilli*
 	rm -vf ./data_out/*.tar.gz
 	rm -vf ./data_out/tracer*

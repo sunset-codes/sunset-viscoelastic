@@ -12,6 +12,9 @@ program main
 !  write(6,*) "Shift only?"
 !  read(5,*) sflag
  sflag = 0
+#ifdef shft
+ sflag = 1
+#endif 
   
   if(sflag.eq.1) then
      call initial_setup    

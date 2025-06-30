@@ -317,11 +317,11 @@ contains
 
 
 !     write(6,*) "new lists-S-LR",iproc,iproc_S_LR(:)
-     call MPI_BARRIER( MPI_COMM_WORLD, ierror)          
+!     call MPI_BARRIER( MPI_COMM_WORLD, ierror)          
 !     write(6,*) "new lists-R-LR",iproc,iproc_R_LR(:)     
-     call MPI_BARRIER( MPI_COMM_WORLD, ierror)          
+!     call MPI_BARRIER( MPI_COMM_WORLD, ierror)          
 !     write(6,*) "new lists-S-UD",iproc,iproc_S_UD(:)
-     call MPI_BARRIER( MPI_COMM_WORLD, ierror)          
+!     call MPI_BARRIER( MPI_COMM_WORLD, ierror)          
 !     write(6,*) "new lists-R-UD",iproc,iproc_R_UD(:)     
      call MPI_BARRIER( MPI_COMM_WORLD, ierror)     
        

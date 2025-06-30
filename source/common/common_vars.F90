@@ -49,8 +49,8 @@ module common_vars
   real(rkind), dimension(:,:), allocatable, target :: rp,rnorm
   real(rkind), dimension(:), allocatable, target   :: h,filter_coeff,s,vol,h_ABF1,h_ABF2
   integer(ikind),dimension(:),allocatable :: node_type !! Identify whether node is boundary, fluid etc...
-  integer(ikind),dimension(:),allocatable :: global_index 
   integer(ikind),dimension(:),allocatable :: zlayer_index_global,ilayer_index !! Identify where in the z-stack the node is
+  integer(ikind),dimension(:),allocatable :: global_index
   integer(ikind),dimension(:),allocatable :: boundary_list,internal_list !! Lists for quick looping
   real(rkind) :: dz   !! FD spacing in third dimension
   integer(ikind) :: nz,nz_global
@@ -91,7 +91,7 @@ module common_vars
   real(rkind),dimension(:,:),allocatable :: ij_w_hyp,ij_w_lap
   real(rkind),dimension(:,:),allocatable :: ij_w_grad_sum,ij_wb_grad2_sum
   real(rkind),dimension(:),allocatable :: ij_w_hyp_sum,ij_w_lap_sum
-  
+    
   !! Finite Difference weightings 
   real(rkind),dimension(:),allocatable :: ij_fd_grad,ij_fd_grad2,ij_fd_hyp         
   

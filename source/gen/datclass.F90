@@ -88,7 +88,7 @@ program datgen
 
      yl=2.0d0*pi
      xl=yl/1.0d0
-     dx0=yl/(50.0d0)
+     dx0=yl/(128.0d0)
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -99,7 +99,12 @@ program datgen
      b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
-     nb_blobs = 0;n_blob_coefs=0
+     nb_blobs = 1;n_blob_coefs=6
+     allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs))
+     blob_centre(1,:)=(/-0.d0,0.d0/); !! Central
+     do i=1,nb_blobs
+        blob_coeffs(i,:)=(/1.0d0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0/);blob_rotation(i)=0.4d0
+     end do    
 
      dxmin = dx0/1.0d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
@@ -280,15 +285,15 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/60.0d0!499.50       !250
-     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
+     dx0=D_cyl/250.0d0!499.50       !250
+     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
+     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
@@ -317,7 +322,7 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
 !     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
 
 
-     dxmin = dx0/1.2d0  !! 2.0d0
+     dxmin = dx0/2.0d0  !! 2.0d0
      dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 !! ------------------------------------------------------------------------------------------------     
