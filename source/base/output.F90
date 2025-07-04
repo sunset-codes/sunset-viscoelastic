@@ -94,8 +94,7 @@ contains
            write(6,*) "max/min cxz:",maxphi(8),minphi(8)
            write(6,*) "max/min cyz:",maxphi(9),minphi(9)
 #endif                              
-           write(6,*) "# threads  :",n_threads_global,"spread across ",nprocs,"MPI tasks"
-           write(6,*) "Wall clock run time:",t_run
+           write(6,*) "Processors:",nprocs,"Wall clock time:",t_run
            write(6,*) "run-time/itime:",t_per_dt,"Moving avg:",t_last_X/dble(scr_freq)
 
            !! Profiling
@@ -113,7 +112,7 @@ contains
            write(6,291) "Waiting          :",100.0d0*stg(10)/stg(11),'%,',stg(10)/dble(scr_freq*nprocs),"seconds/step"
            write(6,291) "Other            :",100.0d0*store1/stg(11),'%,',store1/dble(scr_freq*nprocs),"seconds/step"
 #ifndef dim3
-           write(6,'(/,A)') "  "                             
+           write(6,'(/,/,A)') "  "                             
 #endif
 !           write(6,'(/,/,A)') "  "                             
             

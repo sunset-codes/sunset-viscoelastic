@@ -34,35 +34,41 @@ contains
      real(rkind),intent(in) :: psi_xx,psi_xy,psi_yy,psi_zz,fenep_l2
      real(rkind),intent(out) :: c_xx,c_xy,c_yy,c_zz
 #endif    
-     real(rkind) :: Jxx,Jxy,Jyy,Jzz,fq
+     real(rkind) :: Jxx,Jxy,Jyy,Jzz,fq,Jxz,Jyz
 
 #ifdef fenep
      !! Cholesky decomposition of fr*c if enforcing FENE-P limit
      Jxx = exp(two*psi_xx)
      Jxy = exp(psi_xx)*psi_xy
      Jyy = psi_xy*psi_xy + exp(two*psi_yy)
+#ifdef dim3
+     Jzz = exp(two*psi_zz) + psi_xz**two + psi_yz**two
+#else
      Jzz = exp(two*psi_zz)
+#endif     
      fq = fenep_l2/(fenep_l2-three+Jxx+Jyy+Jzz)    
      c_xx = Jxx*fq
      c_xy = Jxy*fq
      c_yy = Jyy*fq
      c_zz = Jzz*fq
+#ifdef dim3
+     Jxz = exp(psi_xx)*psi_xz
+     Jyz = psi_xy*psi_xz + exp(psi_yy)*psi_yz
+     c_xz = Jxz*fq
+     c_yz = Jyz*fq
+#endif     
 #else    
      !! Cholesky decomposition of c if using sPTT
      c_xx = exp(psi_xx)**two
      c_xy = exp(psi_xx)*psi_xy
-     c_yy = psi_xy**two + exp(psi_yy)**two
+     c_yy = psi_xy**two + exp(two*psi_yy)
      c_zz = one
-#endif
-
 #ifdef dim3
-     write(6,*) "WARNING, Cholesky formulation not yet implemented in 3D. Stopping."
-     stop
-     c_xz = zero
-     c_yz = zero
-     c_zz = one
-#endif      
-
+     c_xz = exp(psi_xx)*psi_xz
+     c_yz = psi_xy*psi_xz + exp(psi_yy)*psi_yz
+     c_zz = exp(two*psi_zz) + psi_xz**two + psi_yz**two
+#endif     
+#endif   
 
      return
   end subroutine cholesky_c_from_psi
@@ -77,7 +83,7 @@ contains
      real(rkind),intent(in) :: c_xx,c_xy,c_yy,c_zz,fenep_l2
      real(rkind),intent(out) :: psi_xx,psi_xy,psi_yy,psi_zz
 #endif     
-     real(rkind) :: Jxx,Jxy,Jyy,Jzz,fr
+     real(rkind) :: Jxx,Jxy,Jyy,Jzz,fr,Jxz,Jyz
 
    
 #ifdef fenep 
@@ -85,29 +91,34 @@ contains
      Jxx = c_xx*fr
      Jxy = c_xy*fr
      Jyy = c_yy*fr
-     Jzz = c_zz*fr    
+     Jzz = c_zz*fr         
      psi_xx = sqrt(Jxx)
      psi_xy = Jxy/psi_xx
-     psi_yy = sqrt(Jyy-psi_xy**two)    
+     psi_yy = sqrt(Jyy-psi_xy**two)   
+     psi_zz = sqrt(Jzz) 
+#ifdef dim3
+     Jxz = c_xz*fr
+     Jyz = c_yz*fr
+     psi_xz = Jxz/psi_xx
+     psi_yz = (Jyz - psi_xy*psi_xz)/psi_yy
+     psi_zz = sqrt(Jzz - psi_xz**two - psi_yz**two)
+#endif
      psi_xx = log(psi_xx)
      psi_yy = log(psi_yy)
-     psi_zz = log(sqrt(Jzz))
+     psi_zz = log(psi_zz)
 #else
      psi_xx = sqrt(c_xx)
      psi_xy = c_xy/(psi_xx)
      psi_yy = (sqrt(c_yy-psi_xy**two))
+     psi_zz = sqrt(c_zz)
+#ifdef dim3
+     psi_xz = c_xz/psi_xx
+     psi_yz = (c_yz - psi_xy*psi_xz)/psi_yy
+     psi_zz = sqrt(c_zz - psi_xz**two - psi_yz**two)
+#endif
      psi_xx = log(psi_xx)
      psi_yy = log(psi_yy)     
-     psi_zz = log(one)
-#endif     
-
-     !! Temporary for 3D
-#ifdef dim3
-     write(6,*) "WARNING, Cholesky formulation not yet implemented in 3D. Stopping."
-     stop
-     psi_xz = zero
-     psi_yz = zero
-     psi_zz = log(one)
+     psi_zz = log(psi_zz)
 #endif     
 
      return

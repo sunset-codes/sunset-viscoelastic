@@ -13,16 +13,16 @@
 1.0d0 2.5d-4 1.0d-1
 
 !! Gravity vector (grav)
-0.15d0 0.0d0 0.0d0
+8.0d0 0.0d0 0.0d0
 
 !! Reynolds number
-1.0d2
+1.0d0
 
 !! Weissenberg number
-1.0d1
+1.0d0
 
 !! Viscosity ratio (beta)
-0.9d0
+0.2d0
 
 !! sPTT non-linearity
 1.0d-3
@@ -31,7 +31,7 @@
 1.0d3
 
 !! Dimensionless polymeric diffusion coefficient number
-1.0d-5
+2.0d-6
 
 !! Mach number
 0.01d0

@@ -1,7 +1,7 @@
 program main
   use omp_lib 
   implicit none
-#define numdims 2
+#define numdims 3
   integer :: n,i,nthreads,np,npp,ngrab,Nframes,iframe,i_loop_finish,N_start,ii,iii,i_PART_counter
   integer,parameter :: np_max = 8100010
   integer, parameter :: i_PART_counter_max=20000

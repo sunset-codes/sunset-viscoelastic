@@ -286,14 +286,14 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
      dx0=D_cyl/250.0d0!499.50       !250
-     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
+     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
+     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
@@ -322,7 +322,7 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
 !     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
 
 
-     dxmin = dx0/2.0d0  !! 2.0d0
+     dxmin = dx0/2.0d0  !! 2.0d0, 1.5d0
      dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 !! ------------------------------------------------------------------------------------------------     

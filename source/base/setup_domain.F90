@@ -84,7 +84,7 @@ contains
      !! Set the domain lengths
      L_domain_x = (xmax - xmin)*L_char
      L_domain_y = (ymax - ymin)*L_char
-     L_domain_z = L_domain_y*half
+     L_domain_z = L_domain_y*half*half
 
      
      read(13,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U
@@ -433,7 +433,10 @@ contains
      allocate(fd_parent(nm*npfb));fd_parent=0
      allocate(zlayer_index_global(nm*npfb))
      allocate(ilayer_index(nm*npfb));ilayer_index=0
-     allocate(global_index(npfb));global_index=0     
+     allocate(global_index(npfb));global_index=0    
+     deallocate(halo_owner,halo_periodic)
+     allocate(halo_owner(nm*npfb));halo_owner=-1 
+     allocate(halo_periodic(nm*npfb));halo_periodic =0
      
      !! Build layers
      k=0

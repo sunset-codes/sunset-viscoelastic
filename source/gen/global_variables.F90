@@ -19,7 +19,6 @@
       real(rkind),dimension(:),allocatable :: b_theta
       real(rkind),dimension(:,:),allocatable :: blob_centre,blob_coeffs
       real(rkind),dimension(:),allocatable :: blob_rotation
-      integer(ikind),dimension(:),allocatable :: blob_ellipse
       integer(ikind) :: n_blob_coefs
       
       !! Blob-perimeter
