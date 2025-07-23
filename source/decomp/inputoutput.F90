@@ -76,7 +76,8 @@ contains
      write(6,*) nb,npfb     
      close(13)     
 
-     
+!     call write_to_vtk(0)     
+!     write(6,*) "Written first vtk"
 
      !! Randomly perturb the nodes
      smag = 0.5d0
@@ -118,7 +119,8 @@ contains
      end do
      close(13)    
      
-     call write_to_vtk                    
+     call write_to_vtk(0)                    
+     write(6,*) "Written second vtk"   
    
       return
    end subroutine shift_only
@@ -328,6 +330,7 @@ write(6,*) "Shifting iteration",ll,"of ",kk
      do i=1,n
         write(212,*) gi(i),x(i),y(i),nt(i),xn(i),yn(i),ds(i)
      end do
+          
      
      deallocate(x,y,xn,yn,ds,nt,gi)
  
@@ -790,7 +793,8 @@ end subroutine quicksorty
   end subroutine swap_nodesy
 !! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !! ------------------------------------------------------------------------------------------------
-  subroutine write_to_vtk
+  subroutine write_to_vtk(outnum)
+     integer(ikind),intent(in) :: outnum
      integer :: n,i,ii,iii
      character chartemp*40, name_orig*40
      character name_vtu*40, name_vtu2*12, name_vtu3*9
@@ -815,7 +819,11 @@ end subroutine quicksorty
      !! Outpul unit        
      ifo = 123
 
-     name_vtu ='../../paraview_files/disc0.vtu'
+     if(outnum.eq.0) then
+        name_vtu ='../../paraview_files/disc0.vtu'
+     else
+        name_vtu ='../../paraview_files/disc1.vtu'        
+     endif
      open(ifo,file=name_vtu,status='unknown')
               
                                                                      

@@ -25,8 +25,8 @@
       real(rkind),dimension(:),allocatable :: Sblob
     
       !! Parameters to control changing resolution  
-      real(rkind),parameter :: b0 = 2.0d0  ! size (in multiples of dx0) of uniform region by walls             !2
-      real(rkind),parameter :: b1 = 35.0d0 ! size (in multiples of dx0) of sinusoidally increasing beyond that !30
+      real(rkind),parameter :: b0 = 2.5d0  ! size (in multiples of dx0) of uniform region by walls             !2
+      real(rkind),parameter :: b1 = 40.0d0 ! size (in multiples of dx0) of sinusoidally increasing beyond that !30
       real(rkind),parameter :: b2 = 50.0d0 ! size (in multiples of dxio) of linearly increase beyond that      !50
 
 

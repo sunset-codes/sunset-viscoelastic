@@ -18,16 +18,16 @@ program datgen
 
   real(rkind) :: x,y
 
-  integer ipart
+  integer ipart,nbtot
   integer i,j,icha,nn,ve_model,ii,jj
-  double precision h0,r_mag,yl,D_cyl,S_cyl,SovD
+  double precision h0,r_mag,yl,D_cyl,S_cyl,SovD,xhat,yhat,porous_x,porous_y,porous_phi
   integer xbcond_L,xbcond_U,ybcond_L,ybcond_U
   
   double precision :: a0,a1,a2,a3,a4,a5 !! NACA coefficients
   double precision :: temp,tmp2,tmp
   real(rkind),dimension(2) :: tmpN,rn
   integer(ikind) :: iround,nround,nsearch,ipartrow,ipartrowm1,nnear,npdps,idown,iup,ibc
-  logical :: keepgoing,keepgoing2,skip
+  logical :: keepgoing,keepgoing2,skip,place_blob
   real(rkind),dimension(:,:),allocatable :: pdp
   real(rkind) :: dist2bound,dxtmp,minpdp,dist2io
   real(rkind),dimension(:),allocatable :: tmpX
@@ -50,7 +50,37 @@ program datgen
   select case (itest) 
 !! ------------------------------------------------------------------------------------------------
 !! ------------------------------------------------------------------------------------------------
-  case(1) !! EMPTY
+  case(1) !! Gap between cylinders test
+ 
+     SovD = 2.0d0!sqrt(pi/2.0d0)
+     D_cyl = 1.0d0
+     h0=D_cyl/2.0d0      !cylinder radius
+     yl=1.03*D_cyl ! box height
+     xl=1.2d0*D_cyl ! channel length
+     dx0=D_cyl/200.0       !75
+     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
+     
+     nb_patches = 4
+     allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
+     allocate(b_type(nb_patches))
+     b_type(:) = (/ 3, 3, 3, 3/)  
+     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.50d0*yl /)
+     b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
+     b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
+     nb_blobs = 2;n_blob_coefs=3
+     allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs))
+     blob_centre(1,:) = (/0.0d0,0.5d0*yl/)  
+     blob_centre(2,:) = (/0.0d0,-0.5d0*yl/)                                 
+     do i=1,nb_blobs
+        blob_coeffs(i,:) = 0.0d0
+        blob_coeffs(i,1) = h0;blob_rotation(i) = 0.0d0
+     end do
+
+     !! dx0/2.0d0, 1.5d0*dx0
+     dxmin = dx0/2.0d0 !!2.0d0
+     dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     dx_wallio=dxmin    
 !! ------------------------------------------------------------------------------------------------
   case(2) !! Cylinder in a doubly-periodic box
  
@@ -73,7 +103,7 @@ program datgen
      nb_blobs = 1;n_blob_coefs=3
      allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs))
      blob_centre(1,:) = (/0.0d0,0.0d0/)  
-                               
+
      do i=1,nb_blobs
         blob_coeffs(i,:) = 0.0d0
         blob_coeffs(i,1) = h0;blob_rotation(i) = 0.0d0
@@ -84,11 +114,11 @@ program datgen
      dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin      
 !! ------------------------------------------------------------------------------------------------
-  case(3) !! Kolmogorov flow
+  case(3) !! Kolmogorov flow (currently set for Miguel's work)
 
-     yl=2.0d0*pi
+     yl=4.0d0*2.0d0*pi
      xl=yl/1.0d0
-     dx0=yl/(128.0d0)
+     dx0=yl/(256.0d0)
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -99,12 +129,12 @@ program datgen
      b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
-     nb_blobs = 1;n_blob_coefs=6
-     allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs))
-     blob_centre(1,:)=(/-0.d0,0.d0/); !! Central
-     do i=1,nb_blobs
-        blob_coeffs(i,:)=(/1.0d0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0/);blob_rotation(i)=0.4d0
-     end do    
+     nb_blobs = 0!1;n_blob_coefs=6
+!     allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs))
+!     blob_centre(1,:)=(/-0.d0,0.d0/); !! Central
+!     do i=1,nb_blobs
+!        blob_coeffs(i,:)=(/1.0d0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0/);blob_rotation(i)=0.4d0
+!     end do    
 
      dxmin = dx0/1.0d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
@@ -114,7 +144,7 @@ program datgen
 case(4) !! Poiseuille flow
 
      yl=1.0d0
-     xl=yl/1.0d0
+     xl=yl/4.0d0
      dx0=yl/50.0d0
      xbcond_L=1;xbcond_U=1;ybcond_L=0;ybcond_U=0
      
@@ -285,7 +315,7 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/250.0d0!499.50       !250
+     dx0=D_cyl/100.0d0!499.50       !250
      xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
@@ -325,6 +355,99 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
      dxmin = dx0/2.0d0  !! 2.0d0, 1.5d0
      dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
+!! ------------------------------------------------------------------------------------------------
+case(10) 
+
+     porous_x = 2.0d0
+     porous_y = 2.0d0
+     porous_phi = 0.5d0 !! Porosity
+     D_cyl = 1.0d0;h0 = 0.5d0*D_cyl  !! Cylinder diameter
+
+     yl = porous_y                      !! Channel width 
+     xl = porous_x
+     dx0 = D_cyl/200.0d0                  !! Baseline resolution
+     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
+     !! Set resolutions
+     dxmin = dx0/2.0d0
+     dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in;dx_wallio=dx_in  !! dx for solids and in/outs...!!               
+     
+     nbtot = floor((1.0d0-porous_phi)*porous_x*porous_y/(pi*h0*h0)) !! Number of circles of dia D_cyl
+     
+     nb_patches = 4
+     allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
+     allocate(b_type(nb_patches))
+     b_type(:) = (/ 3, 3, 3, 3/)  
+     b_node(1,:) = (/ -0.5d0*xl, -0.5d0*yl /)   !-12
+     b_node(2,:) = (/  0.5d0*xl, -0.5d0*yl /)
+     b_node(3,:) = (/  0.5d0*xl, 0.5d0*yl /)
+     b_node(4,:) = (/ -0.5d0*xl, 0.5d0*yl /)
+     nb_blobs=nbtot*9;n_blob_coefs=2
+     allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs))
+     blob_coeffs(1,:)=0.0d0;blob_coeffs(1,1)=h0;blob_rotation(1)=-0.0d0*pi
+
+     !! Initialise random seed
+     call random_seed()
+
+     ii = 0 !! Counter for total number of blobs (i.e. can be more than nbtot)
+     j = 0 !! Counter for actual number blobs (not including periodic blobs)
+     
+     do while(j.lt.nbtot)
+        
+        !! Initialise blob_flag
+        place_blob = .true.
+        
+        !! Create blob position
+        call random_number(tmp);call random_number(tmp2)
+        xhat = -porous_x*tmp;yhat = porous_y*(tmp2-0.5d0)
+        
+        !! Check whether it overlaps with any other blobs
+        if(ii.ne.0) then
+           do i=1,ii
+              x=blob_centre(i,1);y=blob_centre(i,2)
+              temp = sqrt((x-xhat)**2.0d0 + (y-yhat)**2.0d0)
+              if(temp.le.D_cyl+9.0d0*dxmin) then
+                 place_blob = .false.
+              end if
+           end do
+        end if
+        
+        !! Place the blob and any mirrors of it
+        if(place_blob) then
+           j=j+1
+           ii=ii+1
+           blob_centre(ii,:) = (/ xhat, yhat /)
+           write(6,*) ii,blob_centre(ii,:)
+           if(xbcond_L.eq.1) then
+              ii=ii+1;blob_centre(ii,:) = (/ xhat+xl,yhat/)
+              ii=ii+1;blob_centre(ii,:) = (/ xhat-xl,yhat/)              
+           end if
+           if(ybcond_L.eq.1) then
+              ii=ii+1;blob_centre(ii,:) = (/ xhat,yhat+yl/)
+              ii=ii+1;blob_centre(ii,:) = (/ xhat,yhat-yl/)              
+           end if                
+           if(xbcond_L.eq.1.and.ybcond_L.eq.1) then      
+              ii=ii+1;blob_centre(ii,:) = (/ xhat+xl,yhat+yl/)
+              ii=ii+1;blob_centre(ii,:) = (/ xhat+xl,yhat-yl/)                         
+              ii=ii+1;blob_centre(ii,:) = (/ xhat-xl,yhat+yl/)
+              ii=ii+1;blob_centre(ii,:) = (/ xhat-xl,yhat-yl/)   
+           end if                      
+        end if
+
+     
+     end do
+    
+     !! Set total number of blobs
+     nb_blobs = ii
+
+     !! Multiple blobs, copy coefficients and orientations from blob 1
+     if(nb_blobs.gt.1)then
+        do i=2,nb_blobs
+           blob_coeffs(i,:) = blob_coeffs(1,:);blob_rotation(i)=blob_rotation(1)        
+        end do
+     end if
+    
+   
+
 !! ------------------------------------------------------------------------------------------------     
 end select
 !! ------------------------------------------------------------------------------------------------     
@@ -367,7 +490,20 @@ end select
         dist2io = xb_max-xb_min + 100.0d0
         i=1
         do while(i.le.nb)
-           tmpN(1) = x - xp(i);tmpN(2) = y - yp(i);temp = sqrt(dot_product(tmpN,tmpN))
+           xhat = x-xp(i);yhat = y-yp(i)
+           if(xbcond_L.eq.1.or.xbcond_U.eq.1) then
+              tmpN(1) = min(abs(xhat),min(abs(xhat-xl),abs(xhat+xl)))  !! Allowing for periodicity
+           else
+              tmpN(1) = xhat
+           end if
+           if(ybcond_U.eq.1.or.ybcond_L.eq.1) then
+              tmpN(2) = min(abs(yhat),min(abs(yhat-yl),abs(yhat+yl)))
+           else
+              tmpN(2) = yhat
+           end if
+           temp = sqrt(dot_product(tmpN,tmpN))
+                   
+!           tmpN(1) = x - xp(i);tmpN(2) = y - yp(i);temp = sqrt(dot_product(tmpN,tmpN))
            if(i.gt.nbio.and.temp.le.dist2bound) dist2bound = temp
            if(i.le.nbio.and.temp/dxp(i).le.dist2io) dist2io = temp/dxp(i)
            i=i+1
@@ -778,7 +914,8 @@ end subroutine quicksort
      if(d2b_local.le.b0*dx0) then  !! Close - set to dxmin
         dx_local = dxmin                     
      else if(d2b_local.le.b1*dx0)then  !! A bit further out, smoothly vary from dxmin to dx0
-        dx_local = 0.5d0*(dx0+dxmin) - 0.5d0*(dx0-dxmin)*cos((d2b_local-b0*dx0)*pi/((b1-b0)*dx0))  
+!        dx_local = 0.5d0*(dx0+dxmin) - 0.5d0*(dx0-dxmin)*cos((d2b_local-b0*dx0)*pi/((b1-b0)*dx0))
+        dx_local = dxmin + (dx0-dxmin)*(d2b_local-b0*dx0)/((b1-b0)*dx0)            
      else if(d2b_local.le.b1*dx0+b2*dxio)then  !! Further still: linearly vary from dx0 to dxio
         dx_local = dx0 + (dxio-dx0)*((d2b_local-b1*dx0)/(b2*dxio))
      else     !! Far out: set to dxio

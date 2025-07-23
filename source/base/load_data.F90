@@ -64,6 +64,11 @@ contains
      read(12,*) dummy_real
      read(12,*)
      
+     !! Z domain size
+     read(12,*) 
+     read(12,*) L_domain_z
+     read(12,*)     
+     
      !! Start and end time (in multiples of characteristic time)
      read(12,*)
      read(12,*) time,time_end

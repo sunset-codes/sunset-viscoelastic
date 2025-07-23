@@ -55,7 +55,8 @@ contains
 #ifndef restart     
 
      !! A messy routine to play with for other initial conditions
-     call hardcode_initial_conditions     
+     call hardcode_initial_conditions         
+!     call load_from_grid_data  
 
      !! END HARD-CODED-CHOICE =================================
 
@@ -262,6 +263,164 @@ contains
      return
   end subroutine hardcode_initial_conditions  
 !! ------------------------------------------------------------------------------------------------
+  subroutine load_from_grid_data
+     !! Temporary routine to generate initial conditions from some grid-based data
+     !! Originally this routine was used for loading data from Miguel Beneitez's Dedalus simulations
+     integer(ikind) :: i,j,k,ispec,Ngrid,il,ih,jl,jh
+     real(rkind) :: x,y,z,tmp,tmpro,Rmix_local,dxgrid,tmp_x,tmp_y
+     real(rkind),dimension(dims,dims) :: Rmat,RTmat,Lmat,psimat
+     real(rkind),dimension(dims) :: Lvec
+     real(rkind),dimension(:,:), allocatable :: ugrid,vgrid,rogrid,cxxgrid,cxygrid,cyygrid,czzgrid
+     real(rkind),dimension(:),allocatable :: xgrid
+          
+          
+     open(31,file='../../collaboration/miguel/var_Re_ref_1/u.out')
+     open(32,file='../../collaboration/miguel/var_Re_ref_1/v.out')
+     open(33,file='../../collaboration/miguel/var_Re_ref_1/ro.out')
+     open(34,file='../../collaboration/miguel/var_Re_ref_1/c11.out')
+     open(35,file='../../collaboration/miguel/var_Re_ref_1/c12.out')               
+     open(36,file='../../collaboration/miguel/var_Re_ref_1/c22.out')               
+     open(37,file='../../collaboration/miguel/var_Re_ref_1/c33.out')                                             
+
+     !! Grid size is hard-coded for now
+     Ngrid = 256
+     dxgrid = (xmax-xmin)/dble(Ngrid)
+     
+     allocate(ugrid(Ngrid,Ngrid),vgrid(Ngrid,Ngrid),rogrid(Ngrid,Ngrid))
+     allocate(cxxgrid(Ngrid,Ngrid),cxygrid(Ngrid,Ngrid),cyygrid(Ngrid,Ngrid),czzgrid(Ngrid,Ngrid))     
+     allocate(Xgrid(Ngrid))
+     
+     !! Grid coords array (may be shifted by dx/2...
+     do i=1,Ngrid
+        Xgrid(i) = xmin + dble(i-1)*dxgrid
+     end do
+     
+     !! Load data
+     do i=1,Ngrid
+        read(31,*) ugrid(:,i)
+        read(32,*) vgrid(:,i)
+        read(33,*) rogrid(:,i)
+        read(34,*) cxxgrid(:,i)
+        read(35,*) cxygrid(:,i)
+        read(36,*) cyygrid(:,i)
+        read(37,*) czzgrid(:,i)                                                
+     end do
+      
+     close(31)
+     close(32)
+     close(33)
+     close(34)
+     close(35)
+     close(36)
+     close(37)
+     
+                   
+          
+     !! Values within domain
+     !$OMP PARALLEL DO PRIVATE(x,y,z,tmp,ispec,Rmix_local,Rmat,RTmat,Lmat,Lvec,psimat,tmp_x,tmp_y)
+     do i=1,npfb
+        x = rp(i,1);y=rp(i,2);z=rp(i,3)
+
+        !! Adjust for periodicity
+        if(x.le.xmin) x = x + (xmax-xmin)
+        if(x.gt.xmax) x = x - (xmax-xmin)
+        if(y.le.ymin) y = y + (ymax-ymin)
+        if(y.gt.ymax) y = y - (ymax-ymin)       
+
+        il = 1+floor((x-xmin)/dxgrid)
+        ih = il+1
+        jl = 1+floor((y-ymin)/dxgrid)
+        jh = jl+1
+
+        if(ih.eq.Ngrid+1) ih = 1
+        if(jh.eq.Ngrid+1) jh= 1
+             
+        tmp_x = (x-Xgrid(il))/dxgrid
+        tmp_y = (y-Xgrid(jl))/dxgrid
+               
+        u(i) = (ugrid(il,jl)*(one-tmp_x) + ugrid(ih,jl)*tmp_x)*(one-tmp_y) &
+             + (ugrid(il,jh)*(one-tmp_x) + ugrid(ih,jh)*tmp_x)*tmp_y
+        v(i) = (vgrid(il,jl)*(one-tmp_x) + vgrid(ih,jl)*tmp_x)*(one-tmp_y) &
+             + (vgrid(il,jh)*(one-tmp_x) + vgrid(ih,jh)*tmp_x)*tmp_y
+        ro(i)= (rogrid(il,jl)*(one-tmp_x) + rogrid(ih,jl)*tmp_x)*(one-tmp_y) &
+             + (rogrid(il,jh)*(one-tmp_x) + rogrid(ih,jh)*tmp_x)*tmp_y
+        cxx(i) = (cxxgrid(il,jl)*(one-tmp_x) + cxxgrid(ih,jl)*tmp_x)*(one-tmp_y) &
+               + (cxxgrid(il,jh)*(one-tmp_x) + cxxgrid(ih,jh)*tmp_x)*tmp_y
+        cxy(i) = (cxygrid(il,jl)*(one-tmp_x) + cxygrid(ih,jl)*tmp_x)*(one-tmp_y) &
+               + (cxygrid(il,jh)*(one-tmp_x) + cxygrid(ih,jh)*tmp_x)*tmp_y
+        cyy(i) = (cyygrid(il,jl)*(one-tmp_x) + cyygrid(ih,jl)*tmp_x)*(one-tmp_y) &
+               + (cyygrid(il,jh)*(one-tmp_x) + cyygrid(ih,jh)*tmp_x)*tmp_y
+        czz(i) = (czzgrid(il,jl)*(one-tmp_x) + czzgrid(ih,jl)*tmp_x)*(one-tmp_y) &
+               + (czzgrid(il,jh)*(one-tmp_x) + czzgrid(ih,jh)*tmp_x)*tmp_y
+
+        p(i) = ro(i)*csq        
+        cxz(i) = zero
+        cyz(i) = zero
+
+        if(cxx(i).le.zero) cxx(i) = one
+        if(cyy(i).le.zero) cyy(i) = one
+        if(czz(i).le.zero) czz(i) = one
+        if(cxy(i)*cxy(i).ge.cxx(i)*cyy(i)) cxy(i) = (abs(cxy(i))/cxy(i))*sqrt(cxx(i)*cyy(i) - one)
+
+!  if(cxx(i)+cyy(i)+czz(i).le.3.0d0) then
+!     write(6,*) "trace",cxx(i),cyy(i),czz(i),cxx(i)+cyy(i)+czz(i)
+!  end if
+  if(cxx(i)*cyy(i) - cxy(i)**two .le.zero) then
+     write(6,*) "det",cxx(i),cxy(i),cyy(i),czz(i),cxx(i)*cyy(i)-cxy(i)**two
+  end if
+
+        !! Log-conformation transform
+#ifdef lc    
+#ifdef dim3     
+        call log_conf_psi_from_c(cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i), &
+                                 psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i))     
+#else
+        call log_conf_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i))     
+#endif   
+#endif                              
+        !! Cholesky transform
+#ifdef chl        
+#ifdef dim3     
+        call cholesky_psi_from_c(cxx(i),cxy(i),cyy(i),cxz(i),cyz(i),czz(i), &
+                                 psixx(i),psixy(i),psiyy(i),psixz(i),psiyz(i),psizz(i),fenep_l2)     
+#else
+        call cholesky_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
+#endif   
+#endif       
+
+     end do
+     !$OMP END PARALLEL DO
+
+     !! Put mirrors in now (Why necessary???)         
+     do i=npfb+1,np
+        cxx(i) = one !+ 128.0d0*Wi*Wi*y*y
+        cxy(i) = zero !- 8.0d0*Wi*y
+        cyy(i) = one
+        cxz(i) = zero
+        cyz(i) = zero
+        czz(i) = one
+     end do         
+         
+     
+     !! Values on boundaries
+     if(nb.ne.0)then
+        do j=1,nb
+           i=boundary_list(j)
+           if(node_type(i).eq.0) then !! wall initial conditions
+              u(i)=zero;v(i)=zero;w(i)=zero            
+           end if                 
+           if(node_type(i).eq.1) then !! inflow initial conditions
+              u(i)=u_char
+           end if
+           if(node_type(i).eq.2) then !! outflow initial conditions
+              u(i)=u_char
+           end if
+        end do
+     end if   
+  
+     return
+  end subroutine load_from_grid_data    
+!! ------------------------------------------------------------------------------------------------
   subroutine load_restart_file
      !! Load initial conditions from a dump file
      integer(ikind) :: k,i,j,dummy_int
@@ -278,34 +437,34 @@ contains
 
      !! Construct the file name:
      write(fname,'(A17,I5)') './restart/fields_',k
-     write(fname2,'(A16,I5)') './restart/nodes_',k
+!     write(fname2,'(A16,I5)') './restart/nodes_',k
 
      !! Load the "smoothing length" from nodes file
-     open(15,file=fname2)
-     read(15,*) k
-     if(k.ne.npfb) write(6,*) "WARNING, expecting problem in restart. NODES FILE.",k,npfb
+!     open(15,file=fname2)
+!     read(15,*) k
+!     if(k.ne.npfb) write(6,*) "WARNING, expecting problem in restart. NODES FILE.",k,npfb
      !! Load the initial conditions
-     do i=1,npfb
-#ifdef dim3
-        read(15,*) dummy_int,tmp,tmp,tmp,tmp,h(i),k
-#else
-        read(15,*) dummy_int,tmp,tmp,tmp,h(i),k
-#endif        
-        if(dummy_int.ne.global_index(i)) then
-           write(6,*) "ERROR: global index mismatch.",dummy_int,global_index(i)
-           write(6,*)
-           stop
-        end if
-        if(k.ne.node_type(i)) then
-           write(6,*) "ERROR: Problem in restart file. STOPPING."
-#ifdef mp
-           call MPI_Abort(MPI_COMM_WORLD, k, ierror)
-#else
-           stop
-#endif
-        end if
-     end do
-     close(15)
+!     do i=1,npfb
+!#ifdef dim3
+!        read(15,*) dummy_int,tmp,tmp,tmp,tmp,h(i),k
+!#else
+!        read(15,*) dummy_int,tmp,tmp,tmp,h(i),k
+!#endif        
+!        if(dummy_int.ne.global_index(i)) then
+!           write(6,*) "ERROR: global index mismatch.",dummy_int,global_index(i)
+!           write(6,*)
+!           stop
+!        end if
+!        if(k.ne.node_type(i)) then
+!           write(6,*) "ERROR: Problem in restart file. STOPPING."
+!#ifdef mp
+!           call MPI_Abort(MPI_COMM_WORLD, k, ierror)
+!#else
+!           stop
+!#endif
+!        end if
+!     end do
+!     close(15)
 
 
      !! Open the field files

@@ -46,6 +46,7 @@ contains
     integer(ikind) :: i,imp,k,xbcond_L_noMPI,xbcond_U_noMPI,ybcond_L_noMPI,ybcond_U_noMPI
     integer(ikind) :: nmirror,nmirror_esti
     logical :: stopflag
+    real(rkind), parameter :: mlayer_buff = 2.0d0
       
     nmirror_esti = 5*npfb  ! Estimate for max number of mirrors
     allocate(irelation(npfb+1:npfb+nmirror_esti))      
@@ -78,7 +79,7 @@ contains
     do i=1,npfb
        
        !! LEFT AND RIGHT BOUNDARIES
-       if(rp(i,1).le.xmin+ss*h(i)*1.2d0)then ! Close to left bound
+       if(rp(i,1).le.xmin+ss*h(i)*mlayer_buff)then ! Close to left bound
           if(xbcond_L_noMPI.eq.1)then ! Periodic
              imp = imp + 1
              k = npfb + imp
@@ -92,7 +93,7 @@ contains
           end if
        end if   
        
-       if(rp(i,1).ge.xmax-ss*h(i)*1.2d0)then ! Close to right bound
+       if(rp(i,1).ge.xmax-ss*h(i)*mlayer_buff)then ! Close to right bound
           if(xbcond_U_noMPI.eq.1)then ! Periodic
              imp = imp + 1
              k = npfb + imp
@@ -107,7 +108,7 @@ contains
        end if 
        
        !! UPPER AND LOWER BOUNDARIES
-       if(rp(i,2).le.ymin+ss*h(i)*1.2d0)then ! Close to lower bound
+       if(rp(i,2).le.ymin+ss*h(i)*mlayer_buff)then ! Close to lower bound
           if(ybcond_L_noMPI.eq.1)then ! Periodic
              imp = imp + 1
              k = npfb + imp
@@ -126,7 +127,7 @@ contains
           end if
        end if   
        
-       if(rp(i,2).ge.ymax-ss*h(i)*1.2d0)then ! Close to upper bound
+       if(rp(i,2).ge.ymax-ss*h(i)*mlayer_buff)then ! Close to upper bound
           if(ybcond_U_noMPI.eq.1)then ! Periodic
              imp = imp + 1
              k = npfb + imp
@@ -148,7 +149,7 @@ contains
        !! CORNER BOUNDARIES
        rcorn = (/xmin,ymin,zero/)
        cdist = sqrt(dot_product(rcorn-rp(i,:),rcorn-rp(i,:)))
-       if(cdist.le.ss*h(i)*1.2d0)then  !! Close to lower left corner
+       if(cdist.le.ss*h(i)*mlayer_buff)then  !! Close to lower left corner
           if(xbcond_L_noMPI.ne.0.and.ybcond_L_noMPI.ne.0)then ! if a mirror node is required
              imp = imp + 1
              k = npfb + imp
@@ -171,7 +172,7 @@ contains
        
        rcorn = (/xmax,ymin,zero/)
        cdist = sqrt(dot_product(rcorn-rp(i,:),rcorn-rp(i,:)))
-       if(cdist.le.ss*h(i)*1.2d0)then  !! close to lower right corner
+       if(cdist.le.ss*h(i)*mlayer_buff)then  !! close to lower right corner
           if(xbcond_U_noMPI.ne.0.and.ybcond_L_noMPI.ne.0)then ! if a mirror node is required
              imp = imp + 1
              k = npfb + imp
@@ -194,7 +195,7 @@ contains
        
        rcorn = (/xmin,ymax,zero/)
        cdist = sqrt(dot_product(rcorn-rp(i,:),rcorn-rp(i,:)))
-       if(cdist.le.ss*h(i)*1.2d0)then  !! close to upper left corner
+       if(cdist.le.ss*h(i)*mlayer_buff)then  !! close to upper left corner
           if(xbcond_L_noMPI.ne.0.and.ybcond_U_noMPI.ne.0)then ! if a mirror node is required
              imp = imp + 1
              k = npfb + imp
@@ -217,7 +218,7 @@ contains
        
        rcorn = (/xmax,ymax,zero/)
        cdist = sqrt(dot_product(rcorn-rp(i,:),rcorn-rp(i,:)))
-       if(cdist.le.ss*h(i)*1.2d0)then  !! Close to upper right corner
+       if(cdist.le.ss*h(i)*mlayer_buff)then  !! Close to upper right corner
           if(xbcond_U_noMPI.ne.0.and.ybcond_U_noMPI.ne.0)then ! if a mirror node is required
              imp = imp + 1
              k = npfb + imp

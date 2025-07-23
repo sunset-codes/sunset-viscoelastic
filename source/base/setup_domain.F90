@@ -74,6 +74,7 @@ contains
      real(rkind),dimension(ithree) :: rij
      real(rkind),dimension(:,:),allocatable :: tmp_vec
      integer(ikind) :: nl_ini,nl_end,nl_iniC,nl_endC,nl_ini2,nl_end2
+     character(70) :: fname2       
 
      !! STEP 1: Load IPART (some params, plus list of nodes + boundary normals)
      !! =======================================================================
@@ -84,7 +85,7 @@ contains
      !! Set the domain lengths
      L_domain_x = (xmax - xmin)*L_char
      L_domain_y = (ymax - ymin)*L_char
-     L_domain_z = L_domain_y*half*half
+     L_domain_z = L_domain_z*L_char
 
      
      read(13,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U
@@ -184,6 +185,45 @@ contains
         end if
 
      end do
+     
+     !! If it's a restart, we need to load the smoothing length h NOW
+#ifdef restart
+#ifdef mp
+     k=10000+iproc
+#else
+     k=10000
+#endif     
+
+     !! Construct the file name:
+     write(fname2,'(A16,I5)') './restart/nodes_',k
+
+     !! Load the "smoothing length" from nodes file
+     open(15,file=fname2)
+     read(15,*) k
+     if(k.ne.npfb) write(6,*) "WARNING, expecting problem in restart. NODES FILE.",k,npfb
+     !! Load the initial conditions
+     do i=1,npfb
+#ifdef dim3
+        read(15,*) dummy_int,dummy,dummy,dummy,dummy,h(i),k
+#else
+        read(15,*) dummy_int,dummy,dummy,dummy,h(i),k
+#endif        
+        if(dummy_int.ne.global_index(i)) then
+           write(6,*) "ERROR: global index mismatch.",dummy_int,global_index(i)
+           write(6,*)
+           stop
+        end if
+        if(k.ne.node_type(i)) then
+           write(6,*) "ERROR: Problem in restart file. STOPPING."
+#ifdef mp
+           call MPI_Abort(MPI_COMM_WORLD, k, ierror)
+#else
+           stop
+#endif
+        end if
+     end do
+     close(15)
+#endif     
 
 
 #ifdef mp   

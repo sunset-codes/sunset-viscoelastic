@@ -127,6 +127,10 @@ contains
            end do
         end if 
 #endif       
+
+        !! Copy hyperviscosity matrix 
+        amathyp = amatx 
+
 #if morder>=5
         if(node_type(i).eq.-1.or.node_type(i).eq.-2)then 
            do i1=1,nsizeG
@@ -140,7 +144,6 @@ contains
 #endif        
           
         !! Copy remaining LHSs
-        amathyp = amatx
         amaty = amatx;amatxx=amatx;amatxy=amatx;amatyy=amatx 
      
         !! Build RHS for ddx and ddy
@@ -368,13 +371,14 @@ contains
      !! All FD are in boundary normal direction, using 5 point stencils.
      !! All 1D-LABFM are used in boundary tangent direction, and are 6th order
      !!
+   
      !! NODE   | grad (N)  | grad (T)  | LAP        | FILT
-     !!  i0    |   FD      | 1DLABFM   | FD+1DLABFM | FD+1DLABFM
-     !!  i1    |   FD      | 1DLABFM   | FD+1DLABFM | FD+1DLABFM (LABFM m=4)
-     !!  i2    |   FD      | 1DLABFM   | FD+1DLABFM | FD+1DLABFM
+     !!  i0    |   FD      | 1DLABFM   | FD+1DLABFM | FD+1DLABFM d^4/dx^4
+     !!  i1    |   FD      | 1DLABFM   | FD+1DLABFM | LABFM m=6
+     !!  i2    |   FD      | 1DLABFM   | FD+1DLABFM | LABFM m=6
      !!  i3    | LABFM m=6 | LABFM m=6 | LABFM m=6  | LABFM m=6
      !!  i4    | LABFM m=6 | LABFM m=6 | LABFM m=6  | LABFM m=6
-     !! other  | LABFM m=8 | LABFM m=8 | LABFM m=8  | LABFM m=8    
+     !! other  | LABFM m=8 | LABFM m=8 | LABFM m=8  | LABFM m=8        
      
      
      integer(ikind) :: i,j,k,nsize,nsizeG,i1,i2,is,ie,irow,ii,jj,kk
@@ -474,7 +478,8 @@ contains
      do jj=1,nb   !! inefficient at the moment: loop all nodes, cycle those not in correct row...
         i=boundary_list(jj)+1
         dx = s(i)     
-        ij_w_grad(:,:,i) = zero;ij_w_lap(:,i) = zero
+        ij_w_grad(:,:,i) = zero
+        ij_w_lap(:,i) = zero
 !        ij_w_hyp(:,i)=zero      
         do k=1,ij_count(i)
            j=ij_link(k,i)   
@@ -505,7 +510,7 @@ contains
      do jj=1,nb   !! inefficient at the moment: loop all nodes, cycle those not in correct row...
         i=boundary_list(jj)+2
         dx = s(i)     
-        ij_w_hyp(:,i)=zero
+!        ij_w_hyp(:,i)=zero
         ij_w_grad(:,:,i) = zero
         ij_w_lap(:,i) = zero                    
         do k=1,ij_count(i)
@@ -524,11 +529,11 @@ contains
            if(node_type(j).eq.-3.and.fd_parent(j).eq.fd_parent(i)) ij_w_lap(k,i) =  16.0d0/12.0d0/dx2
            if(node_type(j).eq.-4.and.fd_parent(j).eq.fd_parent(i)) ij_w_lap(k,i) = -one/12.0d0/dx2
 
-           if(j.eq.fd_parent(i))                                   ij_w_hyp(k,i) = -one   !! 4th DERIV
-           if(node_type(j).eq.-1.and.fd_parent(j).eq.fd_parent(i)) ij_w_hyp(k,i) =  4.0d0
-           if(j.eq.i)                                              ij_w_hyp(k,i) =  zero
-           if(node_type(j).eq.-3.and.fd_parent(j).eq.fd_parent(i)) ij_w_hyp(k,i) =  4.0d0
-           if(node_type(j).eq.-4.and.fd_parent(j).eq.fd_parent(i)) ij_w_hyp(k,i) = -one    
+!           if(j.eq.fd_parent(i))                                   ij_w_hyp(k,i) = -one   !! 4th DERIV
+!           if(node_type(j).eq.-1.and.fd_parent(j).eq.fd_parent(i)) ij_w_hyp(k,i) =  4.0d0
+!           if(j.eq.i)                                              ij_w_hyp(k,i) =  zero
+!           if(node_type(j).eq.-3.and.fd_parent(j).eq.fd_parent(i)) ij_w_hyp(k,i) =  4.0d0
+!           if(node_type(j).eq.-4.and.fd_parent(j).eq.fd_parent(i)) ij_w_hyp(k,i) = -one    
                      
         end do 
      end do      
@@ -587,7 +592,7 @@ contains
         call svd_solve(amattt,nsize,bvectt)
 
         !! Solve system for transverse hyperviscous filter (4th derivatives)
-        bvecthyp(:)=zero;bvecthyp(6)=one;i1=0;i2=0;nsize=nsizeG
+        bvecthyp(:)=zero;bvecthyp(4)=-one;i1=0;i2=0;nsize=nsizeG
         call svd_solve(amatthyp,nsize,bvecthyp)
 
         !! Next neighbour loop to calculate weights
@@ -800,7 +805,7 @@ contains
               !! Gradient and hyperviscous weights
               ij_w_grad(2,k,i) = dot_product(bvect,gvec)/hh
               ij_w_lap(k,i) = ij_w_lap(k,i) + dot_product(bvectt,gvec)/hh/hh                               
-              ij_w_hyp(k,i) = ij_w_hyp(k,i) + dot_product(bvecthyp,gvec)                                                       
+!              ij_w_hyp(k,i) = ij_w_hyp(k,i) + dot_product(bvecthyp,gvec)         
            end if               
         end do
 
@@ -980,14 +985,14 @@ contains
      allocate(neighbourcountreal(npfb));neighbourcountreal=zero
 
      !! Set parameters of h-reduction
-     reduction_factor = 0.99
+     reduction_factor = 0.98
 #if morder==4
      res_tol = 1.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
 #elif morder==6
      res_tol = 5.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
 #elif morder==8
 #if ABF==2
-     res_tol = 4.0d-2*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order    !3.0d-2
+     res_tol = 3.0d-2*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order    !3.0d-2
 #elif ABF==4
      res_tol = 4.0d-5*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order
 #endif
@@ -1316,7 +1321,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 #if ABF==2
      res_tol = 3.0d-2*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order    !3.0d-2
 #elif ABF==4
-     res_tol = 4.0d-5*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order
+     res_tol = 2.048d9*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order
 #endif
 #elif morder==10     
      res_tol = 1.0d+0*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 10th order
@@ -1338,7 +1343,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
         !! Store the original h, and then start at 0.6*h
         if(increase_h) then
            hmax_local = h(i)
-           h(i) = 0.6d0*h(i)
+           h(i) = 0.7d0*h(i)
         end if           
         do while (increase_h)
            !! increase h 
@@ -1421,6 +1426,8 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
            end do
            hchecksum = hchecksum*hh*hh
            hchecksum = sqrt(hchecksum/dble(nsizeG))
+           
+if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh           
            
            !! Second check for h-reduction: amplification of wavenumbers below Nyquist
            i1=0
@@ -1637,12 +1644,11 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
         !! Reduce the filter coefficient near boundaries        
         if(node_type(i).lt.0) then
            if(node_type(fd_parent(i)).eq.0) then !! Walls only
-              if(node_type(i).eq.-1) filter_coeff(i) = filter_coeff(i)*oosqrt2!*half!*half
+              if(node_type(i).eq.-1) filter_coeff(i) = filter_coeff(i)*half*oosqrt2!*half!*half
               if(node_type(i).eq.-2) filter_coeff(i) = filter_coeff(i)*half !half
               if(node_type(i).eq.-3) filter_coeff(i) = filter_coeff(i)*oosqrt2!*half
               if(node_type(i).eq.-4.or.node_type(i).eq.998) filter_coeff(i) = filter_coeff(i)*oosqrt2!*half 
            end if
-
         end if
                 
      end do
@@ -1669,9 +1675,8 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
            fji = one - cos(tmp*sqrt(x*x+y*y))!*cos(tmp*x)
            lsum = lsum + fji*ij_w_hyp(k,i)
         end do
-        filter_coeff(i) = (one/3.0d0)/lsum  !(two/3.0d0)
-        
-        filter_coeff(i) = filter_coeff(i)*half*half
+        filter_coeff(i) = (one/3.0d0)/lsum  !(two/3.0d0)        
+        filter_coeff(i) = filter_coeff(i)*half!*half
                 
      end do
      !$omp end parallel do

@@ -88,12 +88,13 @@ contains
            write(6,*) "max/min cxx  :",maxphi(5),minphi(5)
            write(6,*) "max/min cxy  :",maxphi(6),minphi(6)
            write(6,*) "max/min cyy  :",maxphi(7),minphi(7)   
-           write(6,*) "max/min czz  :",maxphi(10),minphi(10)   
-           write(6,*) "max/min tr(c):",maxphi(11),minphi(11)           
 #ifdef dim3
            write(6,*) "max/min cxz:",maxphi(8),minphi(8)
            write(6,*) "max/min cyz:",maxphi(9),minphi(9)
-#endif                              
+#endif      
+           write(6,*) "max/min czz  :",maxphi(10),minphi(10)   
+           write(6,*) "max/min tr(c):",maxphi(11),minphi(11)           
+                        
            write(6,*) "Processors:",nprocs,"Wall clock time:",t_run
            write(6,*) "run-time/itime:",t_per_dt,"Moving avg:",t_last_X/dble(scr_freq)
 

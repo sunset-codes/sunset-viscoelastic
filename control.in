@@ -6,6 +6,9 @@
 !! Characteristic velocity scale (U_char)
 1.0d0
 
+!! Size of domain in Z
+1.0d0
+
 !! Start and end time (in multiples of L_char/Uchar)
 0.0d0 5.0d2
 
@@ -13,25 +16,25 @@
 1.0d0 2.5d-4 1.0d-1
 
 !! Gravity vector (grav)
-8.0d0 0.0d0 0.0d0
+0.0d0 0.0d0 0.0d0
 
 !! Reynolds number
-1.0d0
+1.0d-1
 
 !! Weissenberg number
-1.0d0
+3.0d1
 
 !! Viscosity ratio (beta)
-0.2d0
+0.95d0
 
 !! sPTT non-linearity
-1.0d-3
+0.0d0
 
 !! FENE-P maximum extensibility
-1.0d3
+1.0d24
 
 !! Dimensionless polymeric diffusion coefficient number
-2.0d-6
+1.0d-3
 
 !! Mach number
 0.01d0
