@@ -13,19 +13,19 @@
 0.0d0 5.0d2
 
 !! Output period (in multiples of L_char/U_char), stats output period, tracers output period
-1.0d0 2.5d-4 1.0d-1
+0.1d0 2.5d-4 1.0d-1
 
 !! Gravity vector (grav)
-0.0d0 0.0d0 0.0d0
+8.0d0 0.0d0 0.0d0
 
 !! Reynolds number
-1.0d-1
+1.0d0
 
 !! Weissenberg number
-3.0d1
+1.0d0
 
 !! Viscosity ratio (beta)
-0.95d0
+0.2d0
 
 !! sPTT non-linearity
 0.0d0
@@ -34,7 +34,7 @@
 1.0d24
 
 !! Dimensionless polymeric diffusion coefficient number
-1.0d-3
+1.0d-30
 
 !! Mach number
 0.01d0

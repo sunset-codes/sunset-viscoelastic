@@ -116,9 +116,9 @@ program datgen
 !! ------------------------------------------------------------------------------------------------
   case(3) !! Kolmogorov flow (currently set for Miguel's work)
 
-     yl=4.0d0*2.0d0*pi
+     yl=1.0d0!2.0d0*pi*4.0d0
      xl=yl/1.0d0
-     dx0=yl/(256.0d0)
+     dx0=yl/(40.0d0)
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -144,7 +144,7 @@ program datgen
 case(4) !! Poiseuille flow
 
      yl=1.0d0
-     xl=yl/4.0d0
+     xl=yl/1.0d0
      dx0=yl/50.0d0
      xbcond_L=1;xbcond_U=1;ybcond_L=0;ybcond_U=0
      

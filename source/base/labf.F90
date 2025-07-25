@@ -24,7 +24,7 @@ module labf
   
   private
   public calc_labf_weights,adapt_stencils,calc_boundary_weights,calc_labf_sums, &
-         filter_coefficients,grow_stencils
+         filter_coefficients
 
 !! Choice of ABF type:: 1=original, 2=Hermite polynomials, 3=Legendre polynomials
 !! ABFs 2 and 3 are multiplied by an RBF (Wab(qq) set in sphtools).
@@ -39,11 +39,21 @@ contains
      !! Linear system to find ABF coefficients
      real(rkind),dimension(:,:),allocatable :: amatx,amaty,amatxx,amatxy,amatyy,amathyp
      real(rkind),dimension(:),allocatable :: bvecx,bvecy,bvecxx,bvecxy,bvecyy,bvechyp,gvec,xvec
-     integer(ikind) :: i1,i2,nsize,nsizeG
+     integer(ikind) :: i1,i2,nsize,nsizeG,nsize_large
      real(rkind) :: ff1,hh,testing
 
 
-     !! Set desired order of the filter (morder.ge.morder)
+     !! Set desired order of the filter (forder.ge.morder)
+#if forder==4
+     k=4
+#elif forder==6
+     k=6
+#elif forder==8
+     k=8
+#elif forder==10
+     k=10
+#endif
+     nsize_large=(k*k+3*k)/2   !!  5,9,14,20,27,35,44... for k=2,3,4,5,6,7,8...   
 #if morder==4
      k=4
 #elif morder==6
@@ -60,12 +70,198 @@ contains
 
      !! Left hand sides and arrays for interparticle weights 
      allocate(ij_w_grad(2,nplink,npfb),ij_w_lap(nplink,npfb))
-     allocate(ij_w_hyp(nplink,npfb),amathyp(nsizeG,nsizeG),amatyy(nsizeG,nsizeG))
+     allocate(amatyy(nsizeG,nsizeG))
      allocate(amatx(nsizeG,nsizeG),amaty(nsizeG,nsizeG),amatxx(nsizeG,nsizeG),amatxy(nsizeG,nsizeG))
      amatx=zero;amaty=zero;amatxx=zero;amatxy=zero;amatyy=zero
       
      !! Right hand sides, vectors of monomials and ABFs
-     allocate(bvecx(nsizeG),bvecy(nsizeG),bvecxx(nsizeG),bvecxy(nsizeG),bvecyy(nsizeG),bvechyp(nsizeG))
+     allocate(bvecx(nsizeG),bvecy(nsizeG),bvecxx(nsizeG),bvecxy(nsizeG),bvecyy(nsizeG))
+     allocate(gvec(nsize_large),xvec(nsize_large));gvec=zero;xvec=zero
+
+     !! Loop over all internal particles and build weights
+     do ii=1,npfb-nb
+        i=internal_list(ii) 
+!        if(node_type(i).eq.-1) cycle !! Skip the first row, as this is done by 1D structure
+!        if(node_type(i).eq.-2) cycle !! Skip the second row, as this is done by 1D structure
+        hh=h_small(i)  
+       
+        !! Build matrices
+        amatx = zero
+        do k=1,ij_count_small(i)
+           j = ij_link(k,i) 
+           rij(:) = rp(i,1:2) - rp(j,1:2)
+           x = -rij(1);y = -rij(2)
+           
+           !! Different types of ABF need different arguments (xx,yy)
+           !! to account for domain of orthogonality
+           rad = sqrt(x*x + y*y)/hh;qq=rad
+#if ABF==1   
+           ff1 = fac(qq)/hh
+           xx=x;yy=y        !! "Original"
+#elif ABF==2     
+           ff1 = Wab(qq)
+           xx=x/hh;yy=y/hh    !! Hermite   
+#elif ABF==3
+           ff1 = Wab(qq)
+           xx=x/hh/ss;yy=y/hh/ss  !! Legendre
+#elif ABF==4
+           ff1 = Wab(qq)
+           xx=pi*x/hh/ss;yy=pi*y/hh/ss !! Fourier
+#endif    
+
+           !! Populate the ABF array
+           gvec(1:nsize_large) = abfs(rad,xx,yy)
+           gvec(1:nsize_large) = gvec(1:nsize_large)*ff1
+           
+           !! Populate the monomials array
+           xvec(1:nsize_large) = monomials(x/hh,y/hh)
+
+           !! Build the LHS
+           do i1=1,nsizeG   !! Build filter LHS
+              amatx(i1,:) = amatx(i1,:) + xvec(i1)*gvec(1:nsizeG)   
+           end do                
+        end do   
+
+        !! for rows 1,2,3 & 4, drop to 6th order
+#if morder>=7
+        if(node_type(i).eq.998.or.node_type(i).lt.0)then 
+           do i1=1,nsizeG
+              amatx(i1,28:nsizeG)=zero        
+           end do
+           do i1=28,nsizeG
+              amatx(i1,1:nsizeG)=zero
+              amatx(i1,i1)=one
+           end do
+        end if 
+#endif       
+
+#if morder>=5
+        if(node_type(i).eq.-1.or.node_type(i).eq.-2)then 
+           do i1=1,nsizeG
+              amatx(i1,15:nsizeG)=zero        
+           end do
+           do i1=15,nsizeG
+              amatx(i1,1:nsizeG)=zero
+              amatx(i1,i1)=one
+           end do
+        end if 
+#endif        
+          
+        !! Copy remaining LHSs
+        amaty = amatx;amatxx=amatx;amatxy=amatx;amatyy=amatx 
+     
+        !! Build RHS for ddx and ddy
+        bvecx = zero;bvecx(1) = one
+        bvecy = zero;bvecy(2) = one  
+    
+        !! Solve system for ddx coefficients
+        i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amatx,nsize,bvecx)               
+        
+        !! Solve system for ddy coefficients
+        i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amaty,nsize,bvecy)                       
+ 
+        !! Build RHS for d2/dx2,d2/dxdy,d2/dy2
+        bvecxx(:)=zero;bvecxx(3)=one
+        bvecxy(:)=zero;bvecxy(4)=one
+        bvecyy(:)=zero;bvecyy(5)=one
+ 
+        !! Solve system for d2/dx2 coefficients
+        i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amatxx,nsize,bvecxx)               
+        
+        !! Solve system for 2nd cross deriv coefficients (d2/dxdy)
+        i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amatxy,nsize,bvecxy)               
+
+        !! Solve system for d2/dy2 coefficients
+        i1=0;i2=0;nsize=nsizeG
+        call svd_solve(amatyy,nsize,bvecyy)               
+        
+        !! Another loop of neighbours to calculate interparticle weights
+        do k=1,ij_count(i)
+           j = ij_link(k,i) 
+           rij(:) = rp(i,1:2) - rp(j,1:2)
+           x=-rij(1);y=-rij(2)
+
+           !! Calculate arguments (diff ABFs need args over diff ranges)
+           !! N.B. args for ABFs are adjusted to be centred at stencil centre (not node i)
+           rad = sqrt(x*x + y*y)/hh;qq=rad
+#if ABF==1   
+           ff1 = fac(qq)/hh
+           xx=x;yy=y
+#elif ABF==2     
+           ff1 = Wab(qq)
+           xx=x/hh;yy=y/hh    !! Hermite   
+#elif ABF==3
+           ff1 = Wab(qq)
+           xx=x/hh/ss;yy=y/hh/ss  !! Legendre
+#elif ABF==4
+           ff1=Wab(qq)
+           xx=pi*x/hh/ss;yy=pi*y/hh/ss !! FOURIER
+#endif           
+           !! Populate the ABF array        
+           gvec(1:nsize_large) = abfs(rad,xx,yy)
+           gvec(1:nsize_large) = gvec(1:nsize_large)*ff1           
+           
+
+           !! Weights for gradients
+           ij_w_grad(1,k,i) = dot_product(bvecx,gvec(1:nsizeG))/hh
+           ij_w_grad(2,k,i) = dot_product(bvecy,gvec(1:nsizeG))/hh
+           ij_w_lap(k,i) = dot_product(bvecxx+bvecyy,gvec(1:nsizeG))/hh/hh
+ 
+           
+        end do                  
+
+     end do
+
+
+     deallocate(amatx,amaty,amatxx,amatxy,amatyy)
+     deallocate(bvecx,bvecy,bvecxx,bvecxy,bvecyy,gvec,xvec)   
+     
+     call calc_filter_weights
+     
+     !! Calculate node volumes - used for evaluating integral quantities in statistics routines
+     call calc_node_volumes
+         
+     write(6,*) "iproc",iproc,"LABFM weights calculated"
+        
+     return
+  end subroutine calc_labf_weights
+!! ------------------------------------------------------------------------------------------------  
+  subroutine calc_filter_weights
+     integer(ikind) :: i,j,k,ii
+     real(rkind) :: rad,qq,x,y,xx,yy,xs,ys
+     real(rkind),dimension(2) :: rij
+
+     !! Linear system to find ABF coefficients
+     real(rkind),dimension(:,:),allocatable :: amathyp
+     real(rkind),dimension(:),allocatable :: bvechyp,gvec,xvec
+     integer(ikind) :: i1,i2,nsize,nsizeG
+     real(rkind) :: ff1,hh,testing
+
+
+     !! Set desired order of the filter (forder.ge.morder)
+#if forder==4
+     k=4
+#elif forder==6
+     k=6
+#elif forder==8
+     k=8
+#elif forder==10
+     k=10
+#endif
+     nsizeG=(k*k+3*k)/2   !!  5,9,14,20,27,35,44... for k=2,3,4,5,6,7,8...     
+               
+     !! Reduce nplink now, to avoid allocating more memory than necessary
+     nplink = maxval(ij_count(1:npfb))
+
+     !! Left hand sides and arrays for interparticle weights 
+     allocate(ij_w_hyp(nplink,npfb),amathyp(nsizeG,nsizeG))
+      
+     !! Right hand sides, vectors of monomials and ABFs
+     allocate(bvechyp(nsizeG))
      allocate(gvec(nsizeG),xvec(nsizeG));gvec=zero;xvec=zero
 
      !! Loop over all internal particles and build weights
@@ -73,12 +269,10 @@ contains
         i=internal_list(ii) 
 !        if(node_type(i).eq.-1) cycle !! Skip the first row, as this is done by 1D structure
 !        if(node_type(i).eq.-2) cycle !! Skip the second row, as this is done by 1D structure
-        nsize = nsizeG
-        amatx=zero
         hh=h(i)  
        
         !! Build matrices
-        amatx = zero
+        amathyp = zero
         do k=1,ij_count(i)
            j = ij_link(k,i) 
            rij(:) = rp(i,1:2) - rp(j,1:2)
@@ -108,90 +302,42 @@ contains
            !! Populate the monomials array
            xvec(1:nsizeG) = monomials(x/hh,y/hh)
 
-           !! Build the LHS - it is the same for all three operators
-           do i1=1,nsizeG
-              amaty(i1,:) = xvec(i1)*gvec(1:nsizeG)   !! Contribution to LHS for this interaction
-           end do           
-           amatx(:,:) = amatx(:,:) + amaty(:,:)   
+           !! Build the LHS
+           do i1=1,nsizeG   !! Build filter LHS
+              amathyp(i1,:) = amathyp(i1,:) + xvec(i1)*gvec(1:nsizeG)   
+           end do                
         end do   
 
         !! for rows 1,2,3 & 4, drop to 6th order
-#if morder>=7
+#if forder>=7
         if(node_type(i).eq.998.or.node_type(i).lt.0)then 
            do i1=1,nsizeG
-              amatx(i1,28:nsizeG)=zero        
+              amathyp(i1,28:nsizeG)=zero        
            end do
            do i1=28,nsizeG
-              amatx(i1,1:nsizeG)=zero
-              amatx(i1,i1)=one
+              amathyp(i1,1:nsizeG)=zero
+              amathyp(i1,i1)=one
            end do
         end if 
 #endif       
-
-        !! Copy hyperviscosity matrix 
-        amathyp = amatx 
-
-#if morder>=5
-        if(node_type(i).eq.-1.or.node_type(i).eq.-2)then 
-           do i1=1,nsizeG
-              amatx(i1,15:nsizeG)=zero        
-           end do
-           do i1=15,nsizeG
-              amatx(i1,1:nsizeG)=zero
-              amatx(i1,i1)=one
-           end do
-        end if 
-#endif        
-          
-        !! Copy remaining LHSs
-        amaty = amatx;amatxx=amatx;amatxy=amatx;amatyy=amatx 
-     
-        !! Build RHS for ddx and ddy
-        bvecx = zero;bvecx(1) = one
-        bvecy = zero;bvecy(2) = one  
-    
-        !! Solve system for ddx coefficients
-        i1=0;i2=0;nsize=nsizeG
-        call svd_solve(amatx,nsize,bvecx)               
-        
-        !! Solve system for ddy coefficients
-        i1=0;i2=0;nsize=nsizeG    
-        call svd_solve(amaty,nsize,bvecy)                       
- 
-        !! Build RHS for d2/dx2,d2/dxdy,d2/dy2
-        bvecxx(:)=zero;bvecxx(3)=one
-        bvecxy(:)=zero;bvecxy(4)=one
-        bvecyy(:)=zero;bvecyy(5)=one
- 
-        !! Solve system for d2/dx2 coefficients
-        i1=0;i2=0;nsize=nsizeG
-        call svd_solve(amatxx,nsize,bvecxx)               
-        
-        !! Solve system for 2nd cross deriv coefficients (d2/dxdy)
-        i1=0;i2=0;nsize=nsizeG
-        call svd_solve(amatxy,nsize,bvecxy)               
-
-        !! Solve system for d2/dy2 coefficients
-        i1=0;i2=0;nsize=nsizeG
-        call svd_solve(amatyy,nsize,bvecyy)               
-
+             
         !! Solve system for Hyperviscosity
-#if morder<=5
+#if forder<=5
         bvechyp(:)=zero;bvechyp(10)=-one;bvechyp(12)=-two;bvechyp(14)=-one
-#elif morder<=7
+#elif forder<=7
         bvechyp(:)=zero;bvechyp(21)=one;bvechyp(23)=3.0d0;bvechyp(25)=3.0d0;bvechyp(27)=one
-#elif morder<=9
+#elif forder<=9
         bvechyp(:)=zero;bvechyp(36)=-one;bvechyp(38)=-4.0d0;bvechyp(40)=-6.0d0;bvechyp(42)=-4.0d0;bvechyp(44)=-one
-#elif morder<=11      
+#elif forder<=11      
         bvechyp(:)=zero;bvechyp(55)=one;bvechyp(57)=5.0d0;bvechyp(59)=10.0d0;bvechyp(61)=10.0d0
         bvechyp(63)=5.0d0;bvechyp(65)=one      
 #endif
-#if morder>=7
+#if forder>=7
         if(node_type(i).eq.998.or.node_type(i).lt.0)then !! for 1,2,3,4, drop to 6th order
            bvechyp(:)=zero;bvechyp(21)=one;bvechyp(23)=3.0d0;bvechyp(25)=3.0d0;bvechyp(27)=one
         end if 
 #endif     
-#if morder>=5
+#if forder>=5
         if(node_type(i).eq.-1)then !! for 1,drop to 4th order
            do i1=1,nsizeG
               amathyp(i1,15:nsizeG)=zero        
@@ -204,8 +350,7 @@ contains
         end if 
 #endif
         i1=0;i2=0;nsize=nsizeG 
-        call svd_solve(amathyp,nsize,bvechyp)               
-     
+        call svd_solve(amathyp,nsize,bvechyp)                   
         
         !! Another loop of neighbours to calculate interparticle weights
         do k=1,ij_count(i)
@@ -235,9 +380,6 @@ contains
            
 
            !! Weights for gradients
-           ij_w_grad(1,k,i) = dot_product(bvecx,gvec)/hh
-           ij_w_grad(2,k,i) = dot_product(bvecy,gvec)/hh
-           ij_w_lap(k,i) = dot_product(bvecxx+bvecyy,gvec)/hh/hh
            ij_w_hyp(k,i) = dot_product(bvechyp,gvec)            
            
         end do                  
@@ -245,16 +387,11 @@ contains
      end do
 
 
-     deallocate(amatx,amaty,amatxx,amatxy,amatyy,amathyp)
-     deallocate(bvecx,bvecy,bvecxx,bvecxy,bvecyy,bvechyp,gvec,xvec)   
-     
-     !! Calculate node volumes - used for evaluating integral quantities in statistics routines
-     call calc_node_volumes
-         
-     write(6,*) "iproc",iproc,"LABFM weights calculated"
-    
+     deallocate(amathyp)
+     deallocate(bvechyp,gvec,xvec)   
+                 
      return
-  end subroutine calc_labf_weights
+  end subroutine calc_filter_weights  
 !! ------------------------------------------------------------------------------------------------
   subroutine calc_labf_sums
      !! Subroutine to evaluate LABF sums, enabling faster computation.
@@ -404,7 +541,7 @@ contains
      allocate(ijlink_tmp(nplink))
      do jj=1,nb
         i=boundary_list(jj)
-        if(node_type(i).eq.1.or.node_type(i).eq.2.or.node_type(i).eq.0)then
+!        if(node_type(i).eq.1.or.node_type(i).eq.2.or.node_type(i).eq.0)then
            kk = node_type(i)  !! Type of node i
            nsize = ij_count(i)   !! Copy ij_count to temporary storage        
            ijlink_tmp(1:nsize) = ij_link(1:nsize,i)  !! Copy ij_link to temporary array
@@ -423,7 +560,8 @@ contains
                  end if
               end if
            end do
-        end if
+           ij_count_small(i) = ij_count(i)
+!        end if
      end do   
      deallocate(ijlink_tmp)   
 
@@ -960,13 +1098,13 @@ contains
      real(rkind) :: grad_s_mag,hfactor,radmax
      real(rkind),dimension(:),allocatable :: neighbourcountreal
  
-#if morder==4
+#if forder==4
      k=4
-#elif morder==6
+#elif forder==6
      k=6
-#elif morder==8
+#elif forder==8
      k=8
-#elif morder==10
+#elif forder==10
      k=10
 #endif
      nsizeG=(k*k+3*k)/2   !!  5,9,14,20,27,35,44... for k=2,3,4,5,6,7,8...
@@ -986,17 +1124,17 @@ contains
 
      !! Set parameters of h-reduction
      reduction_factor = 0.98
-#if morder==4
+#if forder==4
      res_tol = 1.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
-#elif morder==6
+#elif forder==6
      res_tol = 5.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
-#elif morder==8
+#elif forder==8
 #if ABF==2
      res_tol = 3.0d-2*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order    !3.0d-2
 #elif ABF==4
      res_tol = 4.0d-5*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order
 #endif
-#elif morder==10     
+#elif forder==10     
      res_tol = 1.0d+0*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 10th order
 #endif     
      nk = 32   !! How many wavenumbers between 1 and Nyquist to check... ! 16
@@ -1174,7 +1312,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 !hchecksum = 2.0*res_tol/hh
            !! Check the h-reduction criteria
     
-!#if morder==4
+!#if forder==4
 !           hchecksum = two*res_tol/hh
 !#endif    
            if(hchecksum.ge.res_tol/hh)then   !! breakout of do-while
@@ -1182,6 +1320,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 !write(6,*) i,"stopping due to residual",ii,hh,hchecksum,res_tol/hh 
            else  !! continue reducing h, copy tmp neighbour lists to main neighbour lists, and set h(i)
               h(i) = hh
+              h_small(i) = hh
               ii = ii + 1         !! Counter for number of times reduced
               ij_count(i)=0
               ij_link(:,i)=0
@@ -1190,6 +1329,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
                  ij_count(i) = ij_count(i) + 1
                  ij_link(ij_count(i),i) = j
               end do        
+              ij_count_small(i) = ij_count(i)
            end if
                 
         end do
@@ -1208,6 +1348,7 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
            ii = i+(j-1)*npfb_layer  !! i in the j-th layer
            !! Copy h
            h(ii) = hh
+           h_small(ii) = min(hh,hsovs*s(ii))
             
            !! Store count in w for diagnostics        
            neighbourcountreal(ii) = dble(ij_count(i))           
@@ -1240,7 +1381,8 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
            j = full_j_link_i(k)
            ij_count(i) = ij_count(i) + 1
            ij_link(ij_count(i),i) = j
-        end do             
+        end do      
+        ij_count_small(i) = ij_count(i)       
      end do
      !$omp end parallel do   
 #endif     
@@ -1265,29 +1407,45 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      !! Deallocation
      deallocate(full_j_link_i,neighbourcountreal)
 
+
+     !! Now adapt h_small for the main scheme
+     call adapt_stencils_main
+
      return
   end subroutine adapt_stencils   
 !! ------------------------------------------------------------------------------------------------  
-  subroutine grow_stencils
-     !! This subroutine refines the stencil sizes. We start with a small stencil, and gradually 
-     !! increase it until the stencil is stable.
+  subroutine adapt_stencils_main
+     !! This subroutine refines the stencil sizes. For each node, "smoothing length" is reduced by 
+     !! 2% per iteration, and this continues until several checks are failed:
+     !! 1) residual of LABFM laplacian system too big.
+     !! 2) Amplification factor of d/dx,d/dy,Laplacian > 1+tol, for N wavenumbers up to Nyquist
+     !! 3) h is smaller than X% of initial h.
      !! 
      !! Currently does this calculation for first layer of nodes, then if 3D, copies new smoothing 
      !! lengths to other layers, and builds new stencils.
      integer(ikind) :: i,j,k,ii,jj,nk,jjj
-     real(rkind) :: rad,qq,x,y,xx,yy,hchecksum,hchecksumL,hchecksumX,hchecksumY,hmax_local
+     real(rkind) :: rad,qq,x,y,xx,yy,hchecksum,hchecksumL,hchecksumX,hchecksumY
      real(rkind),dimension(2) :: rij
      real(rkind),dimension(:,:),allocatable :: amat,mmat
      real(rkind),dimension(:),allocatable :: bvecL,bvecX,bvecY,gvec,xvec
      integer(ikind) :: i1,i2,nsize,nsizeG,full_j_count_i
      real(rkind) :: ff1,hh,reduction_factor,res_tol,amp_tol,sumcheck
-     logical :: increase_h
-     logical, dimension(4) :: check_flags
+     logical :: reduce_h
      integer(ikind),dimension(:),allocatable :: full_j_link_i
      real(rkind),dimension(ithree) :: grad_s
      real(rkind) :: grad_s_mag,hfactor,radmax
-
+     real(rkind),dimension(:),allocatable :: neighbourcountreal
  
+#if forder==4
+     k=4
+#elif forder==6
+     k=6
+#elif forder==8
+     k=8
+#elif forder==10
+     k=10
+#endif
+     nsizeG=(k*k+3*k)/2   !!  5,9,14,20,27,35,44... for k=2,3,4,5,6,7,8...
 #if morder==4
      k=4
 #elif morder==6
@@ -1296,63 +1454,55 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
      k=8
 #elif morder==10
      k=10
-#endif
-     nsizeG=(k*k+3*k)/2   !!  5,9,14,20,27,35,44... for k=2,3,4,5,6,7,8...
-
+#endif     
+     nsize = (k*k + 3*k)/2
+     
      !! Left hand sides 
-     allocate(amat(nsizeG,nsizeG),mmat(nsizeG,nsizeG))
+     allocate(amat(nsize,nsize),mmat(nsize,nsize))
      amat=zero;mmat=zero
  
      !! Right hand sides, vectors of monomials and ABFs
-     allocate(bvecL(nsizeG),bvecX(nsizeG),bvecY(nsizeG),gvec(nsizeG),xvec(nsizeG))
+     allocate(bvecL(nsize),bvecX(nsize),bvecY(nsize),gvec(nsizeG),xvec(nsizeG))
      bvecL=zero;bvecX=zero;bvecY=zero;gvec=zero;xvec=zero
 
     
      !! Temporary neighbour lists...
      allocate(full_j_link_i(nplink));full_j_link_i=0
+     allocate(neighbourcountreal(npfb));neighbourcountreal=zero
 
      !! Set parameters of h-reduction
-     reduction_factor = 1.01
+     reduction_factor = 0.98
 #if morder==4
-     res_tol = 1.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 4th order
+     res_tol = 1.0d-3*dble(nsize**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
 #elif morder==6
-     res_tol = 5.0d-3*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
+     res_tol = 5.0d-3*dble(nsize**4)*epsilon(hchecksum)/dble(k)   !! For 6th order
 #elif morder==8
 #if ABF==2
-     res_tol = 3.0d-2*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order    !3.0d-2
+     res_tol = 3.0d-2*dble(nsize**4)*epsilon(hchecksum)/dble(k)   !! For 8th order    !3.0d-2
 #elif ABF==4
-     res_tol = 2.048d9*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 8th order
+     res_tol = 4.0d-5*dble(nsize**4)*epsilon(hchecksum)/dble(k)   !! For 8th order
 #endif
 #elif morder==10     
-     res_tol = 1.0d+0*dble(nsizeG**4)*epsilon(hchecksum)/dble(k)   !! For 10th order
+     res_tol = 1.0d+0*dble(nsize**4)*epsilon(hchecksum)/dble(k)   !! For 10th order
 #endif     
      nk = 32   !! How many wavenumbers between 1 and Nyquist to check... ! 16
      amp_tol = 1.0001d0   !! Maximum allowable amplification
+
    
      sumcheck = zero
-!     !$OMP PARALLEL DO PRIVATE(nsize,amat,k,j,rij,rad,qq,x,y,xx,yy, &
-!     !$OMP ff1,gvec,xvec,i1,i2,bvecL,bvecX,bvecY,hh,full_j_count_i,full_j_link_i, &
-!     !$OMP hchecksum,increase_h,ii,mmat,hchecksumL,hchecksumX,hchecksumY) &
-!     !$omp reduction(+:sumcheck)
      do i=1,npfb_layer
         ii=0
-        increase_h=.true.
-        if(node_type(i).le.2) increase_h=.false. !! Don't increase stencil for  nodes near or on boundaries        
-        if(node_type(i).eq.998) increase_h=.false.
-
-        !! Store the original h, and then start at 0.6*h
-        if(increase_h) then
-           hmax_local = h(i)
-           h(i) = 0.7d0*h(i)
-        end if           
-        do while (increase_h)
-           !! increase h 
-           hh=h(i)*reduction_factor 
+        reduce_h=.true.
+        if(node_type(i).le.2) reduce_h=.false. !! Don't reduce stencil for  nodes near or on boundaries        
+        if(node_type(i).eq.998) reduce_h=.false.
+        do while (reduce_h)
+           !! Reduce h (temporarily stored in hh
+           hh=h_small(i)*reduction_factor 
            
            !! Build temporary neighbour lists
            full_j_count_i=0
            full_j_link_i(:)=0
-           do k=1,ij_count(i)
+           do k=1,ij_count_small(i)
               j=ij_link(k,i)
               rij(:) = rp(i,1:2) - rp(j,1:2)              
               rad = sqrt(dot_product(rij,rij))
@@ -1363,7 +1513,6 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
            end do
  
            !! Build linear system 
-           nsize = nsizeG
            amat=zero
            do k=1,full_j_count_i
               j = full_j_link_i(k) 
@@ -1382,9 +1531,10 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
 #elif ABF==3
               rad = sqrt(dot_product(rij,rij));qq  = rad/hh;ff1=Wab(qq) !! Weighting function
               xx=x/hh/ss;yy=y/hh/ss  !! Legendre  
-#elif ABF==4
-              ff1=Wab(qq)
-              xx=pi*x/hh/ss;yy=pi*y/hh/ss 
+#elif ABF==4           
+              rad = sqrt(dot_product(rij,rij));qq  = rad/hh;ff1=Wab(qq) !! Weighting function
+              xx=pi*x/hh/ss;yy=pi*y/hh/ss  !! FOURIER                  
+               
 #endif     
               !! Populate the ABF array
               gvec(1:nsizeG) = abfs(rad,xx,yy)
@@ -1394,46 +1544,44 @@ write(6,*) i,i1,"stopping because of max reduction limit",ii
               xvec(1:nsizeG) = monomials(x/hh,y/hh)
 
               !! Build the LHS - it is the same for all three diff operators (ddx,ddy,Lap)
+              !! but note nsize<nsizeG if morder<forder
               do i1=1,nsize
-                 amat(i1,:) = amat(i1,:) + xvec(i1)*gvec(:)
+                 amat(i1,:) = amat(i1,:) + xvec(i1)*gvec(1:nsize)
               end do
            end do
            mmat = amat
 
            !! Solve system for Laplacian
-           bvecL(:)=zero;bvecL(3)=one/hh/hh;bvecL(5)=one/hh/hh;i1=0;i2=0
+           bvecL(:)=zero;bvecL(3)=one/hh/hh;bvecL(5)=one/hh/hh
            call svd_solve(amat,nsize,bvecL)       
 
            !! Solve system for d/dx           
            amat=mmat
-           bvecX(:)=zero;bvecX(1)=one/hh;i1=0;i2=0;nsize=nsizeG           
+           bvecX(:)=zero;bvecX(1)=one/hh
            call svd_solve(amat,nsize,bvecX)       
 
            !! Solve system for d/dy
            amat=mmat
-           bvecY(:)=zero;bvecY(2)=one/hh;i1=0;i2=0;nsize=nsizeG           
+           bvecY(:)=zero;bvecY(2)=one/hh
            call svd_solve(amat,nsize,bvecY)       
            
            !! First (main) check for h-reduction: the residual of the linear system solution (Laplacian)
            !! Multiply the solution vector by the LHS, and calculate the residual
            xvec=zero;xvec(3)=-one/hh/hh;xvec(5)=-one/hh/hh !! Initialise with -C^{L} (LABFM paper notation)
            hchecksum = zero
-           do i1=1,nsizeG
-              do i2=1,nsizeG
+           do i1=1,nsize
+              do i2=1,nsize
                  xvec(i1) = xvec(i1) + mmat(i1,i2)*bvecL(i2)
               end do
               hchecksum = hchecksum + xvec(i1)**two
            end do
            hchecksum = hchecksum*hh*hh
-           hchecksum = sqrt(hchecksum/dble(nsizeG))
-           
-if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh           
+           hchecksum = sqrt(hchecksum/dble(nsize))
            
            !! Second check for h-reduction: amplification of wavenumbers below Nyquist
            i1=0
            if(hchecksum.lt.res_tol/hh) then
-              hchecksum = two*res_tol/hh
-              do while(dble(i1).le.dble(nk)*twothirds.and.hchecksum.gt.res_tol/hh)
+              do while(i1.le.nk.and.hchecksum.lt.res_tol/hh)
                  i1 = i1 + 1
                  hchecksumL = zero
                  hchecksumX = zero
@@ -1454,10 +1602,10 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
                     xx=x/hh;yy=y/hh    !! Hermite          
 #elif ABF==3
                     rad = sqrt(dot_product(rij,rij));qq  = rad/hh;ff1=Wab(qq) !! Weighting function
-                    xx=x/hh/ss;yy=y/hh/ss  !! Legendre
-#elif ABF==4
-                    ff1=Wab(qq)
-                    xx=pi*x/hh/ss;yy=pi*y/hh/ss   
+                    xx=x/hh/ss;yy=y/hh/ss  !! Legendre   
+#elif ABF==4           
+                    rad = sqrt(dot_product(rij,rij));qq  = rad/hh;ff1=Wab(qq) !! Weighting function
+                    xx=pi*x/hh/ss;yy=pi*y/hh/ss  !! FOURIER                       
 #endif     
                     !! Populate the ABF array
                     gvec(1:nsizeG) = abfs(rad,xx,yy)
@@ -1466,9 +1614,9 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
 
                     !! grad and Laplacian of signal at particular wavenumber qq
                     qq = dble(i1)*pi/s(i)/dble(nk)
-                    hchecksumL = hchecksumL + (half - half*cos(x*qq)*cos(y*qq))*dot_product(bvecL,gvec)
-                    hchecksumX = hchecksumX + cos(y*qq)*sin(x*qq)*dot_product(bvecX,gvec)
-                    hchecksumY = hchecksumY + cos(x*qq)*sin(y*qq)*dot_product(bvecY,gvec)
+                    hchecksumL = hchecksumL + (half - half*cos(x*qq)*cos(y*qq))*dot_product(bvecL,gvec(1:nsize))
+                    hchecksumX = hchecksumX + cos(y*qq)*sin(x*qq)*dot_product(bvecX,gvec(1:nsize))
+                    hchecksumY = hchecksumY + cos(x*qq)*sin(y*qq)*dot_product(bvecY,gvec(1:nsize))
                             
                  end do                         
            
@@ -1479,68 +1627,55 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
 
                  !! Modify hchecksum to break out of h-reduction loop if required
                  if(hchecksumL.gt.amp_tol.or.hchecksumL.lt.zero) then
-                    !! Laplacian unstable
-                    check_flags(1) = .false.
-                 else
-                    check_flags(1) = .true.
+!write(6,*) i,i1,"stopping because of L",ii,hchecksum,res_tol/hh 
+                    hchecksum = two*res_tol/hh              
                  end if
                  if(abs(hchecksumX).gt.amp_tol) then
-                    !! d/dx unstable
-                    check_flags(2) = .false.                    
-                 else
-                    check_flags(2) = .true.
+                    hchecksum = two*res_tol/hh
+!write(6,*) i,i1,"stopping because of X",ii                 
                  end if
                  if(abs(hchecksumY).gt.amp_tol) then
-                    !! d/dy unstable
-                    check_flags(3) = .false.                    
-                 else
-                    check_flags(3) = .true.
+                    hchecksum = two*res_tol/hh
+!write(6,*) i,i1,"stopping because of Y",ii
                  end if
                  if(isnan(hchecksum)) then
-                    !! NaN
-                    check_flags(4) = .false.                    
-                 else
-                    check_flags(4) = .true.
-                 end if
-                 
-                 !! Combine checks
-                 if(check_flags(1).and.check_flags(2).and.check_flags(3).and.check_flags(4)) then
-                    hchecksum = half*res_tol/hh  !! <--- break out of loop
-                 else
-                    hchecksum = two*res_tol/hh   !! <---- continue growing stencil
+                    hchecksum = two*res_tol/hh
+!write(6,*) i,i1,"stopping because of NaN",ii                    
                  end if
               
               end do
-           end if   !! <--- end conditional secondary checks
-
-           !! Impose max stencil size Limit is original h
-           if(hh.gt.hmax_local) then
-              hchecksum = half*res_tol/hh 
-!write(6,*) i,i1,"stopping because of max stencil limit",ii
            end if
 
-           if(hchecksum.le.res_tol/hh)then   !! break out of do-while(increase_h) loop
-              increase_h=.false.
-              !! Copy temp neighbour lists to main neighbour lists              
-              h(i) = hh
-              ij_count(i)=0
-              ij_link(:,i)=0
+           !! Limit is half original h
+           if(ii.gt.log(0.6)/log(reduction_factor)) then
+              hchecksum = two*res_tol/hh !! Limit total reduction to XX%.
+!write(6,*) i,i1,"stopping because of max reduction limit",ii
+           end if
+
+
+!hchecksum = 2.0*res_tol/hh
+           !! Check the h-reduction criteria
+    
+!#if forder==4
+!           hchecksum = two*res_tol/hh
+!#endif    
+           if(hchecksum.ge.res_tol/hh)then   !! breakout of do-while
+              reduce_h=.false.
+!write(6,*) i,"stopping due to residual",ii,hh,hchecksum,res_tol/hh 
+           else  !! continue reducing h, copy tmp neighbour lists to main neighbour lists, and set h(i)
+              h_small(i) = hh
+              ii = ii + 1         !! Counter for number of times reduced
+              ij_count_small(i)=0
               do k=1,full_j_count_i
                  j=full_j_link_i(k)
-                 ij_count(i) = ij_count(i) + 1
-                 ij_link(ij_count(i),i) = j
-              end do  
-!write(6,*) i,"stopping due to residual",ii,hh,hchecksum,res_tol/hh 
-           else  !! continue reducing h, and set h(i)
-              h(i) = hh
-              ii = ii + 1         !! Counter for number of times increased
+                 ij_count_small(i) = ij_count_small(i) + 1
+              end do        
            end if
                 
-                 
-                
-        end do !! <---- end of increase_h while loop
-        
-     end do  !! <---- end of loop over all particles
+        end do
+        !! Temporary: store size in neighbourcountreal(i)
+        neighbourcountreal(i) = dble(ij_count_small(i))
+     end do
 !     !$OMP END PARALLEL DO    
      deallocate(amat,mmat,bvecL,bvecX,bvecY,gvec,xvec)      
           
@@ -1552,61 +1687,38 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
         do j=2,nz
            ii = i+(j-1)*npfb_layer  !! i in the j-th layer
            !! Copy h
-           h(ii) = hh
-           
+           h_small(ii) = hh
+           ij_count_small(ii) = ij_count_small(i)
+            
+           !! Store count in w for diagnostics        
+           neighbourcountreal(ii) = dble(ij_count_small(i))           
         end do    
      end do
      !$omp end parallel do     
-     
-     
-     !$omp parallel do private(k,j,rij,rad,hh,full_j_count_i,full_j_link_i)
-     do i=npfb_layer+1,npfb
-        hh = h(i)
-           
-        !! Build temporary neighbour lists
-        full_j_count_i=0
-        full_j_link_i(:)=0
-        do k=1,ij_count(i)
-           j=ij_link(k,i)
-           rij(:) = rp(i,1:2) - rp(j,1:2)              
-           rad = sqrt(dot_product(rij,rij))
-           if(rad.le.hh*ss)then               !! Only for nodes within new support radius
-              full_j_count_i = full_j_count_i + 1
-              full_j_link_i(full_j_count_i) = j
-           end if              
-        end do
- 
-        !! Copy temporary lists to new list
-        ij_count(i) = 0
-        ij_link(:,i)= 0
-        do k=1,full_j_count_i
-           j = full_j_link_i(k)
-           ij_count(i) = ij_count(i) + 1
-           ij_link(ij_count(i),i) = j
-        end do             
-     end do
-     !$omp end parallel do   
+         
 #endif     
       
      
      !! The remainder of this subroutine is just for analysis...
      qq = zero
-!     !$OMP PARALLEL DO REDUCTION(+:qq)
+     !$OMP PARALLEL DO REDUCTION(+:qq)
      do i=1,npfb
-        qq = qq + dble(ij_count(i))
+        if(node_type(i).eq.999)then
+           qq = qq + neighbourcountreal(i)**2
+        else
+           qq = qq + dble(ij_count_small(i))**two
+        end if           
      end do
-!     !$OMP END PARALLEL DO
-     qq = qq/npfb
-
-    
+     !$OMP END PARALLEL DO
+     qq = sqrt(qq/npfb)   
      
      !! Output to screen
-     write(6,*) "iproc",iproc,"ij_count mean,min:",qq,minval(ij_count(1:npfb))
+     write(6,*) "iproc",iproc,"smaller mean,min:",qq,floor(minval(neighbourcountreal(1:npfb)))
                
      !! Deallocation
-     deallocate(full_j_link_i)
+     deallocate(full_j_link_i,neighbourcountreal)
      return
-  end subroutine grow_stencils  
+  end subroutine adapt_stencils_main  
 !! ------------------------------------------------------------------------------------------------  
   subroutine filter_coefficients
      !! Determine filter coefficients for hyperviscosity a priori, requiring
@@ -1702,18 +1814,18 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
 !! ------------------------------------------------------------------------------------------------
   function monomials(x,y) result(cxvec)
      real(rkind),intent(in) :: x,y
-#if morder==4
+#if forder==4
      real(rkind),dimension(14) :: cxvec
-#elif morder==6
+#elif forder==6
      real(rkind),dimension(27) :: cxvec
-#elif morder==8
+#elif forder==8
      real(rkind),dimension(44) :: cxvec
-#elif morder==10
+#elif forder==10
      real(rkind),dimension(65) :: cxvec
 #endif     
      real(rkind) :: x2,y2,x3,y3,x4,y4,x5,y5,x6,y6,x7,y7,x8,y8,x9,y9,x10,y10
  
-#if morder>=2
+#if forder>=2
      x2=x*x;y2=y*y
      cxvec(1) = x
      cxvec(2)=y
@@ -1721,14 +1833,14 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      cxvec(4)=x*y
      cxvec(5)=half*y2
 #endif 
-#if morder>=3
+#if forder>=3
      x3=x2*x;y3=y2*y 
      cxvec(6) = (one/6.0)*x3
      cxvec(7) = half*x2*y
      cxvec(8) = half*x*y2
      cxvec(9) = (one/6.0)*y3
 #endif
-#if morder>=4
+#if forder>=4
      x4=x3*x;y4=y3*y
      cxvec(10) = (one/24.0)*x4
      cxvec(11)=(one/6.0)*x3*y
@@ -1736,7 +1848,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      cxvec(13)=(one/6.0)*x*y3
      cxvec(14)=(one/24.0)*y4
 #endif
-#if morder>=5
+#if forder>=5
      x5=x4*x;y5=y4*y         
      cxvec(15) = (one/120.0)*x5
      cxvec(16)=(one/24.0)*x4*y
@@ -1745,7 +1857,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      cxvec(19)=(one/24.0)*x*y4
      cxvec(20)=(one/120.0)*y5
 #endif
-#if morder>=6
+#if forder>=6
      x6=x5*x;y6=y5*y         
      cxvec(21)= (one/720.0)*x6
      cxvec(22)=(one/120.0)*x5*y
@@ -1755,7 +1867,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      cxvec(26)=(one/120.0)*x*y5
      cxvec(27)=(one/720.0)*y6
 #endif
-#if morder>=7
+#if forder>=7
      x7=x6*x;y7=y6*y         
      cxvec(28) = (one/5040.0)*x7
      cxvec(29)=(one/720.0)*x6*y
@@ -1766,7 +1878,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      cxvec(34)=(one/720.0)*x*y6
      cxvec(35)=(one/5040.0)*y7
 #endif
-#if morder>=8
+#if forder>=8
      x8=x7*x;y8=y7*y         
      cxvec(36) = (one/40320.0)*x8
      cxvec(37)=(one/5040.0)*x7*y
@@ -1778,7 +1890,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      cxvec(43)=(one/5040.0)*x*y7
      cxvec(44) = (one/40320.0)*y8
 #endif
-#if morder>=9
+#if forder>=9
      x9=x8*x;y9=y8*y
      cxvec(45) = (one/362880.0)*x9
      cxvec(46)=(one/40320.0)*x8*y
@@ -1791,7 +1903,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      cxvec(53)=(one/40320.0)*x*y8
      cxvec(54) = (one/362880.0)*y9
 #endif
-#if morder>=10
+#if forder>=10
      x10=x9*x;y10=y9*y
      cxvec(55)=(one/3628800.0)*x10
      cxvec(56)=(one/362880.0)*x9*y
@@ -1815,13 +1927,13 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
   function abfs(dummy,x,y) result(ggvec)         !! TEN
      real(rkind),intent(in) :: x,y,ff1,dummy
      real(rkind) :: xx,yy
-#if morder==4
+#if forder==4
      real(rkind),dimension(14) :: ggvec
-#elif morder==6
+#elif forder==6
      real(rkind),dimension(27) :: ggvec
-#elif morder==8
+#elif forder==8
      real(rkind),dimension(44) :: ggvec
-#elif morder==10
+#elif forder==10
      real(rkind),dimension(65) :: ggvec
 #endif
      real(rkind) :: rad3,rad2,r15,r13,r11,r9,r7,r5
@@ -1829,7 +1941,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
 
      !! Scale xx and yy (Probablists to physicists)
      
-#if morder>=2
+#if forder>=2
      x2=x*x;y2=y*y 
      rad2 = max(rad*rad,epsilon(rad));rad3=max(rad*rad*rad,epsilon(rad))
      ggvec(1) = x/max(rad,epsilon(rad)) 
@@ -1838,7 +1950,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(4) = -x*y/rad3
      ggvec(5) = x2/rad3
 #endif
-#if morder>=3
+#if forder>=3
      x3=x2*x;y3=y2*y
      r5 = rad3*rad2
      ggvec(6) = -3.0*y2*x/r5                 
@@ -1846,7 +1958,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(8) = (2.0*x*y2 - x3)/r5
      ggvec(9) = -3.0*x2*y/r5
 #endif
-#if morder>=4
+#if forder>=4
      x4=x3*x;y4=y3*y
      r7 = r5*rad2
      ggvec(10) = (12.0*x2*y2-3.0*y4)/r7                
@@ -1855,7 +1967,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(13) = (9.0*x3*y-6.0*x*y3)/r7
      ggvec(14) = (12.0*x2*y2-3.0*x4)/r7
 #endif
-#if morder>=5
+#if forder>=5
      x5=x4*x;y5=y4*y
      r9 = r7*rad2
      ggvec(15) = (45.0*x*y4 - 60.0*x3*y2)/r9                    
@@ -1865,7 +1977,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(19) = (9.0*x5 - 72.0*x3*y2 + 24.0*x*y4)/r9
      ggvec(20) = (45.0*x4*y - 60.0*x2*y3)/r9
 #endif
-#if morder>=6
+#if forder>=6
      x6=x5*x;y6=y5*y
      r11 = r9*rad2
      ggvec(21) = (360.0*x4*y2 - 540.0*x2*y4 + 45.0*y6)/r11                  
@@ -1876,7 +1988,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(26) = (600.0*x3*y3 - 225.0*x5*y - 120.0*x*y5)/r11
      ggvec(27) = (360.0*x2*y4 - 540.0*x4*y2 + 45.0*x6)/r11
 #endif
-#if morder>=7
+#if forder>=7
      x7=x6*x;y7=y6*y
      r13 = r11*rad2
      ggvec(28) = (6300.0*x3*y4 - 2520.0*x5*y2 - 1575.0*x*y6)/r13               
@@ -1888,7 +2000,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(34) = (720.0*x*y6 - 225.0*x7 + 4050.0*x5*y2 - 5400.0*x3*y4)/r13
      ggvec(35) = (6300.0*x4*y3 - 2520.0*x2*y5 - 1575.0*x6*y)/r13
 #endif
-#if morder>=8
+#if forder>=8
      x8=x7*x;y8=y7*y
      r15 = r13*rad2
      ggvec(36) = (20160.0*x6*y2 - 75600.0*x4*y4+37800.0*x2*y6-1575.0*y8)/r15        
@@ -1912,38 +2024,38 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
 !! ------------------------------------------------------------------------------------------------
   function abfs(dummy,x,y) result(ggvec)         !! TEN
      real(rkind),intent(in) :: x,y,dummy
-#if morder==4
+#if forder==4
      real(rkind),dimension(14) :: ggvec
-#elif morder==6
+#elif forder==6
      real(rkind),dimension(27) :: ggvec
-#elif morder==8
+#elif forder==8
      real(rkind),dimension(44) :: ggvec
-#elif morder==10
+#elif forder==10
      real(rkind),dimension(65) :: ggvec
 #endif
      !! Scale xx and yy (Probablists to physicists)
      
-#if morder>=2
+#if forder>=2
      ggvec(1) = Hermite1(x)
      ggvec(2) = Hermite1(y)
      ggvec(3) = Hermite2(x)
      ggvec(4) = Hermite1(x)*Hermite1(y)
      ggvec(5) = Hermite2(y)
 #endif
-#if morder>=3
+#if forder>=3
      ggvec(6) = Hermite3(x)
      ggvec(7) = Hermite2(x)*Hermite1(y)
      ggvec(8) = Hermite1(x)*Hermite2(y)
      ggvec(9) = Hermite3(y)
 #endif
-#if morder>=4
+#if forder>=4
      ggvec(10) = Hermite4(x)
      ggvec(11) = Hermite3(x)*Hermite1(y)
      ggvec(12) = Hermite2(x)*Hermite2(y)
      ggvec(13) = Hermite1(x)*Hermite3(y)
      ggvec(14) = Hermite4(y)
 #endif
-#if morder>=5
+#if forder>=5
      ggvec(15) = Hermite5(x)
      ggvec(16) = Hermite4(x)*Hermite1(y)
      ggvec(17) = Hermite3(x)*Hermite2(y)
@@ -1951,7 +2063,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(19) = Hermite1(x)*Hermite4(y)
      ggvec(20) = Hermite5(y)
 #endif
-#if morder>=6
+#if forder>=6
      ggvec(21) = Hermite6(x)
      ggvec(22) = Hermite5(x)*Hermite1(y)
      ggvec(23) = Hermite4(x)*Hermite2(y)
@@ -1960,7 +2072,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(26) = Hermite1(x)*Hermite5(y)
      ggvec(27) = Hermite6(y)
 #endif
-#if morder>=7
+#if forder>=7
      ggvec(28) = Hermite7(x)
      ggvec(29) = Hermite6(x)*Hermite1(y)
      ggvec(30) = Hermite5(x)*Hermite2(y)
@@ -1970,7 +2082,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(34) = Hermite1(x)*Hermite6(y)
      ggvec(35) = Hermite7(y)
 #endif
-#if morder>=8
+#if forder>=8
      ggvec(36) = Hermite8(x)
      ggvec(37) = Hermite7(x)*Hermite1(y)
      ggvec(38) = Hermite6(x)*Hermite2(y)
@@ -1981,7 +2093,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(43) = Hermite1(x)*Hermite7(y)
      ggvec(44) = Hermite8(y)
 #endif
-#if morder>=9
+#if forder>=9
      ggvec(45) = Hermite9(x)
      ggvec(46) = Hermite8(x)*Hermite1(y)
      ggvec(47) = Hermite7(x)*Hermite2(y)
@@ -1993,7 +2105,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(53) = Hermite1(x)*Hermite8(y)
      ggvec(54)= Hermite9(y)
 #endif
-#if morder>=10
+#if forder>=10
      ggvec(55) = Hermite10(x)
      ggvec(56) = Hermite9(x)*Hermite1(y)
      ggvec(57) = Hermite8(x)*Hermite2(y)
@@ -2013,37 +2125,37 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
 !! ------------------------------------------------------------------------------------------------
   function abfs(dummy,x,y) result(ggvec)         !! TEN
      real(rkind),intent(in) :: x,y,dummy
-#if morder==4
+#if forder==4
      real(rkind),dimension(14) :: ggvec
-#elif morder==6
+#elif forder==6
      real(rkind),dimension(27) :: ggvec
-#elif morder==8
+#elif forder==8
      real(rkind),dimension(44) :: ggvec
-#elif morder==10
+#elif forder==10
      real(rkind),dimension(65) :: ggvec
 #endif
      
-#if morder>=2
+#if forder>=2
      ggvec(1) = Legendre1(x)
      ggvec(2) = Legendre1(y)
      ggvec(3) = Legendre2(x)
      ggvec(4) = Legendre1(x)*Legendre1(y)
      ggvec(5) = Legendre2(y)
 #endif
-#if morder>=3
+#if forder>=3
      ggvec(6) = Legendre3(x)
      ggvec(7) = Legendre2(x)*Legendre1(y)
      ggvec(8) = Legendre1(x)*Legendre2(y)
      ggvec(9) = Legendre3(y)
 #endif
-#if morder>=4
+#if forder>=4
      ggvec(10) = Legendre4(x)
      ggvec(11) = Legendre3(x)*Legendre1(y)
      ggvec(12) = Legendre2(x)*Legendre2(y)
      ggvec(13) = Legendre1(x)*Legendre3(y)
      ggvec(14) = Legendre4(y)
 #endif
-#if morder>=5
+#if forder>=5
      ggvec(15) = Legendre5(x)
      ggvec(16) = Legendre4(x)*Legendre1(y)
      ggvec(17) = Legendre3(x)*Legendre2(y)
@@ -2051,7 +2163,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(19) = Legendre1(x)*Legendre4(y)
      ggvec(20) = Legendre5(y)
 #endif
-#if morder>=6
+#if forder>=6
      ggvec(21) = Legendre6(x)
      ggvec(22) = Legendre5(x)*Legendre1(y)
      ggvec(23) = Legendre4(x)*Legendre2(y)
@@ -2060,7 +2172,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(26) = Legendre1(x)*Legendre5(y)
      ggvec(27) = Legendre6(y)
 #endif
-#if morder>=7
+#if forder>=7
      ggvec(28) = Legendre7(x)
      ggvec(29) = Legendre6(x)*Legendre1(y)
      ggvec(30) = Legendre5(x)*Legendre2(y)
@@ -2070,7 +2182,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(34) = Legendre1(x)*Legendre6(y)
      ggvec(35) = Legendre7(y)
 #endif
-#if morder>=8
+#if forder>=8
      ggvec(36) = Legendre8(x)
      ggvec(37) = Legendre7(x)*Legendre1(y)
      ggvec(38) = Legendre6(x)*Legendre2(y)
@@ -2081,7 +2193,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(43) = Legendre1(x)*Legendre7(y)
      ggvec(44) = Legendre8(y)
 #endif
-#if morder>=9
+#if forder>=9
      ggvec(45) = Legendre9(x)
      ggvec(46) = Legendre8(x)*Legendre1(y)
      ggvec(47) = Legendre7(x)*Legendre2(y)
@@ -2093,7 +2205,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(53) = Legendre1(x)*Legendre8(y)
      ggvec(54)= Legendre9(y)
 #endif
-#if morder>=10
+#if forder>=10
      ggvec(55) = Legendre10(x)
      ggvec(56) = Legendre9(x)*Legendre1(y)
      ggvec(57) = Legendre8(x)*Legendre2(y)
@@ -2112,37 +2224,37 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
 !! ------------------------------------------------------------------------------------------------
   function abfs(dummy,x,y) result(ggvec)         
      real(rkind),intent(in) :: x,y,dummy
-#if morder==4
+#if forder==4
      real(rkind),dimension(14) :: ggvec
-#elif morder==6
+#elif forder==6
      real(rkind),dimension(27) :: ggvec
-#elif morder==8
+#elif forder==8
      real(rkind),dimension(44) :: ggvec
-#elif morder==10
+#elif forder==10
      real(rkind),dimension(65) :: ggvec
 #endif
      
-#if morder>=2
+#if forder>=2
      ggvec(1) = sin(x)
      ggvec(2) = sin(y)
      ggvec(3) = cos(x)
      ggvec(4) = sin(x)*sin(y)
      ggvec(5) = cos(y)
 #endif
-#if morder>=3
+#if forder>=3
      ggvec(6) = sin(2.0*x)
      ggvec(7) = cos(x)*sin(y)
      ggvec(8) = sin(x)*cos(y)
      ggvec(9) = sin(2.0*y)
 #endif
-#if morder>=4
+#if forder>=4
      ggvec(10) = cos(2.0*x)
      ggvec(11) = sin(2.0*x)*sin(y)
      ggvec(12) = cos(x)*cos(y)
      ggvec(13) = sin(x)*sin(2.0*y)
      ggvec(14) = cos(2.0*y)
 #endif
-#if morder>=5
+#if forder>=5
      ggvec(15) = sin(3.0*x)
      ggvec(16) = cos(2.0*x)*sin(y)
      ggvec(17) = sin(2.0*x)*cos(1.0*y)
@@ -2150,7 +2262,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(19) = sin(x)*cos(2.0*y)
      ggvec(20) = sin(3.0*y)
 #endif
-#if morder>=6
+#if forder>=6
      ggvec(21) = cos(3.0*x)
      ggvec(22) = sin(3.0*x)*sin(y)
      ggvec(23) = cos(2.0*x)*cos(1.0*y)
@@ -2159,7 +2271,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(26) = sin(x)*sin(3.0*y)
      ggvec(27) = cos(3.0*y)
 #endif
-#if morder>=7
+#if forder>=7
      ggvec(28) = sin(4.0*x)
      ggvec(29) = cos(3.0*x)*sin(y)
      ggvec(30) = sin(3.0*x)*cos(1.0*y)
@@ -2169,7 +2281,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(34) = sin(x)*cos(3.0*y)
      ggvec(35) = sin(4.0*y)
 #endif
-#if morder>=8
+#if forder>=8
      ggvec(36) = cos(4.0*x)
      ggvec(37) = sin(4.0*x)*sin(y)
      ggvec(38) = cos(3.0*x)*cos(1.0*y)
@@ -2180,7 +2292,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(43) = sin(x)*sin(4.0*y)
      ggvec(44) = cos(4.0*y)
 #endif
-#if morder>=9
+#if forder>=9
      ggvec(45) = sin(5.0*x)
      ggvec(46) = cos(4.0*x)*sin(y)
      ggvec(47) = sin(4.0*x)*cos(y)
@@ -2192,7 +2304,7 @@ if(iproc.eq.1.and.i.eq.100) write(6,*) hh,hchecksum,res_tol/hh
      ggvec(53) = sin(x)*cos(4.0*y)
      ggvec(54)= sin(5.0*y)
 #endif
-#if morder>=10
+#if forder>=10
      ggvec(55) = cos(5.0*x)
      ggvec(56) = sin(5.0*x)*sin(y)
      ggvec(57) = cos(4.0*x)*cos(y)

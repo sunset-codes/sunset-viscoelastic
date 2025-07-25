@@ -18,7 +18,7 @@ module neighbours
   implicit none
 
   private
-  public :: find_neighbours,order_neighbours
+  public :: find_neighbours
 
   integer(ikind), dimension(:), allocatable ::ist, ip, nc
   integer(ikind), dimension(:), allocatable :: cellpart,ic_count
@@ -41,7 +41,8 @@ contains
     end if
 
     ! allocate linking lists
-    allocate(ij_count(npfb))
+    if(allocated(ij_count_small)) deallocate(ij_count_small)
+    allocate(ij_count(npfb),ij_count_small(npfb))    
     allocate(ij_link(nplink,npfb))
     n_count=np
     
@@ -64,7 +65,8 @@ contains
     deallocate(nc)
     deallocate(ip)
     deallocate(cellpart)
-             
+    
+    call order_neighbours                 
         
     write(6,*) iproc,"neighbours found"
 
@@ -270,6 +272,7 @@ contains
   subroutine order_neighbours
     !! This routine sorts the neighbour list in order of increasing distance.
     integer(ikind) :: i,j,k
+    real(rkind) :: rad2
     real(rkind),dimension(ithree) :: rij
     real(rkind),dimension(:),allocatable :: rij2
   
@@ -291,6 +294,15 @@ contains
        
        !! Now sort by value of rij2
        call quicksort_neighbours(i,rij2,1,ij_count(i))       
+       
+       !! Build the small ij_count
+       ij_count_small(i) = 0
+       do k=1,ij_count(i)
+          j=ij_link(k,i)
+          rij = rp(i,:) - rp(j,:)
+          rad2 = dot_product(rij,rij)
+          if(rad2.le.(h_small(i)*ss)**two) ij_count_small(i) = ij_count_small(i) + 1
+       end do
         
     end do
     !$omp end parallel do

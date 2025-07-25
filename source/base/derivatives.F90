@@ -36,12 +36,12 @@ contains
     !$OMP PARALLEL DO PRIVATE(j,k,gradtmp)
     do i=1,npfb
        gradtmp=zero
-       do k=1,ij_count(i)
+       do k=1,ij_count_small(i)
           j = ij_link(k,i) 
           gradtmp(1:2) = gradtmp(1:2) + phi(j)*ij_w_grad(:,k,i)                      
           
        end do   
-       gradphi(i,1:2) = gradtmp(1:2) - phi(i)*ij_w_grad_sum(:,i)                           
+       gradphi(i,1:2) = gradtmp(1:2) - phi(i)*ij_w_grad_sum(:,i)      
     end do
     !$OMP END PARALLEL DO
      
@@ -84,7 +84,7 @@ contains
     !$OMP PARALLEL DO PRIVATE(j,k,lap_tmp)
     do i=1,npfb
        lap_tmp = zero
-       do k=1,ij_count(i)
+       do k=1,ij_count_small(i)
           j = ij_link(k,i) 
           lap_tmp = lap_tmp + phi(j)*ij_w_lap(k,i)
        end do
@@ -134,7 +134,7 @@ contains
     !$OMP PARALLEL DO PRIVATE(j,k,divtmp)
     do i=1,npfb
        divtmp=zero
-       do k=1,ij_count(i)
+       do k=1,ij_count_small(i)
           j = ij_link(k,i) 
           divtmp = divtmp + phi1(j)*ij_w_grad(1,k,i) + phi2(j)*ij_w_grad(2,k,i)
        end do
@@ -166,7 +166,7 @@ contains
              
              !! Calculate gradients of u and v
              dudn = zero;dvdn=zero
-             do k=1,ij_count(i)
+             do k=1,ij_count_small(i)
                 j=ij_link(k,i)
                 dudn = dudn + (phi1(j)-phi1(i))*ij_w_grad(1,k,i)  
                 dvdn = dvdn + (phi2(j)-phi2(i))*ij_w_grad(1,k,i)
@@ -202,7 +202,7 @@ contains
     do ii=1,nb
        i=boundary_list(ii)
        g2_tmp = zero
-       do k=1,ij_count(i)
+       do k=1,ij_count_small(i)
           j = ij_link(k,i) 
           g2_tmp(1) = g2_tmp(1) + phi(j)*ij_wb_grad2(1,k,ii)
           g2_tmp(2) = g2_tmp(2) + phi(j)*ij_wb_grad2(2,k,ii)
@@ -250,7 +250,7 @@ contains
     do ii=1,nb
        i=boundary_list(ii)
        g2_tmp = zero
-       do k=1,ij_count(i)
+       do k=1,ij_count_small(i)
           j = ij_link(k,i) 
           g2_tmp(1) = g2_tmp(1) + phi1(j)*ij_wb_grad2(1,k,ii)
           g2_tmp(2) = g2_tmp(2) + phi2(j)*ij_wb_grad2(1,k,ii)
@@ -283,7 +283,7 @@ contains
     do ii=1,nb
        i=boundary_list(ii)
        g2_tmp = zero
-       do k=1,ij_count(i)
+       do k=1,ij_count_small(i)
           j = ij_link(k,i) 
           !! Only using nodes in the boundary normal direction
           if(j.le.npfb) then  !! Not happy with this if, but okay for now.
@@ -316,7 +316,7 @@ contains
     do ii=1,npfb-nb
        i=internal_list(ii)
        lap_tmp = zero
-       do k=1,ij_count(i)
+       do k=1,ij_count_small(i)
           j = ij_link(k,i) 
           lap_tmp = lap_tmp + phi(j)*ij_w_lap(k,i)
        end do
@@ -328,7 +328,7 @@ contains
     do ii=1,nb
        i=boundary_list(ii)
        lap_tmp = zero
-       do k=1,ij_count(i)
+       do k=1,ij_count_small(i)
           j=ij_link(k,i)
           lap_tmp = lap_tmp + phi(j)*ij_wb_grad2(2,k,ii)
        end do
@@ -428,7 +428,7 @@ contains
        !$OMP PARALLEL DO PRIVATE(j,k,gradtmp)
        do i=1,npfb
           gradtmp=zero
-          do k=1,ij_count(i)
+          do k=1,ij_count_small(i)
              j = ij_link(k,i) 
              gradtmp(dim) = gradtmp(dim) + phi(j)*ij_w_grad(dim,k,i)                      
           

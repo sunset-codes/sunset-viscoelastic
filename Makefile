@@ -12,7 +12,8 @@
 # ceform     Direct integration (0), log-Cholesky (1), log-conf (2)                    (default: 1)
 # newt       Newtonian calculations (1) or not (0)                                     (default: 0)
 # fenep      FENE-P (1) or sPTT (0)                                                    (default: 0)
-# morder     m (order) value = 4,6,8,10                                                (default: 8)
+# forder     filter (order) value = 4,6,8,10                                           (default: 8)
+# morder     main (order) value = 4,6,8,10                                             (default: 8)
 # mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
 # tarout     Compress files as they're written (1) or don't (0)                        (default: 0)
 # tracers    Include some Lagrangian tracer particles (1) or don't (0)                 (default: 0)
@@ -34,6 +35,19 @@ CFLAGS := -Wall -O3 -g -m64
 FFLAGS := -fopenmp -fbounds-check -ffpe-trap=zero -O3 -Wall -g -J./obj -I./obj -m64
 
 # Order of the numerical scheme (even, from 4 to 10, default 8)
+ifeq ($(forder),4)
+FFLAGS += -Dforder=$(forder)
+else
+ifeq ($(forder),6)
+FFLAGS += -Dforder=$(forder)
+else
+ifeq ($(forder),10)
+FFLAGS += -Dforder=$(forder)
+else
+FFLAGS += -Dforder=8
+endif
+endif
+endif
 ifeq ($(morder),4)
 FFLAGS += -Dmorder=$(morder)
 else

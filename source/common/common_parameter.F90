@@ -42,18 +42,27 @@ module common_parameter
   !!for two dimensional flows.
 
   !! Initial stencil sizes
-#if morder==4
+#if forder==4
   real(rkind), parameter :: hovs = 1.8d0   
   real(rkind), parameter :: hovs_bound = 2.1d0 
-#elif morder==6
+#elif forder==6
   real(rkind), parameter :: hovs = 2.4d0   
   real(rkind), parameter :: hovs_bound = 2.4d0 
-#elif morder==10
+#elif forder==10
   real(rkind), parameter :: hovs = 3.1d0   
   real(rkind), parameter :: hovs_bound = 2.4d0 
 #else
   real(rkind), parameter :: hovs = 2.7d0   !! order=8 is the default
   real(rkind), parameter :: hovs_bound = 2.4d0 
+#endif  
+#if morder==4
+  real(rkind), parameter :: hsovs = 1.8d0   
+#elif morder==6
+  real(rkind), parameter :: hsovs = 2.4d0   
+#elif morder==10
+  real(rkind), parameter :: hsovs = 3.1d0   
+#else
+  real(rkind), parameter :: hsovs = 2.7d0   !! order=8 is the default
 #endif  
 
   real(rkind), parameter :: ss = 2.0d0       !! Stencil size (radius, in multiples of h)
@@ -93,15 +102,15 @@ module common_parameter
   
   !! Finite difference stencil sizes
   !! Size of Stencil
-#if morder==4
+#if forder==4
   integer(ikind),parameter :: ij_count_fd = 5
-#elif morder==6
+#elif forder==6
   integer(ikind),parameter :: ij_count_fd = 7
-#elif morder==8
+#elif forder==8
   integer(ikind),parameter :: ij_count_fd = 9
-#elif morder==10
+#elif forder==10
   integer(ikind),parameter :: ij_count_fd = 11
-#elif morder==12
+#elif forder==12
   integer(ikind),parameter :: ij_count_fd = 13
 #endif      
   

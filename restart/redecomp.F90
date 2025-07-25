@@ -11,8 +11,8 @@ program redecomp
    implicit none
    integer :: nb,npfb,dummy_int,N0,N1,i,ii,j,k,Nout,globind,locind
    integer :: nprocsX,nprocsY,nprocsZ,iproc,iflag
-   double precision,dimension(:),allocatable :: x,y,xn,yn,s,h,z
-   double precision :: dummy,xmax,xmin,ymax,ymin,hh
+   double precision,dimension(:),allocatable :: x,y,xn,yn,s,h,z,h_small
+   double precision :: dummy,xmax,xmin,ymax,ymin,hh,hhs
    integer,dimension(:),allocatable :: istart,iend,node_type,gi,li,npfb_local
    character(70) :: fname,fname2,tarcom
    double precision :: eflow_nm1,sum_eflow,driving_force(3)
@@ -51,7 +51,7 @@ program redecomp
    end do
 
    !! Allocate space
-   allocate(x(npfb),y(npfb),z(npfb),h(npfb),s(npfb),xn(npfb),yn(npfb),node_type(npfb),gi(npfb))
+   allocate(x(npfb),y(npfb),z(npfb),h(npfb),s(npfb),xn(npfb),yn(npfb),node_type(npfb),gi(npfb),h_small(npfb))
    allocate(ro(npfb),u(npfb),v(npfb),w(npfb),cxx(npfb),cxy(npfb),cyy(npfb),cxz(npfb),cyz(npfb),czz(npfb))
    
    
@@ -128,9 +128,9 @@ program redecomp
       !! Load the particle data      
       do i=1,k
 #ifndef dim3      
-         read(80,*) globind,dummy,dummy,dummy,hh,dummy_int
+         read(80,*) globind,dummy,dummy,dummy,hh,hhs,dummy_int
 #else
-         read(80,*) globind,dummy,dummy,ztmp,dummy,hh,dummy_int
+         read(80,*) globind,dummy,dummy,ztmp,dummy,hh,hhs,dummy_int
 #endif      
          !! What is the local index?
          locind = li(globind)
@@ -138,6 +138,7 @@ program redecomp
          
          !! Copy h
          h(locind) = hh
+         h_small(locind) = hhs
 #ifndef dim3
          read(90,*) ro(j),u(j),v(j),dummy,dummy,dummy,cxx(j),cxy(j),cyy(j),czz(j)        
 #else
@@ -175,20 +176,20 @@ program redecomp
       do i=istart(iproc),iend(iproc)
          ii=ii+1
 #ifndef dim3         
-         write(80,*) gi(ii),x(ii),y(ii),s(ii),h(ii),node_type(ii)
+         write(80,*) gi(ii),x(ii),y(ii),s(ii),h(ii),h_small(ii),node_type(ii)
          write(90,*) ro(ii),u(ii),v(ii),dummy,dummy,dummy,cxx(ii),cxy(ii),cyy(ii),czz(ii)                 
 #else
-         write(80,*) gi(ii),x(ii),y(ii),z(ii),s(ii),h(ii),node_type(ii)
+         write(80,*) gi(ii),x(ii),y(ii),z(ii),s(ii),h(ii),h_small(ii),node_type(ii)
          write(90,*) ro(ii),u(ii),v(ii),w(i),dummy,dummy,dummy,cxx(ii),cxy(ii),cyy(ii),cxz(ii),cyz(ii),czz(ii)                 
 #endif         
          if(node_type(ii).ge.0.and.node_type(ii).le.2) then
             do j=1,4
                ii=ii+1
 #ifndef dim3
-               write(80,*) gi(ii),x(ii),y(ii),s(ii),h(ii),node_type(ii)
+               write(80,*) gi(ii),x(ii),y(ii),s(ii),h(ii),h_small(ii),node_type(ii)
                write(90,*) ro(ii),u(ii),v(ii),dummy,dummy,dummy,cxx(ii),cxy(ii),cyy(ii),czz(ii)                                
 #else
-               write(80,*) gi(ii),x(ii),y(ii),z(ii),s(ii),h(ii),node_type(ii)
+               write(80,*) gi(ii),x(ii),y(ii),z(ii),s(ii),h(ii),h_small(ii),node_type(ii)
                write(90,*) ro(ii),u(ii),v(ii),w(ii),dummy,dummy,dummy,cxx(ii),cxy(ii),cyy(ii),cxz(ii),cyz(ii),czz(ii)                                
 #endif               
             end do

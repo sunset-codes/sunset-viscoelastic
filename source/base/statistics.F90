@@ -595,9 +595,8 @@ contains
     error_sum = zero;Ex_sum =zero
     !$omp parallel do private(x,y,u_exact,v_exact,U_ex,U_num) reduction(+:Ex_sum,error_sum)
     do i=1,npfb
-       x=rp(i,1)
-       y=rp(i,2)
-       expo = exp(-8.0*pi**2*time/time_char/Re)   !! Hard-coded for Re=200. Need to modify.
+       x=rp(i,1);y=rp(i,2)
+       expo = exp(-8.0*pi**2*time/time_char/Re)   
        u_exact = -expo*cos(2.0*pi*x)*sin(2.0*pi*y)
        v_exact = expo*sin(2.0*pi*x)*cos(2.0*pi*y)
        U_ex = dsqrt(u_exact**2. + v_exact**2.)

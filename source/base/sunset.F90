@@ -49,7 +49,6 @@ program sunset
 
   !! Build the neighbour lists
   call find_neighbours
-  call order_neighbours
 
   !! Calculate LABFM and FD weights for all derivatives and filters
   call calc_labf_weights

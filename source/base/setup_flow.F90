@@ -184,8 +184,8 @@ contains
         x = rp(i,1);y=rp(i,2);z=rp(i,3)
 
         !! TG 3D Re1600 as in Cant 2022, Sandham 2017 etc (ish)
-        u(i) = -cos(2.0*pi*x)*sin(2.0*pi*y)!*cos(z)!*oosqrt2
-        v(i) = sin(2.0*pi*x)*cos(2.0*pi*y)!*cos(z)    !!c c
+        u(i) = -cos(two*pi*x)*sin(two*pi*y)!*cos(z)!*oosqrt2
+        v(i) = sin(two*pi*x)*cos(two*pi*y)!*cos(z)    !!c c
         w(i) = zero!u(i);u(i)=zero
                                  
         !! No initial flow
@@ -193,7 +193,7 @@ contains
 !        u(i) = four*(quarter-y*y)
 !        ro(i) = rho_char;p(i) = ro(i)*csq        
         
-        tmp = -(1.00d0/4.0d0)*(cos(two*x)+cos(two*y))!*(two+cos(two*z))       
+        tmp = -(1.00d0/4.0d0)*(cos(two*two*pi*x)+cos(two*two*pi*y))!*(two+cos(two*z))       
 
         ro(i) = rho_char! + tmp*Ma*Ma      
 #ifdef pgrad

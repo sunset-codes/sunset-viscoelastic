@@ -79,7 +79,7 @@ contains
      !! STEP 1: Load IPART (some params, plus list of nodes + boundary normals)
      !! =======================================================================
      open(13,file='IPART')
-     read(13,*) nb,npfb,dummy      !! dummy is largest s(i) in domain...
+     read(13,*) nb,npfb,dummy,smin      !! dummy is largest s(i) in domain...
      read(13,*) xmin,xmax,ymin,ymax
 
      !! Set the domain lengths
@@ -90,7 +90,7 @@ contains
      
      read(13,*) xbcond_L,xbcond_U,ybcond_L,ybcond_U
      !! Calculate some useful constants
-     h0 = hovs*dummy;sup_size = ss*h0;h2=h0*h0;h3=h2*h0
+     smax = dummy;h0 = hovs*dummy;sup_size = ss*h0;h2=h0*h0;h3=h2*h0
          
 #ifdef mp
 
@@ -185,6 +185,10 @@ contains
         end if
 
      end do
+
+     !! Make h_small initially h
+     allocate(h_small(nm*npfb));h_small = h
+
      
      !! If it's a restart, we need to load the smoothing length h NOW
 #ifdef restart
@@ -204,9 +208,9 @@ contains
      !! Load the initial conditions
      do i=1,npfb
 #ifdef dim3
-        read(15,*) dummy_int,dummy,dummy,dummy,dummy,h(i),k
+        read(15,*) dummy_int,dummy,dummy,dummy,dummy,h(i),h_small(i),k
 #else
-        read(15,*) dummy_int,dummy,dummy,dummy,h(i),k
+        read(15,*) dummy_int,dummy,dummy,dummy,h(i),h_small(i),k
 #endif        
         if(dummy_int.ne.global_index(i)) then
            write(6,*) "ERROR: global index mismatch.",dummy_int,global_index(i)
@@ -298,7 +302,7 @@ contains
         end if
      end do    
      
-     !! Setup the flags for flux-zeroing
+     !! Setup the flags for flux-zeroing (ZNF=zero-normal-flux)
      if(nb.ne.0)then
         allocate(znf_vdiff(nb),znf_vtdiff(nb))
         do j=1,nb
@@ -318,9 +322,7 @@ contains
      end if               
      
      !! Find neighbours (ready for stencil adaptation)
-     call find_neighbours     
-     call order_neighbours
-     
+     call find_neighbours         
               
      !! Flag for outflow error scaling: if the resolution at the outflow is the smallest resolution, then
      !! errors need scaling to control time step
@@ -365,6 +367,7 @@ contains
 #ifdef mp     
      !! Transfer discretisation properties   
      call halo_exchange(h)
+     call halo_exchange(h_small)
      call halo_exchange(s)
      call halo_exchange_int(node_type)    
      call halo_exchange(rnorm(:,1))
@@ -409,7 +412,7 @@ contains
      integer(ikind) :: nm,i,k,iz,ilayerm1
      real(rkind) :: dz_local,L_domain_z_dimensionless
      real(rkind),dimension(:,:),allocatable :: rptmp,rnormtmp
-     real(rkind),dimension(:),allocatable :: htmp,stmp
+     real(rkind),dimension(:),allocatable :: htmp,stmp,hsmalltmp
      integer(ikind),dimension(:),allocatable :: node_typetmp,fd_parenttmp,gi_tmp
      
      !! Set z spacing to match mean of x-y spacing.
@@ -445,13 +448,14 @@ contains
 !     write(6,*) "iproc",iproc,"Z-domain number and spacing",nz_global,dz
      
      !! Temporary arrays
-     allocate(rptmp(npfb,ithree),rnormtmp(npfb,ithree),htmp(npfb),stmp(npfb))
+     allocate(rptmp(npfb,ithree),rnormtmp(npfb,ithree),htmp(npfb),stmp(npfb),hsmalltmp(npfb))
      allocate(node_typetmp(npfb),fd_parenttmp(npfb),gi_tmp(npfb))
      !$omp parallel do
      do i=1,npfb
         rptmp(i,:) = rp(i,:)
         rnormtmp(i,:) = rnorm(i,:)
         htmp(i) = h(i)
+        hsmalltmp(i) = h_small(i)
         stmp(i) = s(i)
         node_typetmp(i) = node_type(i)
         fd_parenttmp(i) = fd_parent(i)
@@ -467,8 +471,8 @@ contains
      
      !! Deallocate and reallocate arrays
      nm = 10
-     deallocate(rp,rnorm,h,s,node_type,fd_parent,global_index)
-     allocate(rp(nm*npfb,ithree),rnorm(nm*npfb,ithree),h(nm*npfb),s(nm*npfb));rp=zero
+     deallocate(rp,rnorm,h,s,node_type,fd_parent,global_index,h_small)
+     allocate(rp(nm*npfb,ithree),rnorm(nm*npfb,ithree),h(nm*npfb),s(nm*npfb),h_small(nm*npfb));rp=zero
      allocate(node_type(nm*npfb));node_type=0
      allocate(fd_parent(nm*npfb));fd_parent=0
      allocate(zlayer_index_global(nm*npfb))
@@ -487,6 +491,7 @@ contains
            rp(k,1:2) = rptmp(i,1:2)
            rnorm(k,:) = rnormtmp(i,:)
            h(k) = htmp(i)
+           h_small(k) = hsmalltmp(i)
            s(k) = stmp(i)
            node_type(k) = node_typetmp(i)
            fd_parent(k) = ilayerm1 + fd_parenttmp(i)
@@ -499,7 +504,7 @@ contains
         
         
      !! Deallocate temporary arrays
-     deallocate(rptmp,rnormtmp,htmp,stmp,fd_parenttmp,node_typetmp,gi_tmp)    
+     deallocate(rptmp,rnormtmp,htmp,stmp,fd_parenttmp,node_typetmp,gi_tmp,hsmalltmp)    
      
   
      return
@@ -536,6 +541,11 @@ contains
      tmp_array_real(1:newsize)=h(1:newsize)
      deallocate(h);allocate(h(newsize))
      h = tmp_array_real  
+
+     !! Copy h_small
+     tmp_array_real(1:newsize)=h_small(1:newsize)
+     deallocate(h_small);allocate(h_small(newsize))
+     h_small = tmp_array_real  
      
      !! Copy fd_parent
      tmp_array_int(1:newsize)=fd_parent(1:newsize)
