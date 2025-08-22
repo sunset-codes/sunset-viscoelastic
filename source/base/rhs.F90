@@ -397,7 +397,7 @@ contains
      real(rkind) :: sxx,sxy,syy,srctmp,szz,sxz,syz
      real(rkind) :: csxx,csxy,csyy,cszz,csxz,csyz
      real(rkind),dimension(3) :: gradu_local,gradv_local,gradw_local
-     real(rkind) :: xn,yn,fR     
+     real(rkind) :: xn,yn,fR,wss,cl11,cl12,cl22 
      real(rkind),dimension(:),allocatable :: lapCxx,lapCxy,lapCyy,lapCzz,lapCxz,lapCyz
          
      !! Laplacian for conformation tensor components
@@ -545,6 +545,7 @@ contains
 !        !$omp fR,sxx,sxy,syy,csxx,csxy,csyy,lxx,lxy,lyy,gradu_local,gradv_local,xn,yn)
         do j=1,nb
            i=boundary_list(j)
+           xn = rnorm(i,1);yn=rnorm(i,2)
    
            tmp_vec(1) = u(i);tmp_vec(2) = v(i);tmp_vec(3) = w(i) !! tmp_vec holds (u,v,w) for node i
 
@@ -613,6 +614,14 @@ contains
             
            !! Modify conformation tensor laplacian to set no diffusive flux through boundaries:
            !! (actually setting d2c/dtangent2=0 as well)
+!! Check wall shear stress calculation... and some rotated conf tensors
+!           wss = (-25.0d0*(yn*u(i)+xn*v(i)) + 48.0d0*(yn*u(i+1)+xn*v(i+1)) - 36.0d0*(yn*u(i+2)+xn*v(i+2)) &
+!                 + 16.0d0*(yn*u(i+3)+xn*v(i+3)) - 3.0d0*(yn*u(i+4)+xn*v(i+4)) )/(12.0d0*s(i)*L_char)
+!           cl11 = xn*xn*cxx(i) - two*xn*yn*cxy(i) + yn*yn*cyy(i)
+!           cl12 = xn*yn*(cyy(i) - cxx(i)) - (xn*xn-yn*yn)*cxy(i)
+!           cl22 = yn*yn*cxx(i) + two*xn*yn*cxy(i) + xn*xn*cyy(i)
+!if(i.eq.134.or.i.eq.204) write(6,*) time,rp(i,2),cl11,cl12,cl22,wss
+           
            lapcxx(i) = lapcxx(i) + (-170.0d0*cxx(i) + 216.0d0*cxx(i+1) - 54.0d0*cxx(i+2) + 8.0d0*cxx(i+3))/ &
                                    (36.0d0*s(i)*s(i)*L_char*L_char)
            lapcxy(i) = lapcxy(i) + (-170.0d0*cxy(i) + 216.0d0*cxy(i+1) - 54.0d0*cxy(i+2) + 8.0d0*cxy(i+3))/ &

@@ -243,6 +243,7 @@ contains
      !! New error     
      eflow_n = one - tot_vel!*1.1831 !! Targetting a volumetric flux of one
 !     eflow_n = one - tot_u(1)*tot_vol/(L_domain_y*L_domain_x)!*1.1831 !! Targetting a volumetric flux of one     
+     eflow_n = one - vol_flux!/flux_length
           
      !! Integral term
      sum_eflow = sum_eflow + eflow_n*dt
@@ -251,7 +252,7 @@ contains
      deflowdt = (eflow_n-eflow_nm1)/dt
     
      !! P, I and D factors..  
-     facA = half*half*half*one*two*four     !one  !! Larger facA increases the speed of the response
+     facA = half*half*half*one*two*two     !one  !! Larger facA increases the speed of the response
      facB = facA/0.4d0 !0.1   !!
      facC = facA*0.02d0 !0.02  !! Larger increases damping?!
          
@@ -268,7 +269,7 @@ contains
       
 #ifdef mp
      if(iproc.eq.0)then  !! time, |u|, mean u, mean v, mean w,  force
-        write(195,*) time/Time_char,tot_vel,tot_u,vol_flux,driving_force(1)
+        write(195,*) time/Time_char,tot_vel,tot_u,vol_flux,driving_force(1),vol_flux/flux_length
         flush(195)
      end if
 #else

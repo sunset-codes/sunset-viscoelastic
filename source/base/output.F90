@@ -280,12 +280,12 @@ contains
 
            !! Store the density in tmpro
 #ifdef pgrad
-           !! Remove pressure gradient from output           
-           tmpro = ro(i) + Ma*Ma*( (grav(1)+driving_force(1))*rp(i,1) &
+           !! Remove pressure gradient from output and mean-density from output rho
+           tmpro = -rho_char + ro(i) + Ma*Ma*( (grav(1)+driving_force(1))*rp(i,1) &
                                   +(grav(2)+driving_force(2))*rp(i,2) &
                                   +(grav(3)+driving_force(3))*rp(i,3))
 #else
-           tmpro = ro(i)  
+           tmpro = -rho_char + ro(i)  
 #endif     
      
  
@@ -403,7 +403,7 @@ contains
            else
               x = x - one
            end if                     
-           write(24,*) x,y,ro(i),u(i),v(i),w(i),cxx(i),cxy(i),cyy(i)
+           write(24,*) x,y,ro(i)-one,u(i),v(i),w(i),cxx(i),cxy(i),cyy(i)
            k=k+1
         end if
      end do

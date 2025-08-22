@@ -617,10 +617,12 @@ write(6,*) "Shifting iteration",ll,"of ",kk
            allocate(nblock(nprocsY))           
            
            
-           !! Shuffle the blocks to create cyclical structure in y
+           !! Shuffle the blocks to create cyclical structure in y IF periodic
            nblock(:) = ceiling(dble(nband(kk)/nprocsY))      
            nshift = floor(0.5*nblock(1)) 
-           call shift_indices(nl_ini,nl_end,nshift)
+           if(ybcond_L.eq.1.or.ybcond_U.eq.1) then     
+              call shift_indices(nl_ini,nl_end,nshift)
+           endif           
                        
            call find_block_sizes(nl_ini,nband(kk))       
                 

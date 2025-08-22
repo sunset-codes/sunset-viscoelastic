@@ -484,12 +484,13 @@ contains
 #else
         read(14,*) tmpro,u(i),v(i),tmp,tmp,tmp,cxx(i),cxy(i),cyy(i),czz(i)
         cxz(i)=zero;cyz(i)=zero
-#endif        
-        ro(i) = tmpro
+#endif    
+        !! Add rho_char back on    
+        ro(i) = tmpro + rho_char
  
         !! Add the pressure gradient back in if required
 #ifdef pgrad
-        ro(i) = tmpro - Ma*Ma*( (grav(1)+driving_force(1))*rp(i,1) &
+        ro(i) = ro(i) - Ma*Ma*( (grav(1)+driving_force(1))*rp(i,1) &
                                   +(grav(2)+driving_force(2))*rp(i,2) &
                                   +(grav(3)+driving_force(3))*rp(i,3))
 #endif            

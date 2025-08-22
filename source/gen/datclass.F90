@@ -89,7 +89,7 @@ program datgen
      h0=D_cyl/2.0d0      !cylinder radius
      yl=SovD*D_cyl ! box height
      xl=SovD*D_cyl ! channel length
-     dx0=D_cyl/200.0       !75
+     dx0=D_cyl/250.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -116,9 +116,9 @@ program datgen
 !! ------------------------------------------------------------------------------------------------
   case(3) !! Kolmogorov flow (currently set for Miguel's work)
 
-     yl=1.0d0!2.0d0*pi*4.0d0
+     yl=1.0d0*2.0d0*pi*4.0d0
      xl=yl/1.0d0
-     dx0=yl/(40.0d0)
+     dx0=yl/(300.0d0)
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -264,21 +264,21 @@ case(7) !! Grilli cylinders
 case(8) !! Minimal unit cell of isometric cylinder array
     !! SECONDARY ORIENTATION
 
-     SovD = 2.0d0!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) !! For a porosity of 1/2, set SovD=sqrt(pi/sqrt(3))
+     SovD = sqrt(pi/(0.6*sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
      D_cyl = 1.0d0!/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=S_cyl ! box height
      xl=sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/60.0d0!499.50
-     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
+     dx0=D_cyl/50.0d0!499.50
+     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
+     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
@@ -297,8 +297,8 @@ case(8) !! Minimal unit cell of isometric cylinder array
 
 
 
-     dxmin = dx0/2.0d0
-     dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     dxmin = dx0/1.2d0
+     dx_wall=dxmin;dx_in=1.2d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin              
 !! ------------------------------------------------------------------------------------------------
 case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 degrees)
@@ -309,13 +309,13 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
   !! Porosity 1/4 - sqrt(0.6667*pi/sqrt(3))   (2/3)
   
 
-     SovD = sqrt(pi/sqrt(3.0d0))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
+     SovD = 2.0d0!sqrt(pi/(sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
      D_cyl = 1.0d0!1.0d0/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/100.0d0!499.50       !250
+     dx0=D_cyl/200.0d0!499.50       !250
      xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
