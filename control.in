@@ -16,7 +16,7 @@
 1.0d0 2.5d-4 1.0d-1
 
 !! Gravity vector (grav)
-0.15d0 0.0d0 0.0d0
+0.3427d0 0.0d0 0.0d0
 
 !! Reynolds number
 1.0d2

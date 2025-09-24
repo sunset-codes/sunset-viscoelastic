@@ -233,10 +233,20 @@ contains
 #ifdef mp   
      !! Set the spatial limits of this processor block
      XL_thisproc = minval(rp(1:npfb,1))
-     XR_thisproc = maxval(rp(1:npfb,1))    
-     if(iprocY.eq.0.and.nprocsY.gt.1) then
-        YU_thisproc = maxval(rp(floor(0.75*npfb):npfb,2))  !! Adjustments for cyclical columns. 
-        YD_thisproc = minval(rp(1:floor(0.25*npfb),2))       !! Should be oK given node ordering - but...
+     XR_thisproc = maxval(rp(1:npfb,1))
+     if(iprocY.eq.0.and.nprocsY.gt.1.and.ybcond_L.eq.1) then
+        !! If periodic in Y, more than 1 processor in Y, and this is the lowest processor in the column.
+        YU_thisproc = ymin
+        YD_thisproc = ymax
+        do i=1,npfb
+           if(rp(i,2)-half*(ymax+ymin).gt.zero) then !! node is in top section
+              YD_thisproc = min(YD_thisproc,rp(i,2))
+           else            !! node is in bottom section
+              YU_thisproc = max(YU_thisproc,rp(i,2))
+           end if
+        end do
+!        YU_thisproc = maxval(rp(floor(0.75*npfb):npfb,2))  !! Adjustments for cyclical columns. 
+!        YD_thisproc = minval(rp(1:floor(0.25*npfb),2))       !! Should be oK given node ordering - but...
         !! potential for problems in really non-uniform geometries. Need a more robust solution
      else
         YU_thisproc = maxval(rp(1:npfb,2))

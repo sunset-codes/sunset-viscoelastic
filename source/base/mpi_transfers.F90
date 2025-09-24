@@ -228,7 +228,7 @@ contains
         end if
      end if
      
-     !! LEFT-RIGHT RECEIVE LIST
+     !! LEFT-RIGHT SEND LIST
      if(nprocsX.ne.1) then
         !! Left
         if(iprocX.ne.0) then
@@ -263,7 +263,7 @@ contains
         end do
      end if   
  
-     !! FORWARD-BACK SEND LIST
+     !! FORWARD-BACK RECEIVE LIST
      if(nprocsZ.ne.1) then
         !! Back, cyclic
         if(iprocZ.ne.0) then

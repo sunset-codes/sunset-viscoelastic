@@ -55,7 +55,7 @@ program datgen
      SovD = 2.0d0!sqrt(pi/2.0d0)
      D_cyl = 1.0d0
      h0=D_cyl/2.0d0      !cylinder radius
-     yl=1.03*D_cyl ! box height
+     yl=1.1*D_cyl ! box height  1.03
      xl=1.2d0*D_cyl ! channel length
      dx0=D_cyl/200.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
@@ -264,7 +264,7 @@ case(7) !! Grilli cylinders
 case(8) !! Minimal unit cell of isometric cylinder array
     !! SECONDARY ORIENTATION
 
-     SovD = sqrt(pi/(0.6*sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
+     SovD = 2.0d0!sqrt(pi/(0.6*sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
      D_cyl = 1.0d0!/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
@@ -316,14 +316,14 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
      dx0=D_cyl/200.0d0!499.50       !250
-     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
+     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
+     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 4;n_blob_coefs=12
