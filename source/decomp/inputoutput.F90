@@ -76,6 +76,8 @@ contains
      write(6,*) nb,npfb     
      close(13)     
 
+     
+
      !! Randomly perturb the nodes
      smag = 0.5d0
      do i=1,npfb
