@@ -462,5 +462,52 @@ contains
     segment_time_local(5) = segment_time_local(5) + segment_dtend - segment_dtstart
     return
   end subroutine calc_gradient_only  
+!! ------------------------------------------------------------------------------------------------  
+  subroutine calc_filter_term(phi,filtphi)
+    !! Calculate the hyperviscosity term for the filter.
+    !! N.B. this is used where we want to filter the conformation tensor, but apply it to the
+    !! log-Cholesky components...
+    real(rkind),dimension(:),intent(in) :: phi
+    real(rkind),dimension(:),intent(out) :: filtphi
+    integer i,j,k
+    real(rkind) :: hyp_tmp
+
+    segment_dtstart=omp_get_wtime()
+   
+    !! Calculate filtered phi
+    !$OMP PARALLEL DO PRIVATE(j,k,hyp_tmp)
+    do i=1,npfb
+       hyp_tmp = zero
+       do k=1,ij_count(i)
+          j = ij_link(k,i) 
+          hyp_tmp = hyp_tmp + phi(j)*ij_w_hyp(k,i)
+       end do       
+       filtphi(i) = hyp_tmp - phi(i)*ij_w_hyp_sum(i)
+    end do
+    !$OMP END PARALLEL DO
+
+#ifdef dim3   
+
+    !! Note in FD schemes, we have to do the coordinates sequentially, so filtering in Z is done
+    !! to the X-Y filtered field...
+    !$OMP PARALLEL DO PRIVATE(j,k,hyp_tmp)
+    do i=1,npfb
+       hyp_tmp=zero
+       do k=1,ij_count_fd
+          j = ij_link_fd(k,i) 
+          hyp_tmp = hyp_tmp + phi(j)*ij_fd_hyp(k)
+       end do
+       filtphi(i) = filtphi(i) + hyp_tmp
+    end do
+    !$OMP END PARALLEL DO 
+    
+#endif
+    
+    !! Profiling
+    segment_dtend = omp_get_wtime()
+    segment_time_local(7) = segment_time_local(7) + segment_dtend - segment_dtstart     
+
+    return
+  end subroutine calc_filter_term    
 !! ------------------------------------------------------------------------------------------------     
 end module derivatives

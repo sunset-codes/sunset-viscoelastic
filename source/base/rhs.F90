@@ -612,30 +612,24 @@ contains
            uczz = gradw_local(3) - gradu_local(3)*lxz/lxx - gradv_local(3)*lyz/lyy + gradu_local(3)*lxy*lyz/(lxx*lyy)
 #endif             
             
-           !! Modify conformation tensor laplacian to set no diffusive flux through boundaries:
-           !! (actually setting d2c/dtangent2=0 as well)
-!! Check wall shear stress calculation... and some rotated conf tensors
-!           wss = (-25.0d0*(yn*u(i)+xn*v(i)) + 48.0d0*(yn*u(i+1)+xn*v(i+1)) - 36.0d0*(yn*u(i+2)+xn*v(i+2)) &
-!                 + 16.0d0*(yn*u(i+3)+xn*v(i+3)) - 3.0d0*(yn*u(i+4)+xn*v(i+4)) )/(12.0d0*s(i)*L_char)
-!           cl11 = xn*xn*cxx(i) - two*xn*yn*cxy(i) + yn*yn*cyy(i)
-!           cl12 = xn*yn*(cyy(i) - cxx(i)) - (xn*xn-yn*yn)*cxy(i)
-!           cl22 = yn*yn*cxx(i) + two*xn*yn*cxy(i) + xn*xn*cyy(i)
-!if(i.eq.134.or.i.eq.204) write(6,*) time,rp(i,2),cl11,cl12,cl22,wss
-           
-           lapcxx(i) = lapcxx(i) + (-170.0d0*cxx(i) + 216.0d0*cxx(i+1) - 54.0d0*cxx(i+2) + 8.0d0*cxx(i+3))/ &
-                                   (36.0d0*s(i)*s(i)*L_char*L_char)
-           lapcxy(i) = lapcxy(i) + (-170.0d0*cxy(i) + 216.0d0*cxy(i+1) - 54.0d0*cxy(i+2) + 8.0d0*cxy(i+3))/ &
-                                   (36.0d0*s(i)*s(i)*L_char*L_char)          
-           lapcyy(i) = lapcyy(i) + (-170.0d0*cyy(i) + 216.0d0*cyy(i+1) - 54.0d0*cyy(i+2) + 8.0d0*cyy(i+3))/ &
-                                   (36.0d0*s(i)*s(i)*L_char*L_char) 
-           lapczz(i) = lapczz(i) + (-170.0d0*czz(i) + 216.0d0*czz(i+1) - 54.0d0*czz(i+2) + 8.0d0*czz(i+3))/ &
-                                   (36.0d0*s(i)*s(i)*L_char*L_char)                                    
+           !! Modify conformation tensor laplacian to set no diffusive flux through boundaries: 
+           lapcxx(i) = lapcxx(i) + (-415.0d0*cxx(i)+576.0d0*cxx(i+1)-216.0d0*cxx(i+2)+64.0d0*cxx(i+3)-9.0d0*cxx(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+           lapcxy(i) = lapcxy(i) + (-415.0d0*cxy(i)+576.0d0*cxy(i+1)-216.0d0*cxy(i+2)+64.0d0*cxy(i+3)-9.0d0*cxy(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+           lapcyy(i) = lapcyy(i) + (-415.0d0*cyy(i)+576.0d0*cyy(i+1)-216.0d0*cyy(i+2)+64.0d0*cyy(i+3)-9.0d0*cyy(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+           lapczz(i) = lapczz(i) + (-415.0d0*czz(i)+576.0d0*czz(i+1)-216.0d0*czz(i+2)+64.0d0*czz(i+3)-9.0d0*czz(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
 #ifdef dim3
-           lapcxz(i) = lapcxz(i) + (-170.0d0*cxz(i) + 216.0d0*cxz(i+1) - 54.0d0*cxz(i+2) + 8.0d0*cxz(i+3))/ &
-                                   (36.0d0*s(i)*s(i)*L_char*L_char)                                    
-           lapcyz(i) = lapcyz(i) + (-170.0d0*cyz(i) + 216.0d0*cyz(i+1) - 54.0d0*cyz(i+2) + 8.0d0*cyz(i+3))/ &
-                                   (36.0d0*s(i)*s(i)*L_char*L_char)                                                            
+           lapcxz(i) = lapcxz(i) + (-415.0d0*cxz(i)+576.0d0*cxz(i+1)-216.0d0*cxz(i+2)+64.0d0*cxz(i+3)-9.0d0*cxz(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+           lapcyz(i) = lapcyz(i) + (-415.0d0*cyz(i)+576.0d0*cyz(i+1)-216.0d0*cyz(i+2)+64.0d0*cyz(i+3)-9.0d0*cyz(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
 #endif                                   
+
+
+
 
 #ifdef fenep
            !! Modified formulation, because we're evolving Cholesky components of J=fr*c
@@ -778,9 +772,12 @@ contains
      !! This routine calls the specific filtering routine (within derivatives module) for each
      !! variable - ro,u,v,w,roE,Yspec - and forces certain values on boundaries as required.
      use mpi_transfers
+     use conf_transforms       
      integer(ikind) :: ispec,i
      real(rkind),dimension(:),allocatable :: filter_correction
      real(rkind) :: tm,tv,dro,fr
+     real(rkind),dimension(:),allocatable :: hypterm_xx,hypterm_xy,hypterm_yy,hypterm_xz,hypterm_yz,hypterm_zz
+     real(rkind) :: lxx,lxy,lyy,lzz,lxz,lyz,csxz,csyz
             
      !! Filter density
      call calc_filtered_var(ro)
@@ -794,9 +791,10 @@ contains
 
 #ifndef newt
 
+if(.true.)then
 
 #ifdef fenep
-!     !! For Cholesky & FENE-P, we should converge to the Cholesky-components of c to filter
+     !! For Cholesky & FENE-P, we should converge to the Cholesky-components of c to filter
      do i=1,np
 #ifdef dim3     
         fr = exp(two*psixx(i)) + psixy(i)**two + exp(two*psiyy(i)) &
@@ -833,7 +831,7 @@ contains
 #endif     
 
 #ifdef fenep
-!     !! Convert back to Cholesky components of fr*c_{ij}
+     !! Convert back to Cholesky components 
      do i=1,npfb
 #ifdef dim3
         fr = (fenep_l2-three)/(fenep_l2 - (exp(two*psixx(i)) + psixy(i)**two + exp(two*psiyy(i)) &
@@ -845,9 +843,66 @@ contains
         psixy(i) = psixy(i)*sqrt(fr)
         psiyy(i) = psiyy(i) + log(sqrt(fr))
         psizz(i) = psizz(i) + log(sqrt(fr))
+        
      end do
 #endif
-    
+
+else
+
+  !! The other option 
+     allocate(hypterm_xx(npfb),hypterm_xy(npfb),hypterm_yy(npfb),hypterm_zz(npfb))
+#ifdef dim3
+     allocate(hypterm_xz(npfb),hypterm_yz(npfb))
+#endif          
+     
+     
+     !! Calculate hyperviscous terms...
+     call calc_filter_term(cxx,hypterm_xx)
+     call calc_filter_term(cxy,hypterm_xy)
+     call calc_filter_term(cyy,hypterm_yy)
+     call calc_filter_term(czz,hypterm_zz)               
+#ifdef dim3
+     call calc_filter_term(cxz,hypterm_xz)
+     call calc_filter_term(cyz,hypterm_yz)     
+#endif     
+
+     do i=1,npfb
+        !! Store Cholesky components locally        
+        lxx = exp(psixx(i))
+        lxy = psixy(i)
+        lyy = exp(psiyy(i))
+        lzz = exp(psizz(i))
+#ifdef dim3
+        lxz = psixz(i)
+        lyz = psiyz(i)
+#endif  
+     
+        !! Update values of psi
+        psixx(i) = psixx(i) + half*hypterm_xx(i)/lxx/lxx
+        psixy(i) = psixy(i) + hypterm_xy(i)/lxx - half*hypterm_xx(i)*lxy/(lxx**two)
+        psiyy(i) = psiyy(i) + half*hypterm_yy(i)/lyy/lyy - hypterm_xy(i)*lxy/(lxx*lyy*lyy) &
+                            + half*hypterm_xx(i)*lxy*lxy/(lyy*lyy*lxx*lxx)
+        psizz(i) = psizz(i) + half*hypterm_zz(i)/lzz/lzz
+#ifdef dim3
+        csxz = hypterm_xz(i)/lxx - half*hypterm_xx(i)*lxz/(lxx**two)
+        csyz = hypterm_yz(i)/lyy - hypterm_xz(i)*lxy/(lxx*lyy) &
+             + half*hypterm_xx(i)*lxy*(two*lxz*lyy-lxy*lyz)/(lxx*lxx*lyy*lyy) &
+             - half*hypterm_yy(i)*lyz/(lyy*lyy) + hypterm_xy(i)*(lxy*lyz-lxz*lyy)/(lxx*lyy*lyy)
+        psixz(i) = psixz(i) + csxz
+        psiyz(i) = psiyz(i) + csyz
+        psizz(i) = psizz(i) - csxz*lxz/lzz/lzz - csyz*lyz/lzz/lzz
+#endif        
+     
+     
+     end do
+
+     !! Deallocate hyperviscous terms
+     deallocate(hypterm_xx,hypterm_xy,hypterm_yy,hypterm_zz)
+#ifdef dim3
+     deallocate(hypterm_xz,hypterm_yz)
+#endif
+
+end if    
              
     
 #endif     

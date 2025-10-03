@@ -57,7 +57,7 @@ program datgen
      h0=D_cyl/2.0d0      !cylinder radius
      yl=1.1*D_cyl ! box height  1.03
      xl=1.2d0*D_cyl ! channel length
-     dx0=D_cyl/200.0       !75
+     dx0=D_cyl/150.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -352,7 +352,7 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
 !     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
 
 
-     dxmin = dx0/2.0d0  !! 2.0d0, 1.5d0
+     dxmin = dx0/3.0d0  !! 2.0d0, 1.5d0
      dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 !! ------------------------------------------------------------------------------------------------
