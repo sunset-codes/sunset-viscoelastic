@@ -791,10 +791,9 @@ contains
 
 #ifndef newt
 
-if(.true.)then
-
 #ifdef fenep
-     !! For Cholesky & FENE-P, we should converge to the Cholesky-components of c to filter
+     !! For Cholesky & FENE-P, we evolve Cholesky components if fr*c, but we should convert to the 
+     !! Cholesky-components of c to filter (unsure why, but it works better).
      do i=1,np
 #ifdef dim3     
         fr = exp(two*psixx(i)) + psixy(i)**two + exp(two*psiyy(i)) &
@@ -846,65 +845,8 @@ if(.true.)then
         
      end do
 #endif
-
-else
-
-  !! The other option 
-     allocate(hypterm_xx(npfb),hypterm_xy(npfb),hypterm_yy(npfb),hypterm_zz(npfb))
-#ifdef dim3
-     allocate(hypterm_xz(npfb),hypterm_yz(npfb))
-#endif          
-     
-     
-     !! Calculate hyperviscous terms...
-     call calc_filter_term(cxx,hypterm_xx)
-     call calc_filter_term(cxy,hypterm_xy)
-     call calc_filter_term(cyy,hypterm_yy)
-     call calc_filter_term(czz,hypterm_zz)               
-#ifdef dim3
-     call calc_filter_term(cxz,hypterm_xz)
-     call calc_filter_term(cyz,hypterm_yz)     
-#endif     
-
-     do i=1,npfb
-        !! Store Cholesky components locally        
-        lxx = exp(psixx(i))
-        lxy = psixy(i)
-        lyy = exp(psiyy(i))
-        lzz = exp(psizz(i))
-#ifdef dim3
-        lxz = psixz(i)
-        lyz = psiyz(i)
-#endif  
-     
-        !! Update values of psi
-        psixx(i) = psixx(i) + half*hypterm_xx(i)/lxx/lxx
-        psixy(i) = psixy(i) + hypterm_xy(i)/lxx - half*hypterm_xx(i)*lxy/(lxx**two)
-        psiyy(i) = psiyy(i) + half*hypterm_yy(i)/lyy/lyy - hypterm_xy(i)*lxy/(lxx*lyy*lyy) &
-                            + half*hypterm_xx(i)*lxy*lxy/(lyy*lyy*lxx*lxx)
-        psizz(i) = psizz(i) + half*hypterm_zz(i)/lzz/lzz
-#ifdef dim3
-        csxz = hypterm_xz(i)/lxx - half*hypterm_xx(i)*lxz/(lxx**two)
-        csyz = hypterm_yz(i)/lyy - hypterm_xz(i)*lxy/(lxx*lyy) &
-             + half*hypterm_xx(i)*lxy*(two*lxz*lyy-lxy*lyz)/(lxx*lxx*lyy*lyy) &
-             - half*hypterm_yy(i)*lyz/(lyy*lyy) + hypterm_xy(i)*(lxy*lyz-lxz*lyy)/(lxx*lyy*lyy)
-        psixz(i) = psixz(i) + csxz
-        psiyz(i) = psiyz(i) + csyz
-        psizz(i) = psizz(i) - csxz*lxz/lzz/lzz - csyz*lyz/lzz/lzz
-#endif        
-     
-     
-     end do
-
-     !! Deallocate hyperviscous terms
-     deallocate(hypterm_xx,hypterm_xy,hypterm_yy,hypterm_zz)
-#ifdef dim3
-     deallocate(hypterm_xz,hypterm_yz)
-#endif
-
-end if    
-             
-    
+  
+     !! End of ifndef newt
 #endif     
 
      !! Correct mass conservation if required
