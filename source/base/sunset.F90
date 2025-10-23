@@ -40,8 +40,14 @@ program sunset
 
   !! Adapt the stencils by reducing h (only if not restarting)
 #ifndef restart  
+#if kernel==1
   call adapt_stencils
 !  call grow_stencils
+#else
+  call adapt_stencils_c
+  call combined_stencils
+#endif
+
 #endif  
 
   !! Shrink the halos to fit, and finalise building the domain
@@ -49,19 +55,41 @@ program sunset
 
   !! Build the neighbour lists
   call find_neighbours
+  ij_link_c=ij_link
+!#if kernel==2
+!  call find_neighbours_c
+!#endif
+
 
   !! Calculate LABFM and FD weights for all derivatives and filters
+#if kernel==1
   call calc_labf_weights
   if(nb.ne.0) call calc_boundary_weights
   call calc_labf_sums
+  
+#else
+  call calc_labf_weights1
+  call calc_labf_weights2
+  call calc_labf_weights_c
+  
+  
+  if(nb.ne.0) call calc_boundary_weights_c
+  call calc_labf_sums_c
+#endif
+  
+
 #ifdef dim3
   call calc_fd_weights
 #endif    
+#if kernel==2
+  call filter_coefficients_c
+#else
   call filter_coefficients   
-  
+ 
+#endif  
   !! Load data 
   call load_control_data_all
-
+!stop
   !! Set initial fields
   call initial_solution
 
@@ -70,7 +98,7 @@ program sunset
   m_out = 0  ! Stats output counter
   o_out = 0 ! tracers output counter
 
-        
+      
   !! MAIN TIME LOOP ---------------------------------------------------
   do while (time.le.time_end)
 

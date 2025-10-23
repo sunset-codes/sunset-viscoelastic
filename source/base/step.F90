@@ -194,8 +194,11 @@ contains
      call halo_exchanges_all
               
      !! Filter the solution 
+#if kernel==1
      call filter_variables
-
+#else
+    call filter_variables_c
+#endif
      !! Apply BCs and update halos
      if(nb.ne.0) call apply_time_dependent_bounds
      call reapply_mirror_bcs
@@ -283,9 +286,12 @@ contains
         !! Set the intermediate time
         time = time0 + RKc(iRKstep)
 
-        !! Calculate the RHS        
+        !! Calculate the RHS  
+#if kernel==1      
         call calc_all_rhs      
-
+#else
+        call calc_all_rhs_c
+#endif
         !! Set w_i and new u,v
         !$omp parallel do
         do i=1,npfb 
@@ -365,7 +371,11 @@ contains
      time = time0 + RKc(iRKstep)     
      
      !! Build the right hand sides
-     call calc_all_rhs    
+#if kernel==1
+     call calc_all_rhs
+#else
+     call calc_all_rhs_c
+#endif    
           
      enrm_ro=zero;enrm_rou=zero;enrm_rov=zero;enrm_row=zero
      enrm_xx=zero;enrm_xy=zero;enrm_yy=zero;enrm_xz=zero;enrm_yz=zero;enrm_zz=zero
@@ -490,14 +500,13 @@ contains
      if(nb.ne.0) call apply_time_dependent_bounds     
      call reapply_mirror_bcs
      call halo_exchanges_all
-
-#ifndef di
-     !! Get the conformation tensor
-     call get_c_from_psi        
-#endif     
           
      !! Filter the solution 
+#if kernel==1
      call filter_variables
+#else
+    call filter_variables_c
+#endif
 
      !! Apply BCs and update halos
      if(nb.ne.0) call apply_time_dependent_bounds
@@ -507,7 +516,10 @@ contains
      !! Get velocity from momentum
      call get_velocity_from_momentum    
      
-      
+#ifndef di
+     !! Get the conformation tensor
+     call get_c_from_psi        
+#endif                 
      
      return
   end subroutine step_rk3_4S_2R_EE  
