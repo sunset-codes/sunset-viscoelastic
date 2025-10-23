@@ -16,6 +16,11 @@ ifeq ($(dim3),1)
 FCFLAGS += -Ddim3
 endif
 
+#Start 3D simulation with 2D solution?
+ifeq ($(changedim),1)
+FCFLAGS += -Dchangedim
+endif
+
 VPATH = .  
 
 OBJS := redecomp.o

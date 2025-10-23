@@ -17,6 +17,8 @@
 # mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
 # tarout     Compress files as they're written (1) or don't (0)                        (default: 0)
 # tracers    Include some Lagrangian tracer particles (1) or don't (0)                 (default: 0)
+# kernel     Multiple Kernels (2) or not (1)                                           (default: 1)
+# changedim  Routine to enable starting 3d simulation from 2d solution                 (default: 0)  
 # -------------------------------------------------------------------------------------------------
 #
 # EXAMPLE USAGE:
@@ -65,6 +67,13 @@ endif
 # Restart from dump file.
 ifeq ($(restart), 1)
 FFLAGS += -Drestart
+endif
+
+# MULTIPLE KERNELS
+ifeq ($(kernel), 2)
+FFLAGS += -Dkernel=$(kernel)
+else
+FFLAGS += -Dkernel=1
 endif
 
 # Non-Newtonian
@@ -129,6 +138,11 @@ endif
 # Tracer particles
 ifeq ($(tracers),1)
 FFLAGS += -Dtracers
+endif
+
+#Change dimension restart?
+ifeq ($(changedim),1)
+FFLAGS += -Dchangedim
 endif
 
 LDFLAGS := -fopenmp -m64 

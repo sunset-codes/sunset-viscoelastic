@@ -199,16 +199,29 @@ contains
         nprocsout = nprocsX*nprocsY
 #endif
 
+#ifdef changedim
+    np_out_local = npfb
+    call output_nodes(np_out_local)
+    stop
+#endif
+
 
         !! Calculate the vorticity 
         allocate(gradu(npfb,ithree),gradv(npfb,ithree),gradw(npfb,ithree));gradw=zero
         allocate(vort(npfb),Qcrit(npfb))
-
-        call calc_gradient(u,gradu)
+#if kernel==2 
+        call calc_gradient_c(u,gradu)
+        call calc_gradient_c(v,gradv)
+#ifdef dim3
+        call calc_gradient_c(w,gradw)
+#endif     
+#else
+     call calc_gradient(u,gradu)
         call calc_gradient(v,gradv)
 #ifdef dim3
         call calc_gradient(w,gradw)
-#endif     
+#endif 
+#endif
         !$omp parallel do 
         do i=1,npfb
 #ifdef dim3
