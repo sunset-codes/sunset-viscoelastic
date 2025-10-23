@@ -84,12 +84,12 @@ program datgen
 !! ------------------------------------------------------------------------------------------------
   case(2) !! Cylinder in a doubly-periodic box
  
-     SovD = 2.0d0!sqrt(pi/2.0d0)
-     D_cyl = 1.0d0
+     SovD = 5.0d0!sqrt(pi/2.0d0)
+     D_cyl = 0.2d0
      h0=D_cyl/2.0d0      !cylinder radius
      yl=SovD*D_cyl ! box height
      xl=SovD*D_cyl ! channel length
-     dx0=D_cyl/250.0       !75
+     dx0=D_cyl/20.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -110,7 +110,7 @@ program datgen
      end do
 
      !! dx0/2.0d0, 1.5d0*dx0
-     dxmin = dx0/2.0d0 !!2.0d0
+     dxmin = dx0/1.0d0 !!2.0d0
      dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin      
 !! ------------------------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ program datgen
 
      yl=1.0d0*2.0d0*pi*4.0d0
      xl=yl/1.0d0
-     dx0=yl/(300.0d0)
+     dx0=yl/(128.0d0)
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -315,7 +315,7 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/200.0d0!499.50       !250
+     dx0=D_cyl/167.0d0!499.50       !250
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4

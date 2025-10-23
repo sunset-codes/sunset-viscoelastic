@@ -20,6 +20,8 @@ module statistics
 #endif    
   implicit none
 
+#define avgx 0
+
 contains
 !! ------------------------------------------------------------------------------------------------
   subroutine open_stats_files
@@ -55,6 +57,13 @@ contains
      
      !! Time, mean/RMS of conformation tensor components
      open(unit=199,file='data_out/statistics/confcheck.out')
+     
+     !! Average files
+#if avgx==1     
+     open(unit=331,file='data_out/statistics/avg_in_x_u.out')
+     open(unit=332,file='data_out/statistics/avg_in_x_urms.out')
+     open(unit=333,file='data_out/statistics/avg_in_x_vrms.out')     
+#endif     
      
      return     
   end subroutine open_stats_files
@@ -101,6 +110,11 @@ contains
 
         !! Evaluate mean/RMS conformation tensor components
         call conf_check
+
+        !! Average of some quantities in X. 
+#if avgx==1        
+        call avg_in_x
+#endif        
 
      endif
 
@@ -202,13 +216,14 @@ contains
      !! Output the L2 of velocity over the domain
      integer(ikind) :: i
      real(rkind) :: tot_vel,tot_vol,tmpro,dVi,tmpvel
-     real(rkind),dimension(ithree) :: tot_u
+     real(rkind),dimension(ithree) :: tot_u,tot_u2
      real(rkind) :: facA,facB,facC,facT,deflowdt,vol_flux,flux_length
        
      tot_vel = zero
      tot_vol = zero
      tot_u = zero
-     !$omp parallel do private(tmpro,tmpvel,dVi) reduction(+:tot_vel,tot_vol,tot_u)
+     tot_u2=zero
+     !$omp parallel do private(tmpro,tmpvel,dVi) reduction(+:tot_vel,tot_vol,tot_u,tot_u2)
      do i=1,npfb
         tmpro = ro(i)
         dVi = vol(i)
@@ -219,6 +234,7 @@ contains
         tot_vel = tot_vel + tmpvel*dVi
         tot_vol = tot_vol + dVi
         tot_u = tot_u + (/u(i),v(i),w(i)/)*dVi
+        tot_u2 = tot_u2 + (/u(i)**two,v(i)**two,w(i)**two/)*dVi
      end do
      !$omp end parallel do
 
@@ -229,11 +245,15 @@ contains
      call global_reduce_sum(tot_u(1))
      call global_reduce_sum(tot_u(2))
      call global_reduce_sum(tot_u(3))                    
+     call global_reduce_sum(tot_u2(1))
+     call global_reduce_sum(tot_u2(2))
+     call global_reduce_sum(tot_u2(3))                    
 #endif                
     
      !! Normalise over volume
      tot_vel = sqrt(tot_vel/tot_vol)
      tot_u(:) = tot_u(:)/tot_vol
+     tot_u2(:)= (tot_u2(:)/tot_vol)
      
      !! Calculate the volumetric flux
      call calculate_volumetric_flux(vol_flux,flux_length)  
@@ -243,7 +263,7 @@ contains
      !! New error     
      eflow_n = one - tot_vel!*1.1831 !! Targetting a volumetric flux of one
 !     eflow_n = one - tot_u(1)*tot_vol/(L_domain_y*L_domain_x)!*1.1831 !! Targetting a volumetric flux of one     
-     eflow_n = one - vol_flux!/flux_length
+     eflow_n = one - vol_flux/two!/flux_length
           
      !! Integral term
      sum_eflow = sum_eflow + eflow_n*dt
@@ -268,12 +288,12 @@ contains
 #endif
       
 #ifdef mp
-     if(iproc.eq.0)then  !! time, |u|, mean u, mean v, mean w,  force
-        write(195,*) time/Time_char,tot_vel,tot_u,vol_flux,driving_force(1),vol_flux/flux_length
+     if(iproc.eq.0)then  !! time, L2 of |u|, mean u,v,w, force, mean u^2,v^2,w^2
+        write(195,*) time/Time_char,tot_vel,tot_u,vol_flux,driving_force(1),tot_u2
         flush(195)
      end if
 #else
-     write(195,*) time/Time_char,tot_vel,tot_u,vol_flux,driving_force(1)    
+     write(195,*) time/Time_char,tot_vel,tot_u,vol_flux,driving_force(1),tot_u2    
      flush(195)
 #endif       
      
@@ -670,5 +690,69 @@ contains
            
      return
   end subroutine check_enstrophy  
+!! ------------------------------------------------------------------------------------------------ 
+  subroutine avg_in_x
+     !! Routine to calculate (low-order) average values of quantities as function of Y.
+     integer(ikind) :: i,j,k
+     integer(ikind),parameter :: Ny=100
+     real(rkind) :: dy,dVi
+     real(rkind),dimension(Ny) :: yvals,yvol,yu,yurms,yvrms !! Array of Y values
+     
+     !! Create array of Y-positions
+     dy = (ymax-ymin)/dble(Ny)
+     do i=1,Ny
+        yvals(i) = ymin + half*dy + (i-1)*dy
+     end do
+     
+     !! Loop over all particles
+     yvol = zero;yu=zero;yurms=zero;yvrms=zero
+     
+     do i=1,npfb
+        !! Find index of Y-location just below
+        j = floor( (rp(i,2)-ymin)/dy)
+        j = max(1,j);j=min(Ny,j) !! Plus some limits just in case.
+        
+        !! Volume of particle
+        dVi = vol(i)        
+               
+        !! Add contributions to relevant entries.
+        yvol(j) = yvol(j) + vol(i)
+        yu(j) = yu(j) + u(i)*vol(i)
+        yurms(j) = yurms(j) + u(i)*u(i)*vol(i)
+        yvrms(j) = yvrms(j) + v(i)*v(i)*vol(i)                
+     
+     end do
+     
+     !! Loop over each Y value and reduce for processors
+#ifdef mp
+     do i=1,Ny
+        call global_reduce_sum(yvol(i))
+        call global_reduce_sum(yu(i))
+        call global_reduce_sum(yurms(i))
+        call global_reduce_sum(yvrms(i))                        
+     end do
+#endif     
+
+     !! Normalise
+     do i=1,Ny
+        yu(i) = yu(i)/yvol(i)
+        yurms(i) = sqrt(yurms(i)/yvol(i))
+        yvrms(i) = sqrt(yvrms(i)/yvol(i))        
+     end do
+     
+     !! Output
+#ifdef mp 
+     if(iproc.eq.0) then    
+        write(331,*) yu
+        write(332,*) yurms
+        write(333,*) yvrms
+        flush(331)
+        flush(332)
+        flush(333)
+     endif
+#endif  
+  
+     return
+  end subroutine avg_in_x  
 !! ------------------------------------------------------------------------------------------------ 
 end module statistics

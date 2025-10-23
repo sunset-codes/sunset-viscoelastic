@@ -211,6 +211,13 @@ contains
         cxz(i) = zero
         cyz(i) = zero
         czz(i) = one
+        
+        !! Kolmogorov IC for Miguel paper
+!        u(i) = cos(y)
+!        v(i) = zero
+!        cxx(i) = one + (Wi*Wi/(one + Mdiff*Wi))*(one-cos(two*y)/(one+four*Mdiff*Wi))
+!        cxy(i) = -Wi*sin(y)/(one+Mdiff*Wi)
+!        cyy(i) = one        
 
         !! Log-conformation transform
 #ifdef lc    

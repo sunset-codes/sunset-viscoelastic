@@ -1,3 +1,4 @@
+!!#ifdef chl        
 module rhs
   !! ----------------------------------------------------------------------------------------------
   !! SUNSET CODE: Scalable Unstructured Node-SET code for DNS.
@@ -457,9 +458,9 @@ contains
                          
                 
         !! Upper convected terms
-        ucxx = gradu_local(1) + gradu_local(2)*lxy/lxx
-        ucxy = gradv_local(2)*lxy + gradu_local(2)*lyy*lyy/lxx + gradv_local(1)*lxx
-        ucyy = gradv_local(2) - gradu_local(2)*lxy/lxx
+        ucxx = (gradu_local(1) + gradu_local(2)*lxy/lxx)
+        ucxy = (gradv_local(2)*lxy + gradu_local(2)*lyy*lyy/lxx + gradv_local(1)*lxx)
+        ucyy = (gradv_local(2) - gradu_local(2)*lxy/lxx)
         uczz = zero
 #ifdef dim3
         ucxx = ucxx + gradu_local(3)*lxz/lxx
@@ -498,8 +499,9 @@ contains
 #else        
         fr = -(one - epsPTT*three + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function
         sxx = fr*(cxx(i) - one) + Mdiff*lapcxx(i)
-        sxy = fr*cxy(i) + Mdiff*lapcxy(i)
-        syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i)  
+        sxy = fr*cxy(i) + Mdiff*lapcxy(i)         
+        syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i) 
+                 
 #ifdef dim3
         sxz = fr*cxz(i) + Mdiff*lapcxz(i)
         syz = fr*cyz(i) + Mdiff*lapcyz(i)
@@ -597,9 +599,9 @@ contains
            
                                                              
            !! Upper convected terms
-           ucxx = gradu_local(1) + gradu_local(2)*lxy/lxx
-           ucxy = gradv_local(2)*lxy + gradu_local(2)*lyy*lyy/lxx + gradv_local(1)*lxx
-           ucyy = gradv_local(2) - gradu_local(2)*lxy/lxx
+           ucxx = (gradu_local(1) + gradu_local(2)*lxy/lxx)
+           ucxy = (gradv_local(2)*lxy + gradu_local(2)*lyy*lyy/lxx + gradv_local(1)*lxx)
+           ucyy = (gradv_local(2) - gradu_local(2)*lxy/lxx)
            uczz = zero
 #ifdef dim3
            ucxx = ucxx + gradu_local(3)*lxz/lxx
@@ -653,9 +655,10 @@ contains
 #endif  
 #else
            fr = -(one - epsPTT*three + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function
-           sxx = fr*(cxx(i) - one) + Mdiff*lapcxx(i)
-           sxy = fr*cxy(i) + Mdiff*lapcxy(i)
-           syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i)  
+           sxx = fr*(cxx(i) - one) + Mdiff*lapcxx(i) 
+           sxy = fr*cxy(i) + Mdiff*lapcxy(i)         
+           syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i)      
+           
 #ifdef dim3
            sxz = fr*cxz(i) + Mdiff*lapcxz(i)
            syz = fr*cyz(i) + Mdiff*lapcyz(i)
@@ -808,8 +811,8 @@ contains
         psiyy(i) = psiyy(i) - log(sqrt(fr))       
         psizz(i) = psizz(i) - log(sqrt(fr))
 #ifdef dim3        
-        psixz(i) = psixz(i) - log(sqrt(fr))
-        psiyz(i) = psiyz(i) - log(sqrt(fr))        
+        psixz(i) = psixz(i)/sqrt(fr)
+        psiyz(i) = psiyz(i)/sqrt(fr)
 #endif
      end do
 #endif
@@ -830,7 +833,7 @@ contains
 #endif     
 
 #ifdef fenep
-     !! Convert back to Cholesky components 
+     !! Convert back to Cholesky components of fr*c 
      do i=1,npfb
 #ifdef dim3
         fr = (fenep_l2-three)/(fenep_l2 - (exp(two*psixx(i)) + psixy(i)**two + exp(two*psiyy(i)) &
@@ -842,6 +845,10 @@ contains
         psixy(i) = psixy(i)*sqrt(fr)
         psiyy(i) = psiyy(i) + log(sqrt(fr))
         psizz(i) = psizz(i) + log(sqrt(fr))
+#ifdef dim3
+        psixz(i) = psixz(i)*sqrt(fr)
+        psiyz(i) = psiyz(i)*sqrt(fr)
+#endif        
         
      end do
 #endif
@@ -875,3 +882,4 @@ contains
   end subroutine filter_variables  
 !! ------------------------------------------------------------------------------------------------    
 end module rhs
+!#endif
