@@ -1,0 +1,6 @@
+# Ignore everything in this directory
+*_grid
+*.o
+fort*
+# Except this file
+###!.gitignore

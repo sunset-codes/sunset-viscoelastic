@@ -270,7 +270,7 @@ case(8) !! Minimal unit cell of isometric cylinder array
      h0=D_cyl/2.0d0      !cylinder radius
      yl=S_cyl ! box height
      xl=sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/50.0d0!499.50
+     dx0=D_cyl/300.0d0!499.50
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -297,8 +297,8 @@ case(8) !! Minimal unit cell of isometric cylinder array
 
 
 
-     dxmin = dx0/1.2d0
-     dx_wall=dxmin;dx_in=1.2d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     dxmin = dx0/3.0d0
+     dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin              
 !! ------------------------------------------------------------------------------------------------
 case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 degrees)
