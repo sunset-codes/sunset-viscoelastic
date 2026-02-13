@@ -977,7 +977,7 @@ contains
                  tmp_t = tmp_t + ij_wb_grad2(2,k,jj)*tmp_n
               end if
            end do
-           ooRcurve(jj) = sqrt(-tmp_t)  !! 1/radius of curvature...   
+           ooRcurve(jj) = sqrt(abs(tmp_t))  !! 1/radius of curvature.. Added abs to ensure stable near inflection points
         end if     
      end do
      

@@ -197,7 +197,6 @@ contains
      call update_u_inflow
                      
      !! Loop over all boundary nodes
-     !$omp parallel do private(i)
      do j=1,nb
         i=boundary_list(j)
         
@@ -207,6 +206,7 @@ contains
            rou(i) = zero
            rov(i) = zero
            row(i) = zero
+                     
         
         !! Inflow boundaries
         else if(node_type(i).eq.1) then 
@@ -229,7 +229,6 @@ contains
         end if
         
      end do
-     !$omp end parallel do
      
      
      !! For inflow-outflow types, adjust the zero-normal-flux flags dynamically depending on velocity sign

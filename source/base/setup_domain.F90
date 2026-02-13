@@ -422,24 +422,34 @@ contains
 !! ------------------------------------------------------------------------------------------------
   subroutine build_3rd_dimension
      integer(ikind) :: nm,i,k,iz,ilayerm1
-     real(rkind) :: dz_local,L_domain_z_dimensionless
+     real(rkind) :: dz_local,L_domain_z_dimensionless,mean_alpha,sum_vol
      real(rkind),dimension(:,:),allocatable :: rptmp,rnormtmp
      real(rkind),dimension(:),allocatable :: htmp,stmp,hsmalltmp
      integer(ikind),dimension(:),allocatable :: node_typetmp,fd_parenttmp,gi_tmp
      
+     !! mean_alpha sets the L^alpha norm of s which we use for dz
+     mean_alpha = 1.0d0
+     
      !! Set z spacing to match mean of x-y spacing.
      dz_local = zero
-     !$omp parallel do reduction(+:dz_local)
+     sum_vol = zero
+     !$omp parallel do reduction(+:dz_local,sum_vol)
      do i=1,npfb
-        dz_local = dz_local + s(i) !! raise s(i) to a power to shift type of mean
+        sum_vol = sum_vol + s(i)*s(i)
+        dz_local = dz_local + s(i)*s(i)*s(i)**mean_alpha !! raise s(i) to a power to shift type of mean
      end do
      !$omp end parallel do
+
+     !! Alternative:: max val
+!     dz_local=two*maxval(s(1:npfb));sum_vol=one;mean_alpha=one      
+     
      
 #ifdef mp
-     call MPI_ALLREDUCE(dz_local,dz,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierror)    
-     dz = dz/dble(npfb_global)                
+     call global_reduce_sum(dz_local)
+     call global_reduce_sum(sum_vol)
+     dz = (dz_local/sum_vol)**(one/mean_alpha)
 #else
-     dz = dz_local/dble(npfb)
+     dz = (dz_local/sum_vol)**(one/mean_alpha)     
 #endif     
 
 
@@ -450,6 +460,8 @@ contains
      nz = ceiling(L_domain_z_dimensionless/dz/dble(nprocsZ))
      dz = L_domain_z_dimensionless/dble(nz)/dble(nprocsZ)
      nz_global = nz*nprocsZ
+
+
                         
      !! Minimum number in z is ij_count_fd/2 + 2
      if(nz.lt.ij_count_fd/2 + 2) then

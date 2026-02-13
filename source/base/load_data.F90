@@ -37,6 +37,11 @@ contains
      read(12,*) U_char
      read(12,*)
      
+     !! Z domain size
+     read(12,*) 
+     read(12,*) L_domain_z
+     read(12,*)       
+     
      !! Set Z-length-scale and characteristic time-scale
      Time_char = L_char/u_char
      

@@ -261,7 +261,7 @@ contains
  
         !! Uncomment for some Kolmogorov forcing. The hard-coded numbers are n and n**2.       
 !        body_force_u = body_force_u + (4.0d0*visc_total/rho_char)*cos(2.0d0*rp(i,2)) !! 16,4                       
-        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)
+!        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)
                                                 
         !! RHS 
         rhs_rou(i) = -tmp_scal_u - gradp(i,1) + body_force_u + f_visc_u 
@@ -396,16 +396,16 @@ contains
      allocate(lapCxx(npfb),lapCxy(npfb),lapCyy(npfb))
      allocate(lapCxz(npfb),lapCyz(npfb),lapCzz(npfb))
      if(Mdiff.ne.zero) then
-        call calc_laplacian(Cxx,lapCxx)  
-        call calc_laplacian(Cxy,lapCxy)
-        call calc_laplacian(Cyy,lapCyy)            
+        call calc_laplacian_transverse_only_on_bound(Cxx,lapCxx)  
+        call calc_laplacian_transverse_only_on_bound(Cxy,lapCxy)
+        call calc_laplacian_transverse_only_on_bound(Cyy,lapCyy)            
 #ifdef dim3
-        call calc_laplacian(Cxz,lapCxz)  
-        call calc_laplacian(Cyz,lapCyz)
+        call calc_laplacian_transverse_only_on_bound(Cxz,lapCxz)  
+        call calc_laplacian_transverse_only_on_bound(Cyz,lapCyz)
 #else
         lapCxz=zero;lapCyz=zero
 #ifdef fenep
-        call calc_laplacian(Czz,lapCzz)    
+        call calc_laplacian_transverse_only_on_bound(Czz,lapCzz)    
 #else        
         lapCzz=zero
 #endif        
@@ -551,6 +551,24 @@ contains
 #endif   
        
            if(node_type(i).eq.0) then !! Walls
+           
+              !! Modify conformation tensor laplacian to set no diffusive flux through boundaries: 
+              lapcxx(i) = lapcxx(i) + (-415.0d0*cxx(i)+576.0d0*cxx(i+1)-216.0d0*cxx(i+2)+64.0d0*cxx(i+3)-9.0d0*cxx(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+              lapcxy(i) = lapcxy(i) + (-415.0d0*cxy(i)+576.0d0*cxy(i+1)-216.0d0*cxy(i+2)+64.0d0*cxy(i+3)-9.0d0*cxy(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+              lapcyy(i) = lapcyy(i) + (-415.0d0*cyy(i)+576.0d0*cyy(i+1)-216.0d0*cyy(i+2)+64.0d0*cyy(i+3)-9.0d0*cyy(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+              lapczz(i) = lapczz(i) + (-415.0d0*czz(i)+576.0d0*czz(i+1)-216.0d0*czz(i+2)+64.0d0*czz(i+3)-9.0d0*czz(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+#ifdef dim3
+              lapcxz(i) = lapcxz(i) + (-415.0d0*cxz(i)+576.0d0*cxz(i+1)-216.0d0*cxz(i+2)+64.0d0*cxz(i+3)-9.0d0*cxz(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+              lapcyz(i) = lapcyz(i) + (-415.0d0*cyz(i)+576.0d0*cyz(i+1)-216.0d0*cyz(i+2)+64.0d0*cyz(i+3)-9.0d0*cyz(i+4))/ &
+                                   (72.0d0*s(i)*s(i)*L_char*L_char)
+#endif   
+           
+           
               !! Construct the RHS
               rhs_xx(i) = ucxx + sxx + Mdiff*lapcxx(i)
               rhs_xy(i) = ucxy + sxy + Mdiff*lapcxy(i)

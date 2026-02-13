@@ -1,4 +1,4 @@
-!!#ifdef chl        
+#if (chl || newt)
 module rhs
   !! ----------------------------------------------------------------------------------------------
   !! SUNSET CODE: Scalable Unstructured Node-SET code for DNS.
@@ -135,8 +135,7 @@ contains
         divvel_local = gradu(i,1) + gradv(i,2) + gradw(i,3)
 
         !! -div(ro*u)
-        rhs_ro(i) = -ro(i)*divvel_local - tmp_scal   
-        
+        rhs_ro(i) = -ro(i)*divvel_local - tmp_scal         
   
      end do
      !$omp end parallel do
@@ -154,7 +153,8 @@ contains
               rhs_ro(i) = - ro(i)*dutdt - ro(i)*gradw(i,3)
            else !! In x-y coords for inflow, outflow
               rhs_ro(i) = -v(i)*gradro(i,2) - ro(i)*gradv(i,2) - w(i)*gradro(i,3) - ro(i)*gradw(i,3)
-           end if         
+           end if              
+
         end do
         !$omp end parallel do 
      end if       
@@ -249,7 +249,8 @@ contains
                    + exp(psiyy(i))*(gradpsiyz(i,2)+psiyz(i)*gradpsiyy(i,2))
         gradcyz(3) = psixy(i)*gradpsixz(i,3) + psixz(i)*gradpsixy(i,3) &
                    + exp(psiyy(i))*(gradpsiyz(i,3)+psiyz(i)*gradpsiyy(i,3))
-        gradczz(3) = two*exp(two*psizz(i))*gradpsizz(i,3)
+        gradczz(3) = two*exp(two*psizz(i))*gradpsizz(i,3) + two*psixz(i)*gradpsixz(i,3) &
+                   + two*psiyz(i)*gradpsiyz(i,3)
 #else
         gradcxz = zero;gradcyz=zero;gradczz=zero
 #endif     
@@ -271,7 +272,7 @@ contains
  
         !! Uncomment for some Kolmogorov forcing. The hard-coded numbers are n and n**2.       
 !        body_force_u = body_force_u + (4.0d0*visc_total/rho_char)*cos(2.0d0*rp(i,2)) !! 16,4                       
-        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)
+!        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)
                                                 
         !! RHS 
         rhs_rou(i) = -tmp_scal_u - gradp(i,1) + body_force_u + f_visc_u 
@@ -550,8 +551,11 @@ contains
            xn = rnorm(i,1);yn=rnorm(i,2)
    
            tmp_vec(1) = u(i);tmp_vec(2) = v(i);tmp_vec(3) = w(i) !! tmp_vec holds (u,v,w) for node i
+           if(node_type(i).eq.1) then !! Inflows, set u*dpsi/dx = 0
+              tmp_vec(1) = zero
+           end if           
 
-           !! (-)Convective terms 
+           !! (-)Advective terms (these will be zero for walls, and parts appropritately zeroed for inflows
            adxx = dot_product(tmp_vec,gradpsixx(i,:))
            adxy = dot_product(tmp_vec,gradpsixy(i,:))
            adyy = dot_product(tmp_vec,gradpsiyy(i,:))     
@@ -615,6 +619,7 @@ contains
 #endif             
             
            !! Modify conformation tensor laplacian to set no diffusive flux through boundaries: 
+           !! For now, set the same parabolic BC for inflows, outflows and walls.
            lapcxx(i) = lapcxx(i) + (-415.0d0*cxx(i)+576.0d0*cxx(i+1)-216.0d0*cxx(i+2)+64.0d0*cxx(i+3)-9.0d0*cxx(i+4))/ &
                                    (72.0d0*s(i)*s(i)*L_char*L_char)
            lapcxy(i) = lapcxy(i) + (-415.0d0*cxy(i)+576.0d0*cxy(i+1)-216.0d0*cxy(i+2)+64.0d0*cxy(i+3)-9.0d0*cxy(i+4))/ &
@@ -679,24 +684,21 @@ contains
                 - half*Syy*lyz/(lyy*lyy) + Sxy*(lxy*lyz-lxz*lyy)/(lxx*lyy*lyy)
            cszz = cszz - csxz*lxz/lzz/lzz - csyz*lyz/lzz/lzz
 #endif          
-                                     
-           if(node_type(i).eq.0) then !! Walls
-              rhs_xx(i) = ucxx + csxx
-              rhs_xy(i) = ucxy + csxy
-              rhs_yy(i) = ucyy + csyy
+               
+           !! Build RHS                      
+           rhs_xx(i) = -adxx + ucxx + csxx
+           rhs_xy(i) = -adxy + ucxy + csxy
+           rhs_yy(i) = -adyy + ucyy + csyy
 #ifdef fenep
-              rhs_zz(i) = uczz + cszz
+           rhs_zz(i) = -adzz + uczz + cszz
 #endif              
 #ifdef dim3
-              rhs_xz(i) = ucxz + csxz
-              rhs_yz(i) = ucyz + csyz
+           rhs_xz(i) = -adxz + ucxz + csxz
+           rhs_yz(i) = -adyz + ucyz + csyz
 #ifndef fenep
-              rhs_zz(i) = uczz + cszz
+           rhs_zz(i) = -adzz + uczz + cszz
 #endif              
 #endif           
-           else  !! inflow/outflow
-              !! TBC
-           endif
 
         end do
 !        !$omp end parallel do     
@@ -741,6 +743,8 @@ contains
     
     !! ==================================================================================
     !! Use L to update the rhs on boundary nodes
+    !! N.B. conformation tensor components are dealt with outside the characteristc boundary
+    !! framework.
     !$omp parallel do private(i,tmpro,c,tmp_scal,cv,ispec,gammagasm1,enthalpy)
     do j=1,nb
        i=boundary_list(j)
@@ -882,4 +886,4 @@ contains
   end subroutine filter_variables  
 !! ------------------------------------------------------------------------------------------------    
 end module rhs
-!#endif
+#endif

@@ -190,10 +190,13 @@ contains
                                  
         !! No initial flow
         u(i) = zero;v(i)=zero;w(i)=zero        
+
+!        u(i) = one;v(i)=zero;w(i)=zero        
+        
 !        u(i) = four*(quarter-y*y)
 !        ro(i) = rho_char;p(i) = ro(i)*csq        
         
-        tmp = -(1.00d0/4.0d0)*(cos(two*two*pi*x)+cos(two*two*pi*y))!*(two+cos(two*z))       
+!        tmp = -(1.00d0/4.0d0)*(cos(two*two*pi*x)+cos(two*two*pi*y))!*(two+cos(two*z))       
 
         ro(i) = rho_char! + tmp*Ma*Ma      
 #ifdef pgrad
@@ -217,7 +220,8 @@ contains
 !        v(i) = zero
 !        cxx(i) = one + (Wi*Wi/(one + Mdiff*Wi))*(one-cos(two*y)/(one+four*Mdiff*Wi))
 !        cxy(i) = -Wi*sin(y)/(one+Mdiff*Wi)
-!        cyy(i) = one        
+!        cyy(i) = one    
+
 
         !! Log-conformation transform
 #ifdef lc    

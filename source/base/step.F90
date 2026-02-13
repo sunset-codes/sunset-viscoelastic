@@ -30,6 +30,7 @@ module step
   !! Error norms for RK3(2)4S[2R+]C scheme
   real(rkind) :: enrm_ro,enrm_rou,enrm_rov,enrm_row
   real(rkind) :: enrm_xx,enrm_xy,enrm_yy,enrm_xz,enrm_yz,enrm_zz
+  real(rkind),parameter :: outflow_error_scaling = one
   
   
 contains
@@ -411,21 +412,18 @@ contains
         !! low-order mixed discretisation at the boundary is less accurate than internally, and
         !! requires a more restrictive time step. For non-uniform resolutions, we usually have
         !! the resolution in the outflow boundary larger than around obstacles in the domain, in which
-        !! circumstances this isn't necessary (outflow boundary isn't most restrictive). This is controlled by 
-        !! "scale_outflow_errors", which is set in setup_domain.
-        if(scale_outflow_errors.eq.1) then
-           if(node_type(i).eq.2) then
-              e_acc_ro(i) = e_acc_ro(i)*1.0d2
-              e_acc_rou(i) = e_acc_rou(i)*1.0d2
-              e_acc_rov(i) = e_acc_rov(i)*1.0d2
-              e_acc_row(i) = e_acc_row(i)*1.0d2      
-              e_acc_xx(i) = e_acc_xx(i)*1.0d2   
-              e_acc_xy(i) = e_acc_xy(i)*1.0d2   
-              e_acc_yy(i) = e_acc_yy(i)*1.0d2 
-              e_acc_xz(i) = e_acc_xz(i)*1.0d2   
-              e_acc_yz(i) = e_acc_yz(i)*1.0d2   
-              e_acc_zz(i) = e_acc_zz(i)*1.0d2 
-           end if
+        !! circumstances this isn't necessary (outflow boundary isn't most restrictive).
+        if(node_type(i).eq.2.or.node_type(i).eq.1) then !! Also scale inflow errors for good measure...
+           e_acc_ro(i) = e_acc_ro(i)*outflow_error_scaling
+           e_acc_rou(i) = e_acc_rou(i)*outflow_error_scaling
+           e_acc_rov(i) = e_acc_rov(i)*outflow_error_scaling
+           e_acc_row(i) = e_acc_row(i)*outflow_error_scaling
+           e_acc_xx(i) = e_acc_xx(i)*outflow_error_scaling   
+           e_acc_xy(i) = e_acc_xy(i)*outflow_error_scaling   
+           e_acc_yy(i) = e_acc_yy(i)*outflow_error_scaling 
+           e_acc_xz(i) = e_acc_xz(i)*outflow_error_scaling   
+           e_acc_yz(i) = e_acc_yz(i)*outflow_error_scaling   
+           e_acc_zz(i) = e_acc_zz(i)*outflow_error_scaling 
         end if
 
         

@@ -172,7 +172,7 @@ clean:
 	rm -vf ./data_out/time.out
 	rm -vf ./data_out/statistics/*.out
 	rm -vf ./paraview_files/LAYER*
-	rm -vf ./paraview_files/disc0.vtu	
+	rm -vf ./paraview_files/*.vtu	
 	rm -vf ./data_out/grilli*
 	rm -vf ./data_out/*.tar.gz
 	rm -vf ./data_out/tracer*
