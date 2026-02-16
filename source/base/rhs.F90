@@ -244,7 +244,7 @@ contains
         gradcyy(2) = two*psixy(i)*gradpsixy(i,2) + two*exp(two*psiyy(i))*gradpsiyy(i,2)
 #ifdef dim3
         gradcxz(1) = exp(psixx(i))*gradpsixz(i,1) + psixz(i)*exp(psixx(i))*gradpsixx(i,1)
-        gradcxz(2) = exp(psixx(i))*gradpsixz(i,2) + psixz(i)*exp(psixx(i))*gradpsixx(i,2)        
+        gradcxz(3) = exp(psixx(i))*gradpsixz(i,3) + psixz(i)*exp(psixx(i))*gradpsixx(i,3)        
         gradcyz(2) = psixy(i)*gradpsixz(i,2) + psixz(i)*gradpsixy(i,2) &
                    + exp(psiyy(i))*(gradpsiyz(i,2)+psiyz(i)*gradpsiyy(i,2))
         gradcyz(3) = psixy(i)*gradpsixz(i,3) + psixz(i)*gradpsixy(i,3) &
@@ -349,12 +349,13 @@ contains
               gradcyy(2) = two*psixy(i)*gradpsixy(i,2) + two*exp(two*psiyy(i))*gradpsiyy(i,2)              
 #ifdef dim3
               gradcxz(1) = exp(psixx(i))*gradpsixz(i,1) + psixz(i)*exp(psixx(i))*gradpsixx(i,1)
-              gradcxz(2) = exp(psixx(i))*gradpsixz(i,2) + psixz(i)*exp(psixx(i))*gradpsixx(i,2)        
+              gradcxz(3) = exp(psixx(i))*gradpsixz(i,3) + psixz(i)*exp(psixx(i))*gradpsixx(i,3)        
               gradcyz(2) = psixy(i)*gradpsixz(i,2) + psixz(i)*gradpsixy(i,2) &
                          + exp(psiyy(i))*(gradpsiyz(i,2)+psiyz(i)*gradpsiyy(i,2))
               gradcyz(3) = psixy(i)*gradpsixz(i,3) + psixz(i)*gradpsixy(i,3) &
                          + exp(psiyy(i))*(gradpsiyz(i,3)+psiyz(i)*gradpsiyy(i,3))
-              gradczz(3) = two*exp(two*psizz(i))*gradpsizz(i,3)
+              gradczz(3) = two*exp(two*psizz(i))*gradpsizz(i,3) + two*psixz(i)*gradpsixz(i,3) &
+                   + two*psiyz(i)*gradpsiyz(i,3)
 #else
               gradcxz = zero;gradcyz=zero;gradczz=zero
 #endif    

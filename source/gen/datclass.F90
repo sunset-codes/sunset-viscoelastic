@@ -198,21 +198,21 @@ case(5) !! Inflow/outflow tube for simple flames
 case(6) !! 2 cylinders, in-out
 
      D_cyl = 1.0d0
-     S_cyl = D_cyl*2.0d0
+     S_cyl = D_cyl*3.33d0
      h0=D_cyl/2.0d0      !cylinder radius
      yl=5.0d0*D_cyl ! box height
-     xl=10.0d0*S_cyl !sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/100.0d0       !75
+     xl=8.0d0*S_cyl !sqrt(3.0d0)*S_cyl ! channel length
+     dx0=D_cyl/50.0d0       !75
      xbcond_L=0;xbcond_U=0;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 2, 3, 1/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
-     b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
-     b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
+     b_node(1,:) = (/-0.4d0*xl, -0.5d0*yl /)
+     b_node(2,:) = (/0.6d0*xl, -0.5d0*yl /)
+     b_node(3,:) = (/0.6d0*xl, 0.5d0*yl /)
+     b_node(4,:) = (/-0.4d0*xl, 0.5d0*yl /)
      nb_blobs = 2;n_blob_coefs=6
      allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs),blob_invert(nb_blobs))
      blob_invert(:)=0
