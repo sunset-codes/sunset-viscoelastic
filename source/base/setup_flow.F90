@@ -209,15 +209,15 @@ contains
         
         !! Initial conformation tensor
         cxx(i) = one !+ 128.0d0*Wi*Wi*y*y
-        cxy(i) = zero !- 8.0d0*Wi*y
+        cxy(i) = zero ! - 8.0d0*Wi*y
         cyy(i) = one
         cxz(i) = zero
         cyz(i) = zero
         czz(i) = one
         
-        !! Kolmogorov IC for Miguel paper
-!        u(i) = cos(y)
-!        v(i) = zero
+        !! Kolmogorov IC for Miguel paper (with perturbation)
+!        u(i) = cos(y) - 0.25d-10*(-sin(x/four)*sin(y/four) + two*cos(three*x/four)*sin(y/two))
+!        v(i) = zero + 0.25d-10*(cos(x/four)*cos(y/four) - three*cos(three*x/four)*sin(y/two))        
 !        cxx(i) = one + (Wi*Wi/(one + Mdiff*Wi))*(one-cos(two*y)/(one+four*Mdiff*Wi))
 !        cxy(i) = -Wi*sin(y)/(one+Mdiff*Wi)
 !        cyy(i) = one    

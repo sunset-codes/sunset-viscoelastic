@@ -272,7 +272,7 @@ contains
  
         !! Uncomment for some Kolmogorov forcing. The hard-coded numbers are n and n**2.       
 !        body_force_u = body_force_u + (4.0d0*visc_total/rho_char)*cos(2.0d0*rp(i,2)) !! 16,4                       
-!        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)
+!        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)  !! Miguel's forcing
                                                 
         !! RHS 
         rhs_rou(i) = -tmp_scal_u - gradp(i,1) + body_force_u + f_visc_u 
@@ -478,7 +478,7 @@ contains
 
         !! Source terms
 #ifdef fenep
-        !! Modified formulation, because we're evolving Cholesky components of J=fr*c
+        !! Modified formulation for FENE-P, because we're evolving Cholesky components of J=fr*c
         fr = fenepf(i)
         srctmp = two*gradu_local(1)*cxx(i) + two*gradu_local(2)*cxy(i) &
                + two*gradv_local(1)*cxy(i) + two*gradv_local(2)*cyy(i) &
@@ -499,10 +499,17 @@ contains
 #endif        
 
 #else        
+        !! Basic formulation for sPTT
         fr = -(one - epsPTT*three + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function
         sxx = fr*(cxx(i) - one) + Mdiff*lapcxx(i)
         sxy = fr*cxy(i) + Mdiff*lapcxy(i)         
         syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i) 
+        
+        !! Giesekus-type bodge..
+!        sxx = sxx - 1.0d-4*((cxx(i)-one)**two + cxy(i)**two)/Wi
+!        sxy = sxy - 1.0d-4*(cxy(i)*(cxx(i)+cyy(i)-two))/Wi
+!        syy = syy - 1.0d-4*(cxy(i)**two + (cyy(i)-one)**two)/Wi
+        
                  
 #ifdef dim3
         sxz = fr*cxz(i) + Mdiff*lapcxz(i)
@@ -660,10 +667,16 @@ contains
            syz = -(fr/lambda)*(fr*cyz(i)) + Mdiff*fr*lapcyz(i) + fr*cyz(i)*srctmp/(fenep_l2-cxx(i)-cyy(i)-czz(i))        
 #endif  
 #else
+           !! Unmodified sPTT form
            fr = -(one - epsPTT*three + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function
            sxx = fr*(cxx(i) - one) + Mdiff*lapcxx(i) 
            sxy = fr*cxy(i) + Mdiff*lapcxy(i)         
            syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i)      
+
+           !! Giesekus-type bodge
+!           sxx = sxx - 1.0d-4*((cxx(i)-one)**two + cxy(i)**two)/Wi
+!           sxy = sxy - 1.0d-4*(cxy(i)*(cxx(i)+cyy(i)-two))/Wi
+!           syy = syy - 1.0d-4*(cxy(i)**two + (cyy(i)-one)**two)/Wi
            
 #ifdef dim3
            sxz = fr*cxz(i) + Mdiff*lapcxz(i)

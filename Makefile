@@ -15,7 +15,7 @@
 # forder     filter (order) value = 4,6,8,10                                           (default: 8)
 # morder     main (order) value = 4,6,8,10                                             (default: 8)
 # mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
-# tarout     Compress files as they're written (1) or don't (0)                        (default: 0)
+# tarout     Compress files as they're written (1) or don't (0)                        (default: 1)
 # tracers    Include some Lagrangian tracer particles (1) or don't (0)                 (default: 0)
 # -------------------------------------------------------------------------------------------------
 #
@@ -97,7 +97,7 @@ FFLAGS += -Dfenep
 endif
 
 # Tar output files
-ifeq ($(tarout),1) 
+ifneq ($(tarout),0) 
 FFLAGS += -Dtarout
 endif
 

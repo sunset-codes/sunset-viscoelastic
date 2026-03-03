@@ -57,7 +57,7 @@ program datgen
      h0=D_cyl/2.0d0      !cylinder radius
      yl=1.1*D_cyl ! box height  1.03
      xl=1.2d0*D_cyl ! channel length
-     dx0=D_cyl/133.3       !75
+     dx0=D_cyl/100.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
@@ -120,7 +120,7 @@ program datgen
 
      yl=1.0d0*2.0d0*pi*4.0d0
      xl=yl/1.0d0
-     dx0=yl/(128.0d0)
+     dx0=yl/(512.0d0)
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -147,8 +147,8 @@ program datgen
 case(4) !! Poiseuille flow
 
      yl=1.0d0
-     xl=yl/3.0d0
-     dx0=yl/50.0d0
+     xl=yl/4.0d0
+     dx0=yl/100.0d0
      xbcond_L=1;xbcond_U=1;ybcond_L=0;ybcond_U=0
      
      nb_patches = 4
@@ -161,7 +161,7 @@ case(4) !! Poiseuille flow
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 0;n_blob_coefs=0
 
-     dxmin = dx0/1.0d0
+     dxmin = dx0/2.0d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 
@@ -200,9 +200,9 @@ case(6) !! 2 cylinders, in-out
      D_cyl = 1.0d0
      S_cyl = D_cyl*3.33d0
      h0=D_cyl/2.0d0      !cylinder radius
-     yl=5.0d0*D_cyl ! box height
+     yl=4.0d0*D_cyl ! box height
      xl=8.0d0*S_cyl !sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/50.0d0       !75
+     dx0=D_cyl/25.0d0       !75
      xbcond_L=0;xbcond_U=0;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
@@ -223,8 +223,8 @@ case(6) !! 2 cylinders, in-out
         blob_coeffs(i,:)=h0*(/1.0d0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0/);blob_rotation(i)=-pi/9.0d0
      end do
 
-     dxmin = dx0/3.0d0
-     dx_wall=dxmin;dx_in=4.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     dxmin = dx0/2.0d0
+     dx_wall=dxmin;dx_in=2.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin              
             
 !! ------------------------------------------------------------------------------------------------
@@ -261,47 +261,6 @@ case(7) !! Grilli cylinders
      dx_wallio=dxmin              
 !! ------------------------------------------------------------------------------------------------
 case(8) !! Minimal unit cell of isometric cylinder array
-    !! SECONDARY ORIENTATION
-
-     SovD = 1.25d0!sqrt(pi/(0.6*sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
-     D_cyl = 1.0d0!/(SovD-1.0d0)
-     S_cyl = D_cyl*SovD
-     h0=D_cyl/2.0d0      !cylinder radius
-     yl=S_cyl ! box height
-     xl=sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/133.3d0!499.50
-     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
-     
-     nb_patches = 4
-     allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
-     allocate(b_type(nb_patches))
-     b_type(:) = (/ 3, 3, 3, 3/)  
-     b_node(1,:) = (/-0.5d0*xl, -0.0d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.0d0*yl /)
-     b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
-     b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
-     nb_blobs = 4;n_blob_coefs=12
-     allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs),blob_invert(nb_blobs))
-     blob_invert(:)=0
-     blob_centre(1,:) = (/0.0d0,0.5d0*S_cyl/)  
-     blob_centre(2,:) = (/0.0d0,-0.5d0*S_cyl/)
-     blob_centre(3,:) = (/S_cyl*sqrt(3.0d0)/2.0d0,0.0d0/) 
-     blob_centre(4,:) = (/-S_cyl*sqrt(3.0d0)/2.0d0,0.0d0/)
-                          
-     
-     do i=1,nb_blobs
-        blob_coeffs(i,:) = 0.0d0
-        blob_coeffs(i,1) = h0;blob_rotation(i) = 0.0d0
-        blob_rotation(i)=2.0d0*pi*rand()!-pi/9.0d0;
-     end do
-
-
-
-     dxmin = dx0/3.0d0
-     dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
-     dx_wallio=dxmin              
-!! ------------------------------------------------------------------------------------------------
-case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 degrees)
 
    !! PRINCIPAL ORIENTATION
   !! Porosity 1/2 - sqrt(pi/sqrt(3))
@@ -309,7 +268,7 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
   !! Porosity 1/4 - sqrt(0.6667*pi/sqrt(3))   (2/3)
   
 
-     SovD = 2.0d0!sqrt(pi/(sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
+     SovD = sqrt(pi/(sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
      D_cyl = 1.0d0!1.0d0/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
@@ -352,6 +311,57 @@ case(9) !! Minimal unit cell of isometric cylinder array (Case 8 but rotated 90 
 !     blob_coeffs(2,:) = blob_coeffs(1,:);blob_rotation(2) = blob_rotation(1)
 !     blob_coeffs(4,:) = blob_coeffs(3,:);blob_rotation(4) = blob_rotation(3)
 
+
+     dxmin = dx0/3.0d0  !! 2.0d0, 1.5d0
+     dx_wall=dxmin;dx_in=1.33d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     dx_wallio=dxmin                
+!! ------------------------------------------------------------------------------------------------
+case(9) !!Twice minimal unit of case 8
+
+     SovD = 2.0d0!sqrt(pi/(sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
+     D_cyl = 1.0d0!1.0d0/(SovD-1.0d0)
+     S_cyl = D_cyl*SovD
+     h0=D_cyl/2.0d0      !cylinder radius
+     yl=sqrt(3.0d0)*S_cyl ! box height
+     xl=2.0d0*S_cyl ! channel length
+     dx0=D_cyl/167.0d0!499.50       !250
+     xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
+     
+     nb_patches = 4
+     allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
+     allocate(b_type(nb_patches))
+     b_type(:) = (/ 3, 3, 3, 3/)  
+     b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
+     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
+     b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
+     b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
+     nb_blobs = 7;n_blob_coefs=12
+     open(unit=191,file="blob_fcoefs.in")
+     read(191,*) n_blob_coefs
+     allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs),blob_invert(nb_blobs))
+     blob_invert(:)=0
+     blob_centre(1,:) = (/-1.0d0*S_cyl,0.0d0/)  
+     blob_centre(2,:) = (/ 0.0d0*S_cyl,0.0d0/)
+     blob_centre(3,:) = (/ 1.0d0*S_cyl,0.0d0/)
+     blob_centre(4,:) = (/-0.5d0*S_cyl,S_cyl*sqrt(3.0d0)/2.0d0/) 
+     blob_centre(5,:) = (/-0.5d0*S_cyl,-S_cyl*sqrt(3.0d0)/2.0d0/)
+     blob_centre(6,:) = (/ 0.5d0*S_cyl,S_cyl*sqrt(3.0d0)/2.0d0/) 
+     blob_centre(7,:) = (/ 0.5d0*S_cyl,-S_cyl*sqrt(3.0d0)/2.0d0/)
+
+
+     !! Coefficients (if we want (e.g.) hexagonal obstacles). Load into blob 1, then copy to other blobs
+     do i=1,n_blob_coefs
+        read(191,*) blob_coeffs(1,i)
+        blob_coeffs(1,i) = blob_coeffs(1,i)*h0!*1.1083
+     end do
+     blob_rotation(1) = 0.0d0
+     close(191)          
+     do i=2,nb_blobs
+        blob_rotation(i)=0.0d0!2.0d0*pi*rand()!-pi/9.0d0;
+        blob_coeffs(i,:) = blob_coeffs(1,:)
+     end do
+     
+     blob_coeffs(:,:)=0.0d0;blob_coeffs(:,1) = h0
 
      dxmin = dx0/3.0d0  !! 2.0d0, 1.5d0
      dx_wall=dxmin;dx_in=1.33d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
@@ -484,7 +494,7 @@ case(11) !! Ellipse or something
 !     blob_coeffs(:,:)=0.0d0;blob_coeffs(:,1) = h0;blob_coeffs(:,3)=0.2*h0
 
 
-     dxmin = dx0/4.0d0  !! 2.0d0, 1.5d0
+     dxmin = dx0/3.0d0  !! 2.0d0, 1.5d0
      dx_wall=dxmin;dx_in=1.3d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin       
 

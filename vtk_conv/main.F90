@@ -13,7 +13,7 @@ program main
   character supp*4,supp3*3,supp2*2,supp1*1
   character string1*100,string2*100,string3*100,string4*100
   character chartemp2*100
-  character proc5*5
+  character proc5*5,tarcom*70
   CHARACTER(LEN=1)  :: DQ
       
   integer :: itn,ifi,ifo,di,dim_flag
@@ -86,6 +86,10 @@ program main
   dim_flag = dim_flag - 2
 
 
+
+  !! Unpack nodes files
+  call system('cd ../data_out/ && tar -zxvf n.tar.gz')
+
   !! Load nodes.
   npp=0 ! keeps track of total number of particles/nodes across all processors
   !! Loop over each processor
@@ -116,6 +120,9 @@ program main
   !! END LOOP OVER ALL PROCESSORS...
   end do  
   np = npp
+  
+  !! Remove nodes files
+  call system('rm ../data_out/nodes*')
   write(6,*) "Read in nodes complete."
   !! ----------------------------------------------------------------
   
@@ -145,6 +152,21 @@ program main
      ngrab=iframe
      npp=0 ! keeps track of total number of particles/nodes across all processors
      !! Loop over each processor
+     
+     
+     !! Untar fields files     
+     !! Construct tar command depending on output number
+     if( ngrab .lt. 10 ) then 
+        write(tarcom,'(A30,I1,A7)') 'cd ../data_out/ && tar -zxf f_',ngrab,'.tar.gz'
+     else if( ngrab .lt. 100 ) then 
+        write(tarcom,'(A30,I2,A7)') 'cd ../data_out/ && tar -zxf f_',ngrab,'.tar.gz'
+     else if( ngrab .lt. 1000 ) then
+        write(tarcom,'(A30,I3,A7)') 'cd ../data_out/ && tar -zxf f_',ngrab,'.tar.gz'
+     else
+        write(tarcom,'(A30,I4,A7)') 'cd ../data_out/ && tar -zxf f_',ngrab,'.tar.gz'
+     end if              
+     call system(tarcom)
+     
      do iproc = 1,nprocs
         write(proc5,'(i5)') 10000+iproc-1
               
@@ -201,6 +223,9 @@ program main
      !! END LOOP OVER ALL PROCESSORS...
      end do  
      np = npp
+
+     !! Remove fields files
+     call system('rm ../data_out/fields*')
 
      write(6,*) "Frame",iframe,"with ",np,"particles, from ",nprocs,"processors."
                                                                       
