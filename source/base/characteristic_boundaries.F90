@@ -260,14 +260,10 @@ contains
      !! Hard-coded routine to apply time-dependent inflow velocity. Currently hard-coded to ramp 
      !! the inflow over a prescribed time
      integer(ikind) :: i,j
-     real(rkind) :: y,u_inflow_start,u_inflow_end
-     real(rkind) :: ramp_time,u_inflow_mean
+     real(rkind) :: y
+     real(rkind) :: u_inflow_mean
      
      if(inflow_velocity_control.eq.1) then
-        !! Start and end inflow speeds, and ramp time
-        u_inflow_start = u_char
-        u_inflow_end = two*u_char
-        ramp_time = half*Time_char   
      
         !! Set the desired mean inflow velocity
         if(time.le.ramp_time) then

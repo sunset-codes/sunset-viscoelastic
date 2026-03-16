@@ -23,6 +23,8 @@ module common_vars
   real(rkind) :: dt_out,dt_out_stats,dt_out_tracers !! Time interval between outputs  
   real(rkind) :: Re,Wi,Ma,beta,Sc,epsPTT,fenep_l2
   real(rkind) :: csq
+  real(rkind) :: u_inflow_start,u_inflow_end
+  real(rkind) :: ramp_time
   
   !! Evolved fluid quantities
   real(rkind), dimension(:), allocatable, target :: rou,rov,row,ro
@@ -105,11 +107,8 @@ module common_vars
   
   !! Characteristic BC bits
   integer(ikind) :: inflow_type,wall_type,inflow_velocity_control
-  real(rkind),dimension(:),allocatable :: T_bound
   real(rkind) :: p_outflow,p_inflow   !! Desired pressure on outflow boundary (and inflow if required...)
-  real(rkind),dimension(:),allocatable :: sumoverspecies_homega
-  real(rkind),dimension(:,:),allocatable :: reaction_rate_bound 
-  real(rkind),dimension(:),allocatable :: u_inflow_local,Yspec_inflow
+  real(rkind),dimension(:),allocatable :: u_inflow_local
   
   !! Flags for flux-zero-ing on boundaries
   logical,dimension(:),allocatable :: znf_vdiff,znf_vtdiff  

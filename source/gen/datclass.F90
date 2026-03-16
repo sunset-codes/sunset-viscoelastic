@@ -85,12 +85,12 @@ program datgen
 !! ------------------------------------------------------------------------------------------------
   case(2) !! Cylinder in a doubly-periodic box
  
-     SovD = 1.5d0!sqrt(pi/2.0d0)
+     SovD = 2.0d0!sqrt(pi/2.0d0)
      D_cyl = 1.0d0
      h0=D_cyl/2.0d0      !cylinder radius
-     yl=1.5d0*D_cyl ! box height
+     yl=SovD*D_cyl ! box height
      xl=SovD*D_cyl ! channel length
-     dx0=D_cyl/50.0       !75
+     dx0=D_cyl/60.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -112,7 +112,7 @@ program datgen
      end do
 
      !! dx0/2.0d0, 1.5d0*dx0
-     dxmin = dx0/1.2d0 !!2.0d0
+     dxmin = dx0/3.0d0 !!2.0d0
      dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin      
 !! ------------------------------------------------------------------------------------------------
@@ -200,9 +200,9 @@ case(6) !! 2 cylinders, in-out
      D_cyl = 1.0d0
      S_cyl = D_cyl*3.33d0
      h0=D_cyl/2.0d0      !cylinder radius
-     yl=4.0d0*D_cyl ! box height
-     xl=8.0d0*S_cyl !sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/25.0d0       !75
+     yl=3.0d0*D_cyl ! box height
+     xl=5.0d0*S_cyl !sqrt(3.0d0)*S_cyl ! channel length
+     dx0=D_cyl/100.0d0       !75
      xbcond_L=0;xbcond_U=0;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
@@ -223,8 +223,8 @@ case(6) !! 2 cylinders, in-out
         blob_coeffs(i,:)=h0*(/1.0d0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0/);blob_rotation(i)=-pi/9.0d0
      end do
 
-     dxmin = dx0/2.0d0
-     dx_wall=dxmin;dx_in=2.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     dxmin = dx0/4.0d0
+     dx_wall=dxmin;dx_in=4.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin              
             
 !! ------------------------------------------------------------------------------------------------
@@ -323,7 +323,7 @@ case(9) !!Twice minimal unit of case 8
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
-     xl=2.0d0*S_cyl ! channel length
+     xl=S_cyl ! channel length
      dx0=D_cyl/167.0d0!499.50       !250
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
@@ -332,21 +332,35 @@ case(9) !!Twice minimal unit of case 8
      allocate(b_type(nb_patches))
      b_type(:) = (/ 3, 3, 3, 3/)  
      b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
-     b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
-     b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
-     b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
-     nb_blobs = 7;n_blob_coefs=12
+     b_node(2,:) = (/1.5d0*xl, -0.5d0*yl /)
+     b_node(3,:) = (/1.5d0*xl, 1.5d0*yl /)
+     b_node(4,:) = (/-0.5d0*xl, 1.5d0*yl /)
+     nb_blobs = 13;n_blob_coefs=12
      open(unit=191,file="blob_fcoefs.in")
      read(191,*) n_blob_coefs
      allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs),blob_invert(nb_blobs))
      blob_invert(:)=0
-     blob_centre(1,:) = (/-1.0d0*S_cyl,0.0d0/)  
-     blob_centre(2,:) = (/ 0.0d0*S_cyl,0.0d0/)
-     blob_centre(3,:) = (/ 1.0d0*S_cyl,0.0d0/)
-     blob_centre(4,:) = (/-0.5d0*S_cyl,S_cyl*sqrt(3.0d0)/2.0d0/) 
-     blob_centre(5,:) = (/-0.5d0*S_cyl,-S_cyl*sqrt(3.0d0)/2.0d0/)
-     blob_centre(6,:) = (/ 0.5d0*S_cyl,S_cyl*sqrt(3.0d0)/2.0d0/) 
-     blob_centre(7,:) = (/ 0.5d0*S_cyl,-S_cyl*sqrt(3.0d0)/2.0d0/)
+     blob_centre(1,:) = (/0.5d0*S_cyl,0.0d0/)  
+     blob_centre(2,:) = (/-0.5d0*S_cyl,0.0d0/)
+     blob_centre(3,:) = (/0.0d0,S_cyl*sqrt(3.0d0)/2.0d0/) 
+     blob_centre(4,:) = (/0.0d0,-S_cyl*sqrt(3.0d0)/2.0d0/)     
+     blob_centre(5,:) = (/1.5d0*S_cyl,0.0d0/)     
+     blob_centre(6,:) = (/1.0d0*S_cyl,S_cyl*sqrt(3.0d0)/2.0d0/) 
+     blob_centre(7,:) = (/1.0d0*S_cyl,-S_cyl*sqrt(3.0d0)/2.0d0/)     
+!     blob_centre(8,:) = (/2.5d0*S_cyl,0.0d0/)     
+!     blob_centre(9,:) = (/2.0d0*S_cyl,S_cyl*sqrt(3.0d0)/2.0d0/) 
+!     blob_centre(10,:) = (/2.0d0*S_cyl,-S_cyl*sqrt(3.0d0)/2.0d0/)     
+!     blob_centre(11,:) = (/3.5d0*S_cyl,0.0d0/)     
+!     blob_centre(12,:) = (/3.0d0*S_cyl,S_cyl*sqrt(3.0d0)/2.0d0/) 
+!     blob_centre(13,:) = (/3.0d0*S_cyl,-S_cyl*sqrt(3.0d0)/2.0d0/)     
+
+     blob_centre(8,:) = (/0.5d0*S_cyl,2.0d0*S_cyl*sqrt(3.0d0)/2.0d0/)  
+     blob_centre(9,:) = (/-0.5d0*S_cyl,2.0d0*S_cyl*sqrt(3.0d0)/2.0d0/)
+     blob_centre(10,:) = (/0.0d0,3.0d0*S_cyl*sqrt(3.0d0)/2.0d0/) 
+     blob_centre(11,:) = (/1.5d0*S_cyl,2.0d0*S_cyl*sqrt(3.0d0)/2.0d0/)  
+     blob_centre(12,:) = (/0.5d0*S_cyl,2.0d0*S_cyl*sqrt(3.0d0)/2.0d0/)
+     blob_centre(13,:) = (/1.0d0*S_cyl,3.0d0*S_cyl*sqrt(3.0d0)/2.0d0/) 
+
 
 
      !! Coefficients (if we want (e.g.) hexagonal obstacles). Load into blob 1, then copy to other blobs

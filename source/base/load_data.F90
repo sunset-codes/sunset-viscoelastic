@@ -149,10 +149,8 @@ contains
 
      !! Read in inflow boundary type
      read(12,*)
-     read(12,*) inflow_type,inflow_velocity_control
-     read(12,*)
-      
-
+     read(12,*) inflow_type,inflow_velocity_control,u_inflow_start,u_inflow_end,ramp_time
+     read(12,*)       
      
      close(12)
      

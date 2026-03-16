@@ -263,10 +263,10 @@ contains
               u(i)=zero;v(i)=zero;w(i)=zero            
            end if                 
            if(node_type(i).eq.1) then !! inflow initial conditions
-              u(i)=u_char
+!              u(i)=u_char
            end if
            if(node_type(i).eq.2) then !! outflow initial conditions
-              u(i)=u_char
+!              u(i)=u_char
            end if
         end do
      end if   
