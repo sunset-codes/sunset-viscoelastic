@@ -9,7 +9,7 @@
 # vpid       P.I.D control of the velocity (1) or don't (0)                            (default: 0)
 # pgrad      Body forces converted to pressure gradient (1) or not (0)                 (default: 0)
 # allout     If 3D, output the entire domain (1) or just a slice (0)                   (default: 1)
-# ceform     Direct integration (0), log-Cholesky (1), log-conf (2)                    (default: 1)
+# ceform     Direct integration (0), log-Cholesky (1), log-conf (2), ssr (3)           (default: 1)
 # newt       Newtonian calculations (1) or not (0)                                     (default: 0)
 # fenep      FENE-P (1) or sPTT (0)                                                    (default: 0)
 # forder     filter (order) value = 4,6,8,10                                           (default: 8)
@@ -76,9 +76,12 @@ else
 ifeq ($(ceform), 2)
 FFLAGS += -Dlc
 else
+ifeq ($(ceform), 3)
+FFLAGS += -Dssr
+else
 FFLAGS += -Dchl
 endif
-
+endif
 endif
 
 # or Newtonian
@@ -147,7 +150,7 @@ OBJ_FILES += obj/turbulence.o obj/svdlib.o obj/conf_transforms.o
 OBJ_FILES += obj/load_data.o obj/setup_domain.o obj/setup_flow.o
 OBJ_FILES += obj/labf.o obj/fd.o
 OBJ_FILES += obj/characteristic_boundaries.o 
-OBJ_FILES += obj/rhs.o obj/rhs_di.o obj/rhs_lc.o
+OBJ_FILES += obj/rhs.o obj/rhs_di.o obj/rhs_lc.o obj/rhs_ssr.o
 OBJ_FILES += obj/step.o
 OBJ_FILES += $(foreach sdir,$(SRC_DIR),$(patsubst $(sdir)/%.F90,obj/%.o,$(wildcard $(sdir)/*.F90)))
 

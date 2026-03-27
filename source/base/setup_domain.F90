@@ -33,6 +33,18 @@ contains
      call MPI_COMM_SIZE(MPI_COMM_WORLD, nprocs, ierror)
      call MPI_COMM_RANK(MPI_COMM_WORLD, iproc, ierror)
 #endif
+
+#ifdef ssr
+#ifdef dim3
+     if(iproc.eq.0) write(6,*) "WARNING, SSR formulation not implemented in 3D. STOPPING."
+     stop
+#endif
+#ifdef fenep
+     if(iproc.eq.0) write(6,*) "WARNING, FENE-P fluids not implemented in SSR formulation. STOPPING."
+     stop
+#endif
+
+#endif
      
      !! Initial allowable neighbour list size
      nplink = 2*4*ceiling(ss*hovs)**2  !! Space to be allocated for neighbours      

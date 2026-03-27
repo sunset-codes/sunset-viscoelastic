@@ -475,5 +475,68 @@ contains
 !     stop
   
   end subroutine inverse
+!! ------------------------------------------------------------------------------------------------
+#ifdef dim3
+  subroutine ssr_c_from_psi(psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz,c_xx,c_xy,c_yy,c_xz,c_yz,c_zz,fenep_l2)
+     !! Calculate the conformation tensor from the SSR decomposition
+     real(rkind),intent(in) :: psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz,fenep_l2
+     real(rkind),intent(out) :: c_xx,c_xy,c_yy,c_xz,c_yz,c_zz
+#else     
+  subroutine ssr_c_from_psi(psi_xx,psi_xy,psi_yy,psi_zz,c_xx,c_xy,c_yy,c_zz,fenep_l2)
+     real(rkind),intent(in) :: psi_xx,psi_xy,psi_yy,psi_zz,fenep_l2
+     real(rkind),intent(out) :: c_xx,c_xy,c_yy,c_zz
+#endif    
+  
+     !! SSR decomposition of c if using sPTT
+     c_xx = exp(psi_xx)**two + psi_xy**two
+     c_xy = psi_xy*(exp(psi_xx) + exp(psi_yy))
+     c_yy = psi_xy**two + exp(psi_yy)**two
+     c_zz = one
+  
+
+     return
+  end subroutine ssr_c_from_psi
+!! ------------------------------------------------------------------------------------------------
+#ifdef dim3
+  subroutine ssr_psi_from_c(c_xx,c_xy,c_yy,c_xz,c_yz,c_zz,psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz,fenep_l2)
+     !! Calculate the SSR decomposition of the conformation tensor
+     real(rkind),intent(in) :: c_xx,c_xy,c_yy,c_xz,c_yz,c_zz,fenep_l2
+     real(rkind),intent(out) :: psi_xx,psi_xy,psi_yy,psi_xz,psi_yz,psi_zz
+#else     
+  subroutine ssr_psi_from_c(c_xx,c_xy,c_yy,c_zz,psi_xx,psi_xy,psi_yy,psi_zz,fenep_l2)
+     real(rkind),intent(in) :: c_xx,c_xy,c_yy,c_zz,fenep_l2
+     real(rkind),intent(out) :: psi_xx,psi_xy,psi_yy,psi_zz
+#endif        
+     real(rkind),dimension(dims,dims) :: Rmat,RTmat,Lmat,psimat
+     real(rkind),dimension(dims) :: Lvec
+
+
+     !! Eigenvalues and eigenvectors of C
+     call eigens(c_xx,c_xy,c_yy,Lvec,Rmat)
+
+     RTmat = transpose(Rmat)
+     
+     !! Take square root of Eigenvalues
+     Lmat = zero
+     Lmat(1,1) = sqrt(Lvec(1))
+     Lmat(2,2) = sqrt(Lvec(2))
+#ifdef dim3     
+     Lmat(3,3) = sqrt(Lvec(3))
+#endif     
+     
+     !! Recompose to get psi
+     psimat = matmul(Rmat,matmul(Lmat,RTmat))
+             
+     !! Then pass components (or logarithms there-of) to output variables
+     psi_xx = log(psimat(1,1))
+     psi_xy = psimat(1,2)
+     psi_yy = log(psimat(2,2))
+     psi_zz = zero
+  
+
+
+
+     return
+  end subroutine ssr_psi_from_c    
 !! ------------------------------------------------------------------------------------------------                
 end module conf_transforms

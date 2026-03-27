@@ -343,7 +343,7 @@ contains
 #endif   
      !! Compress fields files
      if(iproc.eq.0) then
-        write(6,*) "FIELDS",n_out," written, compressing"
+!        write(6,*) "FIELDS",n_out," written, compressing"
         
         !! Construct tar command depending on output number
         if( n_out .lt. 10 ) then 

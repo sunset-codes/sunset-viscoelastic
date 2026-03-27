@@ -13,28 +13,28 @@
 0.0d0 1.0d2
 
 !! Output period (in multiples of L_char/U_char), stats output period, tracers output period
-1.0d0 1.0d-2 1.0d-1
+1.0d-1 1.0d-2 1.0d-1
 
 !! Gravity vector (grav)
-0.0d0 0.0d0 0.0d0
+8.0d0 0.0d0 0.0d0
 
 !! Reynolds number
-1.0d1
+1.0d0
 
 !! Weissenberg number
-1.0d1
+1.0d0
 
 !! Viscosity ratio (beta)
-0.9d0
+0.2d0
 
 !! sPTT non-linearity
-1.0d-3
+1.0d-30
 
 !! FENE-P maximum extensibility
-1.0d3
+1.0d30
 
 !! Dimensionless polymeric diffusion coefficient number
-1.0d-4
+1.0d-30
 
 !! Mach number
 0.05d0

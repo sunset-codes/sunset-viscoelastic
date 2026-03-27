@@ -554,6 +554,10 @@ contains
         call cholesky_c_from_psi(psixx(i),psixy(i),psiyy(i),psizz(i),cxx(i),cxy(i),cyy(i),czz(i),fenep_l2)     
 #endif   
 #endif
+        !! SSR transform
+#ifdef ssr
+        call ssr_c_from_psi(psixx(i),psixy(i),psiyy(i),psizz(i),cxx(i),cxy(i),cyy(i),czz(i),fenep_l2)     
+#endif
       
      end do
      !$omp end parallel do

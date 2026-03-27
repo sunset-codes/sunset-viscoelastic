@@ -107,7 +107,10 @@ contains
         call cholesky_c_from_psi(psixx(i),psixy(i),psiyy(i),psizz(i),cxx(i),cxy(i),cyy(i),czz(i),fenep_l2)     
 #endif   
 #endif
-      
+        !! SSR transform
+#ifdef ssr        
+        call ssr_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
+#endif       
      end do
      !$omp end parallel do    
 #endif     
@@ -240,7 +243,11 @@ contains
 #else
         call cholesky_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
 #endif   
-#endif       
+#endif   
+        !! SSR transform
+#ifdef ssr        
+        call ssr_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
+#endif     
      end do
      !$OMP END PARALLEL DO
 
@@ -397,6 +404,10 @@ contains
 #else
         call cholesky_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
 #endif   
+#endif 
+        !! SSR transform
+#ifdef ssr        
+        call ssr_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
 #endif       
 
      end do
@@ -525,7 +536,10 @@ contains
         call cholesky_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
 #endif   
 #endif         
- 
+        !! SSR transform
+#ifdef ssr        
+        call ssr_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
+#endif  
         
      end do    
      

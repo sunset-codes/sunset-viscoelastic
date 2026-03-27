@@ -147,8 +147,8 @@ program datgen
 case(4) !! Poiseuille flow
 
      yl=1.0d0
-     xl=yl/4.0d0
-     dx0=yl/100.0d0
+     xl=yl/1.0d0
+     dx0=yl/50.0d0
      xbcond_L=1;xbcond_U=1;ybcond_L=0;ybcond_U=0
      
      nb_patches = 4
@@ -161,7 +161,7 @@ case(4) !! Poiseuille flow
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
      nb_blobs = 0;n_blob_coefs=0
 
-     dxmin = dx0/2.0d0
+     dxmin = dx0/1.0d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin         
 
@@ -268,13 +268,13 @@ case(8) !! Minimal unit cell of isometric cylinder array
   !! Porosity 1/4 - sqrt(0.6667*pi/sqrt(3))   (2/3)
   
 
-     SovD = sqrt(pi/(sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
+     SovD = 1.2d0!sqrt(pi/(sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
      D_cyl = 1.0d0!1.0d0/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius
      yl=sqrt(3.0d0)*S_cyl ! box height
      xl=S_cyl ! channel length
-     dx0=D_cyl/167.0d0!499.50       !250
+     dx0=D_cyl/100.0d0!499.50       !250
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
