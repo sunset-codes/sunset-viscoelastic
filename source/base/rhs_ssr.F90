@@ -247,7 +247,7 @@ contains
  
         !! Uncomment for some Kolmogorov forcing. The hard-coded numbers are n and n**2.       
 !        body_force_u = body_force_u + (4.0d0*visc_total/rho_char)*cos(2.0d0*rp(i,2)) !! 16,4                       
-!        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)  !! Miguel's forcing
+        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)  !! Miguel's forcing
                                                 
         !! RHS 
         rhs_rou(i) = -tmp_scal_u - gradp(i,1) + body_force_u + f_visc_u 
@@ -364,20 +364,20 @@ contains
      real(rkind),dimension(ithree) :: tmp_vec
      real(rkind) :: adxx,adxy,adyy,adzz,adxz,adyz
      real(rkind) :: ucxx,ucxy,ucyy,bxx,bxy,byy,lzz,ucxz,ucyz,uczz,lxz,lyz
-     real(rkind) :: sxx,sxy,syy,srctmp,szz,sxz,syz
+     real(rkind) :: sxx,sxy,syy,srctmp,szz,sxz,syz,a12,A_diff
      real(rkind) :: csxx,csxy,csyy,cszz,csxz,csyz,detb,oodeta
-     real(rkind),dimension(3) :: gradu_local,gradv_local,gradw_local
+     real(rkind) :: hxx,hxy,hyy,hyx,bhxx,bhxy,bhyx,bhyy
+     real(rkind),dimension(3) :: gradu_local,gradv_local,gradw_local,gradbxx,gradbxy,gradbyy
      real(rkind) :: xn,yn,fR,wss,cl11,cl12,cl22 
-     real(rkind),dimension(:),allocatable :: lapCxx,lapCxy,lapCyy,lapCzz,lapCxz,lapCyz
+     real(rkind),dimension(:),allocatable :: lapbxx,lapbxy,lapbyy,lapbzz,lapbxz,lapbyz
          
      !! Laplacian for conformation tensor components
-     allocate(lapCxx(npfb),lapCxy(npfb),lapCyy(npfb),lapCzz(npfb));lapCxx=zero;lapCxy=zero;lapCyy=zero;lapCzz=zero
-     allocate(lapCxz(npfb),lapCyz(npfb));lapCxz=zero;lapCyz=zero
+     allocate(lapbxx(npfb),lapbxy(npfb),lapbyy(npfb),lapbzz(npfb));lapbxx=zero;lapbxy=zero;lapbyy=zero;lapbzz=zero
+     allocate(lapbxz(npfb),lapbyz(npfb));lapbxz=zero;lapbyz=zero
      if(Mdiff.ne.zero) then
-        call calc_laplacian_transverse_only_on_bound(Cxx,lapCxx)  
-        call calc_laplacian_transverse_only_on_bound(Cxy,lapCxy)
-        call calc_laplacian_transverse_only_on_bound(Cyy,lapCyy)   
-        call calc_laplacian_transverse_only_on_bound(Czz,lapCzz)                 
+        call calc_laplacian_transverse_only_on_bound(Cxx,lapbxx)  !! Actually holds lap(ln(bxx)) for now
+        call calc_laplacian_transverse_only_on_bound(Cxy,lapbxy)
+        call calc_laplacian_transverse_only_on_bound(Cyy,lapbyy)  !! Actually holds lap(ln(byy)) for now 
      endif
       
               
@@ -397,47 +397,73 @@ contains
         bxx = exp(psixx(i))
         bxy = (psixy(i))
         byy = exp(psiyy(i))
+        detb = bxx*byy - bxy*bxy        
         
         !! Store velocity gradient locally
         gradu_local(1) = gradu(i,1)
         gradu_local(2) = gradu(i,2)
         gradv_local(1) = gradv(i,1)
-        gradv_local(2) = gradv(i,2)                             
+        gradv_local(2) = gradv(i,2)      
+        
+        !! Modify lap terms to account for logarithm
+!        lapbxx(i) = lapbxx(i)*bxx + bxx*dot_product(gradpsixx(i,:),gradpsixx(i,:))           
+!        lapbyy(i) = lapbyy(i)*byy + byy*dot_product(gradpsiyy(i,:),gradpsiyy(i,:))        
                 
-        !! Upper convected terms
-!        ucxx = gradu_local(1)*bxx + gradu_local(2)*bxy + (bxy/(bxx+byy)) &
-!             *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)            
-!        ucxy = gradv_local(1)*bxx + gradv_local(2)*bxy + (byy/(bxx+byy)) &
-!             *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)
-!        ucyy = gradv_local(1)*bxy + gradv_local(2)*byy - (bxy/(bxx+byy)) &
-!             *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)
-        ucxx = gradu_local(1) + gradu_local(2)*bxy/bxx + (bxy/(bxx+byy)/bxx) &
-             *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)            
-        ucxy = gradv_local(1)*bxx + gradv_local(2)*bxy + (byy/(bxx+byy)) &
-             *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)
-        ucyy = gradv_local(1)*bxy/byy + gradv_local(2) - (bxy/(bxx+byy)/byy) &
-             *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)
-
+        !! Local derivatives of bxx,bxy,byy
+        gradbxx = bxx*gradpsixx(i,:)
+        gradbxy = gradpsixy(i,:)
+        gradbyy = byy*gradpsiyy(i,:)        
+                
+        !! Tensor h for diffusion 
+        hxx = half*(byy*bxx*lapbxx(i) + byy*bxy*lapbxy(i) - bxy*bxx*lapbxy(i) - bxy*bxy*lapbyy(i)) &
+            + byy*dot_product(gradbxx,gradbxx) + byy*dot_product(gradbxy,gradbxy) &
+            - bxy*dot_product(gradbxx,gradbxy) - bxy*dot_product(gradbxy,gradbyy)
+        hxy = half*(byy*bxy*lapbxx(i) + byy*byy*lapbxy(i) - bxy*bxy*lapbxy(i) - bxy*byy*lapbyy(i)) &
+            + byy*dot_product(gradbxx,gradbxy) + byy*dot_product(gradbxy,gradbyy) &
+            - bxy*dot_product(gradbxy,gradbxy) - bxy*dot_product(gradbyy,gradbyy)
+        hyx = half*(-bxy*bxx*lapbxx(i) - bxy*bxy*lapbxy(i) + bxx*bxx*lapbxy(i) + bxx*bxy*lapbyy(i)) &
+            - bxx*dot_product(gradbxx,gradbxx) - bxx*dot_product(gradbxy,gradbxy) &
+            + bxx*dot_product(gradbxx,gradbxy) + bxx*dot_product(gradbxy,gradbyy)
+        hyy = half*(- bxy*bxy*lapbxx(i) - bxy*byy*lapbxy(i) + bxx*bxy*lapbxy(i) + bxx*byy*lapbyy(i)) &
+            - bxy*dot_product(gradbxx,gradbxy) - bxy*dot_product(gradbxy,gradbyy) &
+            + bxx*dot_product(gradbxy,gradbxy) + bxx*dot_product(gradbyy,gradbyy)            
+        !! Divide by det(b)
+        hxx = hxx/detb
+        hxy = hxy/detb
+        hyx = hyx/detb
+        hyy = hyy/detb   
+                
+        !! Contribution to anti-symmetric matrix a due to diffusivity (do we need this term?)
+        A_diff = zero!wsMdiff*(hxy-hyx)      
+                
+        !! Anti-symmetric matrix component: a12
+        a12 =  (one/(bxx+byy))*( gradu_local(1)*bxy - gradv_local(1)*bxx &
+                               + gradu_local(2)*byy + gradv_local(2)*bxy &
+                               + A_diff)       
+                               
+        !! Upper convected terms + symmetrizing terms
+        ucxx = gradu_local(1) + gradu_local(2)*bxy/bxx + (bxy/bxx)*a12
+        ucxy = gradv_local(1)*bxx + gradv_local(2)*bxy + (byy)*a12
+        ucyy = gradv_local(1)*bxy/byy + gradv_local(2) - (bxy/byy)*a12
         
 
         !! Source terms        
         !! sPTT source terms and diffusion as in evolution eqn for c.
         fr = (one - epsPTT*three + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function
-        sxx = -fr*(cxx(i) - one) + Mdiff*lapcxx(i)
-        sxy = -fr*cxy(i) + Mdiff*lapcxy(i)         
-        syy = -fr*(cyy(i) - one) + Mdiff*lapcyy(i) 
+        sxx = -fr*(cxx(i) - one) +Mdiff*lapbxx(i)
+        sxy = -fr*cxy(i)+Mdiff*lapbxy(i)
+        syy = -fr*(cyy(i) - one) +Mdiff*lapbyy(i)
         
         !! Convert source terms from c-equation to b-equation
-        detb = bxx*byy - bxy*bxy
         oodeta = one/(four*detb*(bxx+byy))
-        csxx = oodeta*((two*detb + two*byy**two)*sxx - four*bxy*byy*sxy + two*bxy*bxy*syy)/bxx
+        csxx = oodeta*((two*detb + two*byy*byy)*sxx - four*bxy*byy*sxy + two*bxy*bxy*syy)/bxx
         csxy = oodeta*(-two*bxy*byy*sxx + four*bxx*byy*sxy - two*bxx*bxy*syy)                            
-        csyy = oodeta*(two*bxy*bxy*sxx - four*bxx*bxy*sxy + (two*detb + two*bxx**two)*syy)/byy
-        
-        !! SSR source terms (as in Balci 2011 paper, in terms of b)
-!        csxx = (half*fr/lambda)*(byy/(bxx*byy-bxy*bxy) - bxx)/bxx
-!        csxy = (half*fr/lambda)*(-bxy/(bxx*byy-bxy*bxy) - bxy)
-!        csyy = (half*fr/lambda)*(bxx/(bxx*byy-bxy*bxy) - byy)/byy                
+        csyy = oodeta*(two*bxy*bxy*sxx - four*bxx*bxy*sxy + (two*detb + two*bxx*bxx)*syy)/byy       
+                                      
+        !! Add diffusion terms to source terms
+!        csxx = csxx + Mdiff*(half*lapbxx(i) + hxx)/bxx
+!        csxy = csxy + Mdiff*(half*lapbxy(i) + hxy)
+!        csyy = csyy + Mdiff*(half*lapbyy(i) + hyy)/byy    
     
         
         !! RHS 
@@ -466,14 +492,13 @@ contains
            adxx = dot_product(tmp_vec,gradpsixx(i,:))
            adxy = dot_product(tmp_vec,gradpsixy(i,:))
            adyy = dot_product(tmp_vec,gradpsiyy(i,:))     
-           adzz = dot_product(tmp_vec,gradpsizz(i,:))              
 
                 
            !! Store Cholesky components locally        
            bxx = exp(psixx(i))
            bxy = (psixy(i))
            byy = exp(psiyy(i))
-  
+           detb = bxx*byy - bxy*bxy        
 
            if(node_type(i).eq.0) then !! Walls, rotate velocity gradients     
               xn=rnorm(i,1);yn=rnorm(i,2)  !! Bound normals                 
@@ -488,53 +513,69 @@ contains
               gradv_local(1) = gradv(i,1)
               gradv_local(2) = gradv(i,2)                         
            endif
-        
-           
-                                                             
-           !! Upper convected terms
-!           ucxx = gradu_local(1)*bxx + gradu_local(2)*bxy + (bxy/(bxx+byy)) &
-!                *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)            
-!           ucxy = gradv_local(1)*bxx + gradv_local(2)*bxy + (byy/(bxx+byy)) &
-!                *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)
-!           ucyy = gradv_local(1)*bxy + gradv_local(2)*byy - (bxy/(bxx+byy)) &
-!                *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)
-           ucxx = gradu_local(1) + gradu_local(2)*bxy/bxx + (bxy/(bxx+byy)/bxx) &
-                *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)            
-           ucxy = gradv_local(1)*bxx + gradv_local(2)*bxy + (byy/(bxx+byy)) &
-                *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)
-           ucyy = gradv_local(1)*bxy/byy + gradv_local(2) - (bxy/(bxx+byy)/byy) &
-                *(gradu_local(1)*bxy - gradv_local(1)*bxx + gradu_local(2)*byy + gradv_local(2)*bxy)                
-           
-            
-           !! Modify conformation tensor laplacian to set no diffusive flux through boundaries: 
+                             
+           !! Modify laplacian to set no diffusive flux through boundaries: 
            !! For now, set the same parabolic BC for inflows, outflows and walls.
-           lapcxx(i) = lapcxx(i) + (-415.0d0*cxx(i)+576.0d0*cxx(i+1)-216.0d0*cxx(i+2)+64.0d0*cxx(i+3)-9.0d0*cxx(i+4))/ &
-                                   (72.0d0*s(i)*s(i)*L_char*L_char)
-           lapcxy(i) = lapcxy(i) + (-415.0d0*cxy(i)+576.0d0*cxy(i+1)-216.0d0*cxy(i+2)+64.0d0*cxy(i+3)-9.0d0*cxy(i+4))/ &
-                                   (72.0d0*s(i)*s(i)*L_char*L_char)
-           lapcyy(i) = lapcyy(i) + (-415.0d0*cyy(i)+576.0d0*cyy(i+1)-216.0d0*cyy(i+2)+64.0d0*cyy(i+3)-9.0d0*cyy(i+4))/ &
-                                   (72.0d0*s(i)*s(i)*L_char*L_char)
-                                 
+           lapbxx(i) = lapbxx(i) + (-415.0d0*psixx(i)+576.0d0*psixx(i+1)-216.0d0*psixx(i+2)&
+                                    +64.0d0*psixx(i+3)-9.0d0*psixx(i+4))/(72.0d0*s(i)*s(i)*L_char*L_char)
+           lapbxy(i) = lapbxy(i) + (-415.0d0*psixy(i)+576.0d0*psixy(i+1)-216.0d0*psixy(i+2)&
+                                    +64.0d0*psixy(i+3)-9.0d0*psixy(i+4))/(72.0d0*s(i)*s(i)*L_char*L_char)
+           lapbyy(i) = lapbyy(i) + (-415.0d0*psiyy(i)+576.0d0*psiyy(i+1)-216.0d0*psiyy(i+2) &
+                                    +64.0d0*psiyy(i+3)-9.0d0*psiyy(i+4))/(72.0d0*s(i)*s(i)*L_char*L_char)               
 
-           !! Source terms        
-           !! sPTT source terms and diffusion as in evolution eqn for c.
-           fr = (one - epsPTT*three + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function
-           sxx = -fr*(cxx(i) - one) + Mdiff*lapcxx(i)
-           sxy = -fr*cxy(i) + Mdiff*lapcxy(i)         
-           syy = -fr*(cyy(i) - one) + Mdiff*lapcyy(i) 
-        
-           !! Convert source terms from c-equation to b-equation
-           detb = bxx*byy - bxy*bxy
-           oodeta = one/(four*detb*(bxx+byy))
-           csxx = oodeta*((two*detb + two*byy**two)*sxx - four*bxy*byy*sxy + two*bxy*bxy*syy)/bxx
-           csxy = oodeta*(-two*bxy*byy*sxx + four*bxx*byy*sxy - two*bxx*bxy*syy)                            
-           csyy = oodeta*(two*bxy*bxy*sxx - four*bxx*bxy*sxy + (two*detb + two*bxx**two)*syy)/byy
-        
-           !! SSR source terms (as in Balci 2011 paper, in terms of b)
-!           csxx = (half*fr/lambda)*(byy/(bxx*byy-bxy*bxy) - bxx)/bxx
-!           csxy = (half*fr/lambda)*(-bxy/(bxx*byy-bxy*bxy) - bxy)
-!           csyy = (half*fr/lambda)*(bxx/(bxx*byy-bxy*bxy) - byy)/byy                          
-         
+           !! Modify lap terms to account for logarithm (and neglecting bound-normal derivs)
+           lapbxx(i) = lapbxx(i)*bxx + bxx*dot_product(gradpsixx(i,2:3),gradpsixx(i,2:3))           
+           lapbyy(i) = lapbyy(i)*byy + byy*dot_product(gradpsiyy(i,2:3),gradpsiyy(i,2:3))    
+                
+           !! Local derivatives of bxx,bxy,byy
+           gradbxx = bxx*gradpsixx(i,:)
+           gradbxy = gradpsixy(i,:)
+           gradbyy = byy*gradpsiyy(i,:)        
+                
+           !! Tensor h for diffusion 
+           hxx = half*(byy*bxx*lapbxx(i) + byy*bxy*lapbxy(i) - bxy*bxx*lapbxy(i) - bxy*bxy*lapbyy(i)) &
+               + byy*dot_product(gradbxx,gradbxx) + byy*dot_product(gradbxy,gradbxy) &
+               - bxy*dot_product(gradbxx,gradbxy) - bxy*dot_product(gradbxy,gradbyy)
+           hxy = half*(byy*bxy*lapbxx(i) + byy*byy*lapbxy(i) - bxy*bxy*lapbxy(i) - bxy*byy*lapbyy(i)) &
+               + byy*dot_product(gradbxx,gradbxy) + byy*dot_product(gradbxy,gradbyy) &
+               - bxy*dot_product(gradbxy,gradbxy) - bxy*dot_product(gradbyy,gradbyy)
+           hyx = half*(-bxy*bxx*lapbxx(i) - bxy*bxy*lapbxy(i) + bxx*bxx*lapbxy(i) + bxx*bxy*lapbyy(i)) &
+               - bxx*dot_product(gradbxx,gradbxx) - bxx*dot_product(gradbxy,gradbxy) &
+               + bxx*dot_product(gradbxx,gradbxy) + bxx*dot_product(gradbxy,gradbyy)
+           hyy = half*(- bxy*bxy*lapbxx(i) - bxy*byy*lapbxy(i) + bxx*bxy*lapbxy(i) + bxx*byy*lapbyy(i)) &
+               - bxy*dot_product(gradbxx,gradbxy) - bxy*dot_product(gradbxy,gradbyy) &
+               + bxx*dot_product(gradbxy,gradbxy) + bxx*dot_product(gradbyy,gradbyy)            
+           !! Divide by det(b)
+           hxx = hxx/detb
+           hxy = hxy/detb
+           hyx = hyx/detb
+           hyy = hyy/detb   
+                
+           !! Contribution to anti-symmetric matrix a due to diffusivity (do we need this term?)
+           A_diff = zero*Mdiff*(hxy-hyx)      
+                
+           !! Anti-symmetric matrix component: a12
+           a12 =  (one/(bxx+byy))*( gradu_local(1)*bxy - gradv_local(1)*bxx &
+                                  + gradu_local(2)*byy + gradv_local(2)*bxy &
+                                  + A_diff)       
+                               
+           !! Upper convected terms + symmetrizing terms
+           ucxx = gradu_local(1) + gradu_local(2)*bxy/bxx + (bxy/bxx)*a12
+           ucxy = gradv_local(1)*bxx + gradv_local(2)*bxy + (byy)*a12
+           ucyy = gradv_local(1)*bxy/byy + gradv_local(2) - (bxy/byy)*a12             
+           
+           !! SSR source terms 
+           fr = (one - epsPTT*three + epsPTT*(cxx(i)+cyy(i)+czz(i)))/lambda !! scalar function        
+           csxx = (half*fr/lambda)*(byy/(bxx*byy-bxy*bxy) - bxx)/bxx
+           csxy = (half*fr/lambda)*(-bxy/(bxx*byy-bxy*bxy) - bxy)
+           csyy = (half*fr/lambda)*(bxx/(bxx*byy-bxy*bxy) - byy)/byy    
+                                
+           !! Add diffusion terms to source terms
+           csxx = csxx + Mdiff*(half*lapbxx(i) + hxx)/bxx
+           csxy = csxy + Mdiff*(half*lapbxy(i) + hxy)
+           csyy = csyy + Mdiff*(half*lapbyy(i) + hyy)/byy   
+
+
                
            !! Build RHS                      
            rhs_xx(i) = -adxx + ucxx + csxx

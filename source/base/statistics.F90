@@ -358,14 +358,14 @@ contains
      !! This subroutine calculates mean and RMS values of conformation tensor components.
      integer(ikind) :: i
      real(rkind) :: tot_vol,dVi
-     real(rkind) :: tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr,tot_czz
+     real(rkind) :: tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr,tot_czz,cxex
     
    
      tot_vol = zero
      tot_cxx=zero;tot_cxy=zero;tot_cyy=zero
      tot_cxy2 = zero;tot_tr=zero
      tot_czz = zero
-     !$omp parallel do private(dVi) reduction(+:tot_vol,tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr,tot_czz)
+     !$omp parallel do private(dVi,cxex) reduction(+:tot_vol,tot_cxx,tot_cxy,tot_cyy,tot_cxy2,tot_tr,tot_czz)
      do i=1,npfb
         dVi = vol(i)
 #ifdef dim3
@@ -379,6 +379,10 @@ contains
                  
         
         tot_cxy2 = tot_cxy2 +cxy(i)*cxy(i)*dVi !! cxy squared
+
+!        cxex = two + exp(-time*Mdiff)*sin(rp(i,2))
+!        tot_cxy2 = tot_cxy2 + dVi*(cxx(i) - cxex)**two
+                
         tot_tr = tot_tr + (cxx(i)+cyy(i)+czz(i))*dVi
         
      end do

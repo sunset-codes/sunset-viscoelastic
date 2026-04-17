@@ -304,7 +304,8 @@ contains
     
 #else
            write(20,*) tmpro,u(i),v(i),tmpVort,Qcrit(i),alpha_out(i),cxx(i),cxy(i),cyy(i),czz(i)
-!           write(20,*) tmpro,u(i),v(i),tmpVort,alpha_out(i),psixx(i),psixy(i),psiyy(i)
+!           write(20,*) tmpro,u(i),v(i),tmpVort,Qcrit(i),alpha_out(i),psixx(i),psixy(i),psiyy(i),czz(i)           
+!           write(20,*) tmpro,u(i),v(i),tmpVort,Qcrit(i),psixy(i),cxx(i),cxy(i),cyy(i),czz(i)           
 #endif
         end do
             

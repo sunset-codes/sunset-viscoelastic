@@ -489,11 +489,8 @@ contains
      call reapply_mirror_bcs
      call halo_exchanges_all
 
-#ifndef di
-     !! Get the conformation tensor
-     call get_c_from_psi        
-#endif     
-          
+!! Historically we called get_c_from_psi here, but I think this is a mistake.
+         
      !! Filter the solution 
      call filter_variables
 
@@ -505,6 +502,10 @@ contains
      !! Get velocity from momentum
      call get_velocity_from_momentum    
      
+#ifndef di
+     !! Get the conformation tensor (it's used for polymeric diffusivity at the start of the next step).
+     call get_c_from_psi        
+#endif     
       
      
      return

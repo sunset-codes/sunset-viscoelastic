@@ -109,7 +109,7 @@ contains
 #endif
         !! SSR transform
 #ifdef ssr        
-        call ssr_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
+        call ssr_c_from_psi(psixx(i),psixy(i),psiyy(i),psizz(i),cxx(i),cxy(i),cyy(i),czz(i),fenep_l2)     
 #endif       
      end do
      !$omp end parallel do    
@@ -155,6 +155,9 @@ contains
      ero_norm = one/one !! Unity density
      erou_norm = one/(one*u_char)  !! Characteristic velocity
      exx_norm = one/(1.0d0)  !! Characteristic conformation tensor
+#ifdef ssr
+!     exx_norm = 1.0d-2
+#endif     
      
      P_outflow = csq*rho_char
      P_inflow = csq*rho_char     
@@ -219,12 +222,11 @@ contains
         czz(i) = one
         
         !! Kolmogorov IC for Miguel paper (with perturbation)
-!        u(i) = cos(y) - 0.25d-10*(-sin(x/four)*sin(y/four) + two*cos(three*x/four)*sin(y/two))
-!        v(i) = zero + 0.25d-10*(cos(x/four)*cos(y/four) - three*cos(three*x/four)*sin(y/two))        
-!        cxx(i) = one + (Wi*Wi/(one + Mdiff*Wi))*(one-cos(two*y)/(one+four*Mdiff*Wi))
-!        cxy(i) = -Wi*sin(y)/(one+Mdiff*Wi)
-!        cyy(i) = one    
-
+        u(i) = cos(y) - 0.25d-10*(-sin(x/four)*sin(y/four) + two*cos(three*x/four)*sin(y/two))
+        v(i) = zero + 0.25d-10*(cos(x/four)*cos(y/four) - three*cos(three*x/four)*sin(y/two))        
+        cxx(i) = one + (Wi*Wi/(one + Mdiff*Wi))*(one-cos(two*y)/(one+four*Mdiff*Wi))
+        cxy(i) = -Wi*sin(y)/(one+Mdiff*Wi)
+        cyy(i) = one    
 
         !! Log-conformation transform
 #ifdef lc    
@@ -540,7 +542,6 @@ contains
 #ifdef ssr        
         call ssr_psi_from_c(cxx(i),cxy(i),cyy(i),czz(i),psixx(i),psixy(i),psiyy(i),psizz(i),fenep_l2)     
 #endif  
-        
      end do    
      
                   

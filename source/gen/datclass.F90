@@ -90,7 +90,7 @@ program datgen
      h0=D_cyl/2.0d0      !cylinder radius
      yl=SovD*D_cyl ! box height
      xl=SovD*D_cyl ! channel length
-     dx0=D_cyl/60.0       !75
+     dx0=D_cyl/160.0       !75
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -112,15 +112,15 @@ program datgen
      end do
 
      !! dx0/2.0d0, 1.5d0*dx0
-     dxmin = dx0/3.0d0 !!2.0d0
-     dx_wall=dxmin;dx_in=1.5d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     dxmin = dx0/3.2d0 !!2.0d0
+     dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
      dx_wallio=dxmin      
 !! ------------------------------------------------------------------------------------------------
   case(3) !! Kolmogorov flow (currently set for Miguel's work)
 
-     yl=1.0d0*2.0d0*pi*4.0d0
+     yl=1.0d0*2.0d0*pi*1.0d0
      xl=yl/1.0d0
-     dx0=yl/(512.0d0)
+     dx0=yl/(64.0d0)
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
