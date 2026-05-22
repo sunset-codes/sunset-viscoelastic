@@ -264,7 +264,7 @@ contains
      !! New error     
      eflow_n = one - tot_vel!*1.1831 !! Targetting a volumetric flux of one
      eflow_n = one - tot_u(1)*tot_vol/(L_domain_y*L_domain_x)!*1.1831 !! Targetting a volumetric flux of one     
-!     eflow_n = one - vol_flux!/flux_length
+     eflow_n = one - vol_flux/flux_length
           
      !! Integral term
      sum_eflow = sum_eflow + eflow_n*dt
@@ -379,9 +379,6 @@ contains
                  
         
         tot_cxy2 = tot_cxy2 +cxy(i)*cxy(i)*dVi !! cxy squared
-
-!        cxex = two + exp(-time*Mdiff)*sin(rp(i,2))
-!        tot_cxy2 = tot_cxy2 + dVi*(cxx(i) - cxex)**two
                 
         tot_tr = tot_tr + (cxx(i)+cyy(i)+czz(i))*dVi
         

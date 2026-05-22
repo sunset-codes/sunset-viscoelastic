@@ -123,6 +123,11 @@ contains
      read(12,*) fenep_l2
      read(12,*)
      
+     !! Giesekus coefficient alpha
+     read(12,*)
+     read(12,*) giesekus_a
+     read(12,*) 
+     
      !! Schmidt number
      read(12,*)
      read(12,*) Mdiff

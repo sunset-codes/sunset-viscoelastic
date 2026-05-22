@@ -10,19 +10,19 @@
 1.0d0
 
 !! Start and end time (in multiples of L_char/Uchar)
-0.0d0 5.0d2
+0.0d0 1.0d3
 
 !! Output period (in multiples of L_char/U_char), stats output period, tracers output period
-5.0d0 1.0d-2 1.0d-1
+1.0d0 1.0d-2 1.0d-1
 
 !! Gravity vector (grav)
 0.0d0 0.0d0 0.0d0
 
 !! Reynolds number
-5.0d1
+4.0d2
 
 !! Weissenberg number
-3.0d1
+1.0d0
 
 !! Viscosity ratio (beta)
 0.95d0
@@ -32,6 +32,9 @@
 
 !! FENE-P maximum extensibility
 1.0d30
+
+!! Giesekus coefficient alpha
+1.0d-30
 
 !! Dimensionless polymeric diffusion coefficient number
 1.0d-3

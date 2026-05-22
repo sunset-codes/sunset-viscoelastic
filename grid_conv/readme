@@ -1,0 +1,6 @@
+Put this directory /grid_conv in the main sunset-viscoelastic directory.
+
+Compile with make, and run ./gridconv.
+
+It will load nodes data, and ask which snapshot. It then interpolates snapshot data to a grid, and saves files in this directory as u_grid,v_grid etc.
+

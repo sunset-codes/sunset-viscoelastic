@@ -284,6 +284,7 @@ contains
            tmpro = -rho_char + ro(i) + Ma*Ma*( (grav(1)+driving_force(1))*rp(i,1) &
                                   +(grav(2)+driving_force(2))*rp(i,2) &
                                   +(grav(3)+driving_force(3))*rp(i,3))
+                                                                   
 #else
            tmpro = -rho_char + ro(i)  
 #endif     
@@ -304,8 +305,7 @@ contains
     
 #else
            write(20,*) tmpro,u(i),v(i),tmpVort,Qcrit(i),alpha_out(i),cxx(i),cxy(i),cyy(i),czz(i)
-!           write(20,*) tmpro,u(i),v(i),tmpVort,Qcrit(i),alpha_out(i),psixx(i),psixy(i),psiyy(i),czz(i)           
-!           write(20,*) tmpro,u(i),v(i),tmpVort,Qcrit(i),psixy(i),cxx(i),cxy(i),cyy(i),czz(i)           
+!          write(20,*) tmpro,u(i),v(i),tmpVort,tmpro,alpha_out(i),cxx(i),cxy(i),cyy(i),czz(i)
 #endif
         end do
             

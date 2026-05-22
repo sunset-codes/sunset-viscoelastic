@@ -17,6 +17,8 @@
 # mcorr      Correct mass conservation (1) or don't (0)                                (default: 1)
 # tarout     Compress files as they're written (1) or don't (0)                        (default: 1)
 # tracers    Include some Lagrangian tracer particles (1) or don't (0)                 (default: 0)
+# gsks       Add some Giesekus quadratic non-linearity (1) or don't (0)                (default: 0)
+# frcng      Add some hard-coded body force (1) or don't (0)                           (default: 0)
 # -------------------------------------------------------------------------------------------------
 #
 # EXAMPLE USAGE:
@@ -67,6 +69,11 @@ ifeq ($(restart), 1)
 FFLAGS += -Drestart
 endif
 
+# Restart from dump file.
+ifeq ($(frcng), 1)
+FFLAGS += -Dfrcng
+endif
+
 # Non-Newtonian
 ifneq ($(newt),1)
 # Use something to ensure SPD (Cholesky or log-conf)
@@ -97,6 +104,10 @@ endif
 # FENE-P?
 ifeq ($(fenep),1)
 FFLAGS += -Dfenep
+endif
+
+ifeq ($(gsks),1)
+FFLAGS += -Dgsks
 endif
 
 # Tar output files
@@ -182,4 +193,5 @@ clean:
 	rm -vf ./restart/fields*
 	rm -vf ./restart/nodes*
 	rm -vf ./restart/*.o
+	rm -vf octave-workspace
 

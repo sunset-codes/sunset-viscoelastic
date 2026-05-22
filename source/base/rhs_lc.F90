@@ -259,8 +259,10 @@ contains
         body_force_w = tmpro*(grav(3) + driving_force(3))
 #endif        
  
-        !! Uncomment for some Kolmogorov forcing. The hard-coded numbers are n and n**2.       
-!        body_force_u = body_force_u + (4.0d0*visc_total/rho_char)*cos(2.0d0*rp(i,2)) !! 16,4                       
+#ifdef frcng
+        body_force_u = body_force_u + (64.0d0*visc_total/rho_char)*cos(8.0d0*rp(i,2)) !! 16,4                       
+!        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)  !! Miguel's forcing
+#endif                     
                                                 
         !! RHS 
         rhs_rou(i) = -tmp_scal_u - gradp(i,1) + body_force_u + f_visc_u 

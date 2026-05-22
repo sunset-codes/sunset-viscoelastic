@@ -109,7 +109,7 @@ contains
      do i=npfb,np
         if(halo_periodic(i).eq.1) then
            roi0 = ro(i)
-           ro(i) = roi0 + Ma*Ma*(grav(1)+driving_force(1))*L_domain_x 
+           ro(i) = roi0 + Ma*Ma*(grav(1)+driving_force(1))*L_domain_x           
            rou(i) = rou(i)*(ro(i)/roi0) 
            rov(i) = rov(i)*(ro(i)/roi0)
            row(i) = row(i)*(ro(i)/roi0)            

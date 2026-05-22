@@ -568,12 +568,14 @@ contains
 !! ------------------------------------------------------------------------------------------------
   subroutine set_tstep
      integer(ikind) :: i
-     real(rkind) :: dt_visc
+     real(rkind) :: dt_visc,tot_vel,tot_vol
      real(rkind) :: c,uplusc
               
      !! Find minimum values for cfl, visc, thermal diff terms
      dt_cfl = 1.0d10;dt_visc = 1.0d10
      cmax = zero;umax = zero
+     tot_vel=zero
+     tot_vol=zero
 !     !$omp parallel do private(c,uplusc) reduction(min:dt_cfl,dt_visc,dt_therm,dt_spec) &
 !     !$omp reduction(max:cmax,umax)
      do i=1,npfb
@@ -586,6 +588,9 @@ contains
         
         !! Max speed of information propagation
         uplusc = umax + c
+        
+        tot_vol = tot_vol + vol(i)
+        tot_vel = tot_vel + vol(i)*(u(i)*u(i) + v(i)*v(i) + w(i)*w(i))
         
         !! Acoustic:: s/(u+c)
         !! Slightly reduce on outflows for stability
@@ -615,8 +620,11 @@ contains
 #ifdef mp     
      !! Global cfl-based time-step and parabolic parts based time-step
      call global_reduce_min(dt_cfl)
-     call global_reduce_min(dt_parabolic)     
+     call global_reduce_min(dt_parabolic)
+     call global_reduce_sum(tot_vel)
+     call global_reduce_sum(tot_vol)     
 #endif                 
+     meanKE = half*tot_vel/tot_vol
 
      return
   end subroutine set_tstep

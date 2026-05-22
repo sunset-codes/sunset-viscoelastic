@@ -21,7 +21,7 @@ module common_vars
   real(rkind), dimension(ithree) :: grav !! Gravity    
   real(rkind) :: rho_char
   real(rkind) :: dt_out,dt_out_stats,dt_out_tracers !! Time interval between outputs  
-  real(rkind) :: Re,Wi,Ma,beta,Sc,epsPTT,fenep_l2
+  real(rkind) :: Re,Wi,Ma,beta,Sc,epsPTT,fenep_l2,giesekus_a
   real(rkind) :: csq
   real(rkind) :: u_inflow_start,u_inflow_end
   real(rkind) :: ramp_time
@@ -35,6 +35,8 @@ module common_vars
   real(rkind), dimension(:), allocatable, target :: p,u,v,w
   real(rkind), dimension(:), allocatable :: cxx,cxy,cyy,cxz,cyz,czz
 
+  !! Globally averaged quantities
+  real(rkind) :: meanKE
   
   !! Transport and thermodynamic properties
   real(rkind) :: visc_solvent,visc_polymeric,visc_total,lambda,Mdiff

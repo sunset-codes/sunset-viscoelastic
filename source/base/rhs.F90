@@ -33,8 +33,8 @@ module rhs
   real(rkind),dimension(:,:),allocatable :: gradro,gradp  !! Velocity gradients defined in common, as used elsewhere too
   real(rkind),dimension(:),allocatable :: lapu,lapv,lapw,fenepf
   real(rkind),dimension(:,:),allocatable :: gradpsixx,gradpsixy,gradpsiyy
-  real(rkind),dimension(:,:),allocatable :: gradpsixz,gradpsiyz,gradpsizz    
-   
+  real(rkind),dimension(:,:),allocatable :: gradpsixz,gradpsiyz,gradpsizz
+  
   real(rkind) :: dundn,dutdn,dutdt,dpdn
   real(rkind) :: xn,yn,un,ut
   
@@ -81,7 +81,8 @@ contains
      do i=1,npfb  
         gradp(i,:) = csq*gradro(i,:)
      end do
-     !$omp end parallel do
+     !$omp end parallel do     
+
 
      !! Call individual routines to build the RHSs
      !! N.B. second derivatives and derivatives of secondary variables are calculated within
@@ -271,8 +272,13 @@ contains
 #endif        
  
         !! Uncomment for some Kolmogorov forcing. The hard-coded numbers are n and n**2.       
-!        body_force_u = body_force_u + (4.0d0*visc_total/rho_char)*cos(2.0d0*rp(i,2)) !! 16,4                       
-        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)  !! Miguel's forcing
+#ifdef frcng
+        body_force_u = body_force_u + (64.0d3*visc_total/rho_char)*cos(8.0d0*rp(i,2)) !! 16,4
+        body_force_v = body_force_v + (64.0d3*visc_total/rho_char)*cos(8.0d0*rp(i,1)) !! 16,4 
+!        body_force_u = body_force_u + u(i)*(half/meanKE - one)/(1000.0d0*dt)
+!        body_force_v = body_force_v + v(i)*(half/meanKE - one)/(1000.0d0*dt)
+!        body_force_u = body_force_u + (one/Re)*cos(rp(i,2))*(one+Mdiff*beta*Wi)/(one+Mdiff*Wi)  !! Miguel's forcing     
+#endif
                                                 
         !! RHS 
         rhs_rou(i) = -tmp_scal_u - gradp(i,1) + body_force_u + f_visc_u 
@@ -505,10 +511,12 @@ contains
         sxy = fr*cxy(i) + Mdiff*lapcxy(i)         
         syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i) 
         
-        !! Giesekus-type bodge..
-!        sxx = sxx - 1.0d-4*((cxx(i)-one)**two + cxy(i)**two)/Wi
-!        sxy = sxy - 1.0d-4*(cxy(i)*(cxx(i)+cyy(i)-two))/Wi
-!        syy = syy - 1.0d-4*(cxy(i)**two + (cyy(i)-one)**two)/Wi
+        !! Giesekus
+#ifdef gsks        
+        sxx = sxx - giesekus_a*((cxx(i)-one)**two + cxy(i)**two)/Wi
+        sxy = sxy - giesekus_a*(cxy(i)*(cxx(i)+cyy(i)-two))/Wi
+        syy = syy - giesekus_a*(cxy(i)**two + (cyy(i)-one)**two)/Wi
+#endif        
         
                  
 #ifdef dim3
@@ -673,10 +681,12 @@ contains
            sxy = fr*cxy(i) + Mdiff*lapcxy(i)         
            syy = fr*(cyy(i) - one) + Mdiff*lapcyy(i)      
 
-           !! Giesekus-type bodge
-!           sxx = sxx - 1.0d-4*((cxx(i)-one)**two + cxy(i)**two)/Wi
-!           sxy = sxy - 1.0d-4*(cxy(i)*(cxx(i)+cyy(i)-two))/Wi
-!           syy = syy - 1.0d-4*(cxy(i)**two + (cyy(i)-one)**two)/Wi
+           !! Giesekus
+#ifdef gsks           
+           sxx = sxx - giesekus_a*((cxx(i)-one)**two + cxy(i)**two)/Wi
+           sxy = sxy - giesekus_a*(cxy(i)*(cxx(i)+cyy(i)-two))/Wi
+           syy = syy - giesekus_a*(cxy(i)**two + (cyy(i)-one)**two)/Wi
+#endif           
            
 #ifdef dim3
            sxz = fr*cxz(i) + Mdiff*lapcxz(i)

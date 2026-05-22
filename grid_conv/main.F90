@@ -199,7 +199,7 @@ program main
 !! ------------------------------------------------------------------------------------------------
   !! At this stage, we have all data in xp,yp,ro,vort,h,alpha etc arrays
   
-  !! Make a grid
+  !! Make a grid, resolution equal to finest resolution of sunset data
   open(219,file="../IPART",status='old')
   read(219,*) !! Ignore line
   read(219,*) xmin,xmax,ymin,ymax
@@ -209,14 +209,14 @@ program main
   dy = (xmax-xmin)/dble(Ny)    
 
   write(6,*) Nx,Ny,dx,dy
-  allocate(xg(Nx,Ny),yg(Nx,Ny),linind(Nx,Ny))
+  !! Arrays for grid point coordinates
+  allocate(xg(Nx,Ny),yg(Nx,Ny))
   k = 0
   do i=1,Nx
      do j=1,Ny
         k=k+1
         xg(i,j) = xmin + 0.5d0*dx + dble(i-1)*dx
         yg(i,j) = ymin + 0.5*dy + dble(j-1)*dy
-        linind(i,j) = k  !! This might be useful.
      end do
   end do
   
@@ -311,17 +311,18 @@ program main
      end do
   end do
   
-  !! Here's a loop over all grid points to then do some kind of test...
+  !! Allocate grid arrays
   allocate(ug(Nx,Ny));ug=0.0d0
   allocate(vg(Nx,Ny));vg=0.0d0
   allocate(cxxg(Nx,Ny));cxxg=0.0d0
   allocate(cxyg(Nx,Ny));cxyg=0.0d0  
   allocate(cyyg(Nx,Ny));cyyg=0.0d0        
     
+  !! Loop over all points in grid  
   do i=1,Nx
      do j=1,Ny
         
-        !! Loop to build matrix
+        !! Loop to build interpolation matrix
         Amat = 0.0d0
         do i0 = 1,ij_count(i,j)
            k = ij_link(i,j,i0)
@@ -398,6 +399,8 @@ program main
            end if           
            
            wab = wab*dot_product(xvec,cvec)
+           
+           !! Interpolated values
            ug(i,j) = ug(i,j) + wab*up(k)
            vg(i,j) = vg(i,j) + wab*vp(k)           
            cxxg(i,j) = cxxg(i,j) + wab*cxx(k)
@@ -408,6 +411,7 @@ program main
      end do
   end do
        
+  !! Write grid data to files       
   open(unit=40,file="u_grid")       
   do i=1,Ny
      write(40,*) ug(:,i)     

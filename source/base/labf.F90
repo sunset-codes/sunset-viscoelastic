@@ -338,16 +338,16 @@ contains
         end if 
 #endif     
 #if forder>=5
-        if(node_type(i).eq.-1)then !! for 1,drop to 4th order
-           do i1=1,nsizeG
-              amathyp(i1,15:nsizeG)=zero        
-           end do
-           do i1=15,nsizeG
-              amathyp(i1,1:nsizeG)=zero
-              amathyp(i1,i1)=one
-           end do
-           bvechyp(:)=zero;bvechyp(10)=-one;bvechyp(12)=-two;bvechyp(14)=-one                   
-        end if 
+!        if(node_type(i).eq.-1)then !! for 1,drop to 4th order
+!           do i1=1,nsizeG
+!              amathyp(i1,15:nsizeG)=zero        
+!           end do
+!           do i1=15,nsizeG
+!              amathyp(i1,1:nsizeG)=zero
+!              amathyp(i1,i1)=one
+!           end do
+!           bvechyp(:)=zero;bvechyp(10)=-one;bvechyp(12)=-two;bvechyp(14)=-one                   
+!        end if 
 #endif
         i1=0;i2=0;nsize=nsizeG 
         call svd_solve(amathyp,nsize,bvechyp)                   

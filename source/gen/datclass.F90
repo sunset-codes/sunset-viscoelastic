@@ -120,7 +120,8 @@ program datgen
 
      yl=1.0d0*2.0d0*pi*1.0d0
      xl=yl/1.0d0
-     dx0=yl/(64.0d0)
+     h0 = xl/12.0d0
+     dx0=yl/(160.0d0)
      xbcond_L=1;xbcond_U=1;ybcond_L=1;ybcond_U=1
      
      nb_patches = 4
@@ -131,13 +132,33 @@ program datgen
      b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
      b_node(4,:) = (/-0.5d0*xl, 0.5d0*yl /)
-     nb_blobs = 0!1;n_blob_coefs=6
-!     allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs),blob_invert(nb_blobs))
-!     blob_invert(:)=0
-!     blob_centre(1,:)=(/-0.d0,0.d0/); !! Central
-!     do i=1,nb_blobs
-!        blob_coeffs(i,:)=(/1.0d0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0/);blob_rotation(i)=0.4d0
-!     end do    
+     nb_blobs = 16;n_blob_coefs=6
+     allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs),blob_invert(nb_blobs))
+     blob_invert(:)=0
+!     blob_centre(1,:)=(/1000.0d0*xl/8.0d0,0.0d0*yl/8.0d0/); !! Central
+     blob_centre(1,:)=(/-3.0d0*xl/8.0d0,3.0d0*yl/8.0d0/); !! Central
+     blob_centre(2,:)=(/-1.0d0*xl/8.0d0,3.0d0*yl/8.0d0/); !! Central
+     blob_centre(3,:)=(/ 1.0d0*xl/8.0d0,3.0d0*yl/8.0d0/); !! Central
+     blob_centre(4,:)=(/ 3.0d0*xl/8.0d0,3.0d0*yl/8.0d0/); !! Central               
+
+     blob_centre(5,:)=(/-3.0d0*xl/8.0d0,1.0d0*yl/8.0d0/); !! Central
+     blob_centre(6,:)=(/-1.0d0*xl/8.0d0,1.0d0*yl/8.0d0/); !! Central
+     blob_centre(7,:)=(/ 1.0d0*xl/8.0d0,1.0d0*yl/8.0d0/); !! Central
+     blob_centre(8,:)=(/ 3.0d0*xl/8.0d0,1.0d0*yl/8.0d0/); !! Central               
+
+     blob_centre(9,:) =(/-3.0d0*xl/8.0d0,-1.0d0*yl/8.0d0/); !! Central
+     blob_centre(10,:)=(/-1.0d0*xl/8.0d0,-1.0d0*yl/8.0d0/); !! Central
+     blob_centre(11,:)=(/ 1.0d0*xl/8.0d0,-1.0d0*yl/8.0d0/); !! Central
+     blob_centre(12,:)=(/ 3.0d0*xl/8.0d0,-1.0d0*yl/8.0d0/); !! Central               
+
+     blob_centre(13,:)=(/-3.0d0*xl/8.0d0,-3.0d0*yl/8.0d0/); !! Central
+     blob_centre(14,:)=(/-1.0d0*xl/8.0d0,-3.0d0*yl/8.0d0/); !! Central
+     blob_centre(15,:)=(/ 1.0d0*xl/8.0d0,-3.0d0*yl/8.0d0/); !! Central
+     blob_centre(16,:)=(/ 3.0d0*xl/8.0d0,-3.0d0*yl/8.0d0/); !! Central               
+     
+     do i=1,nb_blobs     
+        blob_coeffs(i,:)=(/h0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0/);blob_rotation(i)=0.4d0
+     end do    
 
      dxmin = dx0/1.0d0
      dx_wall=dxmin;dx_in=1.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
@@ -202,7 +223,7 @@ case(6) !! 2 cylinders, in-out
      h0=D_cyl/2.0d0      !cylinder radius
      yl=3.0d0*D_cyl ! box height
      xl=5.0d0*S_cyl !sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/100.0d0       !75
+     dx0=D_cyl/1250.0d0       !75
      xbcond_L=0;xbcond_U=0;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
@@ -231,17 +252,17 @@ case(6) !! 2 cylinders, in-out
 case(7) !! Grilli cylinders
 
      D_cyl = 1.0d0
-     S_cyl = D_cyl*2.0d0
+     S_cyl = D_cyl*3.33d0
      h0=D_cyl/2.0d0      !cylinder radius
-     yl=2.0d0*D_cyl ! box height
-     xl=S_cyl !sqrt(3.0d0)*S_cyl ! channel length
-     dx0=D_cyl/150.0d0       !75
-     xbcond_L=1;xbcond_U=1;ybcond_L=0;ybcond_U=0
+     yl=3.0d0*D_cyl ! box height
+     xl=2.0d0*S_cyl !sqrt(3.0d0)*S_cyl ! channel length
+     dx0=D_cyl/125.0d0       !75
+     xbcond_L=1;xbcond_U=1;ybcond_L=2;ybcond_U=2
      
      nb_patches = 4
      allocate(b_node(nb_patches,2),b_edge(nb_patches,2))
      allocate(b_type(nb_patches))
-     b_type(:) = (/ 0, 3, 0, 3/)  
+     b_type(:) = (/ 3, 3, 3, 3/)  
      b_node(1,:) = (/-0.5d0*xl, -0.5d0*yl /)
      b_node(2,:) = (/0.5d0*xl, -0.5d0*yl /)
      b_node(3,:) = (/0.5d0*xl, 0.5d0*yl /)
@@ -249,16 +270,16 @@ case(7) !! Grilli cylinders
      nb_blobs = 2;n_blob_coefs=6
      allocate(blob_centre(nb_blobs,2),blob_coeffs(nb_blobs,n_blob_coefs),blob_rotation(nb_blobs),blob_invert(nb_blobs))
      blob_invert(:)=0
-     blob_centre(1,:) = (/-0.5d0*xl, 0.0d0/)   !! Row 0
-     blob_centre(2,:) = (/0.5d0*xl, 0.0d0/)   !! Row 0
+     blob_centre(1,:) = (/-0.5d0*S_cyl, 0.0d0/)   !! Row 0
+     blob_centre(2,:) = (/0.5d0*S_cyl, 0.0d0/)   !! Row 0
      
      do i=1,nb_blobs
         blob_coeffs(i,:)=h0*(/1.0d0,0.0d0,0.0d0,0.0d0,0.0d0,0.0d0/);blob_rotation(i)=-pi/9.0d0
      end do
 
      dxmin = dx0/4.0d0
-     dx_wall=dxmin;dx_in=1.33d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
-     dx_wallio=dxmin              
+     dx_wall=dxmin;dx_in=4.0d0*dx0;dx_out=dx_in  !! dx for solids and in/outs...!! Ratio for scaling far field...
+     dx_wallio=dxmin                 
 !! ------------------------------------------------------------------------------------------------
 case(8) !! Minimal unit cell of isometric cylinder array
 
@@ -268,7 +289,7 @@ case(8) !! Minimal unit cell of isometric cylinder array
   !! Porosity 1/4 - sqrt(0.6667*pi/sqrt(3))   (2/3)
   
 
-     SovD = 1.2d0!sqrt(pi/(sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
+     SovD = sqrt((2.0d0/3.0d0)*pi/(sqrt(3.0d0)))!sqrt((2.0d0/3.0d0)*pi/sqrt(3.0d0)) 
      D_cyl = 1.0d0!1.0d0/(SovD-1.0d0)
      S_cyl = D_cyl*SovD
      h0=D_cyl/2.0d0      !cylinder radius

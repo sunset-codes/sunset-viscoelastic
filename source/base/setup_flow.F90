@@ -209,6 +209,7 @@ contains
         ro(i) = rho_char - Ma*Ma*( (grav(1)+driving_force(1))*x &
                                   +(grav(2)+driving_force(2))*y &
                                   +(grav(3)+driving_force(3))*z)
+                                  
 #endif                                  
            
         p(i) = ro(i)*csq
@@ -222,11 +223,14 @@ contains
         czz(i) = one
         
         !! Kolmogorov IC for Miguel paper (with perturbation)
-        u(i) = cos(y) - 0.25d-10*(-sin(x/four)*sin(y/four) + two*cos(three*x/four)*sin(y/two))
-        v(i) = zero + 0.25d-10*(cos(x/four)*cos(y/four) - three*cos(three*x/four)*sin(y/two))        
-        cxx(i) = one + (Wi*Wi/(one + Mdiff*Wi))*(one-cos(two*y)/(one+four*Mdiff*Wi))
-        cxy(i) = -Wi*sin(y)/(one+Mdiff*Wi)
-        cyy(i) = one    
+!        u(i) = cos(y) - 0.25d-10*(-sin(x/four)*sin(y/four) + two*cos(three*x/four)*sin(y/two))
+!        v(i) = zero + 0.25d-10*(cos(x/four)*cos(y/four) - three*cos(three*x/four)*sin(y/two))        
+!        cxx(i) = one + (Wi*Wi/(one + Mdiff*Wi))*(one-cos(two*y)/(one+four*Mdiff*Wi))
+!        cxy(i) = -Wi*sin(y)/(one+Mdiff*Wi)
+!        cyy(i) = one    
+
+        !! Initial conditions for other Newtonian Kolmogorov flow
+!        u(i) = cos(8.0d0*y) 
 
         !! Log-conformation transform
 #ifdef lc    
@@ -252,6 +256,8 @@ contains
 #endif     
      end do
      !$OMP END PARALLEL DO
+
+!        call make_turbulent_velocity_field(0.4d0,u_char)
 
      !! Put mirrors in now (Why necessary???)         
      do i=npfb+1,np

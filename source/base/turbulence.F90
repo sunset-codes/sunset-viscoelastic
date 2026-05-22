@@ -136,7 +136,11 @@ contains
      do i=1,npfb
         u(i) = u_turb*u(i)/sqrt(u_var)
         v(i) = u_turb*v(i)/sqrt(v_var)
+#ifdef dim3        
         w(i) = u_turb*w(i)/sqrt(w_var)
+#else
+        w(i) = zero
+#endif        
      end do
      !$omp end parallel do
 
@@ -239,8 +243,12 @@ contains
         u(i) = (two*rnum - one)*dVi
         rnum = rand()!call random_number(rnum)
         v(i) = (two*rnum - one)*dVi
+#ifdef dim3
         rnum = rand()!call random_number(rnum)
-        w(i) = (two*rnum - one)*dVi        
+        w(i) = (two*rnum - one)*dVi     
+#else
+        w(i) = zero           
+#endif        
      end do
      !$omp end parallel do      
   
